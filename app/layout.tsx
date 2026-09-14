@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { CartProvider } from "@/components/CartProvider";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { SiteShell } from "@/components/SiteShell";
 
 export const metadata: Metadata = {
   title: "Calypto | Soft Baits That Fish Can't Ignore",
@@ -12,11 +10,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
-        <CartProvider>
-          <Header />
-          {children}
-          <Footer />
-        </CartProvider>
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );

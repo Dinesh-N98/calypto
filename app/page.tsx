@@ -1,23 +1,39 @@
 import Image from "next/image";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/ProductCard";
 import { IconFeature } from "@/components/IconFeature";
 
-const fallbackProducts = ["Green Pumpkin Worm", "Olive Flake Tube", "Shad Runner"].map(
-  (name, index) => ({
-    slug: name.toLowerCase().replace(/\s+/g, "-"),
-    name,
-    category: ["Real Worm Bait", "Tube Bait", "Swimbait"][index],
-    priceCents: 699 + index * 100,
-    imageUrl: "/bait-detail.jpeg",
-  }),
-);
+const fallbackProducts = [
+  {
+    slug: "worm-01",
+    name: "Worm Bait — Color 01",
+    category: "Worm Bait",
+    priceCents: 699,
+    imageUrl: "/products/worm/worm-01.jpg",
+  },
+  {
+    slug: "swimbait-01",
+    name: "Swimbait — Color 01",
+    category: "Swimbait",
+    priceCents: 899,
+    imageUrl: "/products/swimbait/swimbait-01.jpg",
+  },
+  {
+    slug: "jig-01",
+    name: "Jig — Color 01",
+    category: "Jig",
+    priceCents: 599,
+    imageUrl: "/products/jig/jig-01.jpg",
+  },
+];
 export default async function Home() {
   let products = fallbackProducts;
   try {
     products =
       (await prisma.product.findMany({
         take: 3,
+        where: { slug: { in: ["worm-01", "swimbait-01", "jig-01"] } },
         orderBy: { createdAt: "asc" },
         select: { slug: true, name: true, category: true, priceCents: true, imageUrl: true },
       })) || fallbackProducts;
@@ -33,7 +49,7 @@ export default async function Home() {
           fill
           priority
           sizes="100vw"
-          className="z-[-2] object-cover object-[63%_center] md:object-center"
+          className="z-[-2] object-cover object-[75%_center] md:object-center"
         />
         <div className="absolute inset-0 z-[-1] bg-[linear-gradient(90deg,rgba(13,14,12,.87),rgba(13,14,12,.32))] md:bg-[linear-gradient(90deg,rgba(13,14,12,.94),rgba(13,14,12,.48)_60%,rgba(13,14,12,.15))]" />
         <div className="relative max-w-[700px]">
@@ -123,12 +139,12 @@ export default async function Home() {
               <em className="text-lime not-italic">soft baits.</em>
             </h2>
           </div>
-          <a
+          <Link
             className="border-b border-lime pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
             href="/shop"
           >
             View all baits ↗
-          </a>
+          </Link>
         </div>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {products.map((product) => (
@@ -140,7 +156,7 @@ export default async function Home() {
         <div className="relative min-h-[420px] md:min-h-[620px]">
           <Image
             className="object-cover"
-            src="/bait-detail.jpeg"
+            src="/bait-detail.jpg"
             alt="Calypto soft bait detail"
             fill
             sizes="50vw"
@@ -176,12 +192,12 @@ export default async function Home() {
           Own a tackle shop?
         </h2>
         <p className="mb-8">Put proven soft plastics in your customers&apos; hands.</p>
-        <a
+        <Link
           className="inline-flex items-center gap-6 bg-ink px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-paper"
           href="/wholesale"
         >
           Partner with us <span>↗</span>
-        </a>
+        </Link>
       </section>
       <section className="px-[7vw] py-24 text-center md:px-[10vw] md:py-36">
         <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
@@ -204,12 +220,12 @@ export default async function Home() {
           <br />
           <em className="text-lime not-italic">count.</em>
         </h2>
-        <a
+        <Link
           className="inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink"
           href="/shop"
         >
           Shop Calypto <span>↗</span>
-        </a>
+        </Link>
       </section>
     </main>
   );

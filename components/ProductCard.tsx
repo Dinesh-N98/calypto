@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { ProductPurchase } from "@/components/ProductPurchase";
 export function ProductCard({
   product,
 }: {
@@ -13,7 +16,7 @@ export function ProductCard({
           alt={product.name}
           fill
           sizes="(max-width: 767px) 90vw, 30vw"
-          className="object-cover transition-transform duration-[400ms] ease-in-out group-hover:scale-105"
+          className="object-contain transition-transform duration-[400ms] ease-in-out group-hover:scale-105"
         />
       </div>
       <div className="grid gap-[.45rem] p-[1.3rem]">
@@ -22,6 +25,9 @@ export function ProductCard({
         </span>
         <strong className="text-[1.05rem] uppercase">{product.name}</strong>
         <b className="text-[.85rem]">${(product.priceCents / 100).toFixed(2)}</b>
+        <div onClick={(event) => event.stopPropagation()}>
+          <ProductPurchase product={product} />
+        </div>
       </div>
     </Link>
   );

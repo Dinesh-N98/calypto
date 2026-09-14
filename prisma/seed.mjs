@@ -1,21 +1,39 @@
 import { PrismaClient } from "@prisma/client";
+
+import { readdir } from "node:fs/promises";
+import path from "node:path";
+
 const prisma = new PrismaClient();
-const products = [
-  ["green-pumpkin-worm", "Green Pumpkin Worm", "Real Worm Bait", 699],
-  ["salted-craw-worm", "Salted Craw Worm", "Real Worm Bait", 749],
-  ["olive-flake-tube", "Olive Flake Tube", "Tube Bait", 799],
-  ["midnight-tube", "Midnight Tube", "Tube Bait", 799],
-  ["shad-runner", "Shad Runner", "Swimbait", 899],
-  ["silver-minnow", "Silver Minnow", "Swimbait", 899],
-].map(([slug, name, category, priceCents]) => ({
-  slug,
-  name,
-  category,
-  priceCents,
-  description:
-    "A tuned soft bait with natural movement, durable plastic, and a profile built to trigger decisive strikes.",
-  imageUrl: "/bait-detail.jpeg",
-}));
+const productsDirectory = path.join(process.cwd(), "public", "products");
+const description =
+  "A tuned soft bait with natural movement, durable plastic, and a profile built to trigger decisive strikes.";
+const categories = [
+  { slug: "worm", displayName: "Worm Bait", priceCents: 699 },
+  { slug: "swimbait", displayName: "Swimbait", priceCents: 899 },
+  { slug: "curly-tail-grub", displayName: "Curly-Tail Grub", priceCents: 649 },
+  { slug: "jig", displayName: "Jig", priceCents: 599 },
+];
+
+const products = [];
+for (const category of categories) {
+  const files = (await readdir(path.join(productsDirectory, category.slug)))
+    .filter((file) => file.toLowerCase().endsWith(".jpg"))
+    .sort((first, second) => first.localeCompare(second, undefined, { numeric: true }));
+
+  for (const [index, file] of files.entries()) {
+    const number = String(index + 1).padStart(2, "0");
+    products.push({
+      slug: `${category.slug}-${number}`,
+      name: `${category.displayName} — Color ${number}`,
+      category: category.displayName,
+      // Placeholder pricing requires client input before launch.
+      priceCents: category.priceCents,
+      description,
+      imageUrl: `/products/${category.slug}/${file}`,
+    });
+  }
+}
+
 await prisma.product.deleteMany();
 await prisma.product.createMany({ data: products });
 await prisma.$disconnect();
