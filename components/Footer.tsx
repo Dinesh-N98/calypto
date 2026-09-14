@@ -1,32 +1,52 @@
 import Link from "next/link";
 export function Footer() {
   return (
-    <footer className="footer">
-      <div>
-        <Link className="logo" href="/">
-          CALYPTO<span>®</span>
+    <footer className="grid grid-cols-2 gap-12 bg-[#080908] px-[7vw] pb-8 pt-16 md:grid-cols-[2fr_repeat(3,1fr)] md:px-[10vw] md:pb-8 md:pt-20">
+      <div className="col-span-full flex flex-col gap-3 md:col-span-1">
+        <Link className="text-[1.4rem] font-black tracking-[.14em]" href="/">
+          CALYPTO<span className="align-top text-[.5em] text-lime">®</span>
         </Link>
         <p>Soft plastics for serious water.</p>
       </div>
-      <div>
-        <h3>Shop</h3>
-        <Link href="/shop">All baits</Link>
-        <Link href="/shop?category=worm">Worm bait</Link>
-        <Link href="/shop?category=tube">Tube bait</Link>
+      <div className="flex flex-col gap-3">
+        <h3 className="text-[.65rem] uppercase tracking-[.16em] text-lime">Shop</h3>
+        <Link className="text-[.75rem] text-muted" href="/shop">
+          All baits
+        </Link>
+        <Link className="text-[.75rem] text-muted" href="/shop?category=worm">
+          Worm bait
+        </Link>
+        <Link className="text-[.75rem] text-muted" href="/shop?category=tube">
+          Tube bait
+        </Link>
       </div>
-      <div>
-        <h3>Company</h3>
-        <Link href="/about">Our story</Link>
-        <Link href="/wholesale">Wholesale</Link>
-        <Link href="/contact">Contact</Link>
+      <div className="flex flex-col gap-3">
+        <h3 className="text-[.65rem] uppercase tracking-[.16em] text-lime">Company</h3>
+        <Link className="text-[.75rem] text-muted" href="/about">
+          Our story
+        </Link>
+        <Link className="text-[.75rem] text-muted" href="/wholesale">
+          Wholesale
+        </Link>
+        <Link className="text-[.75rem] text-muted" href="/contact">
+          Contact
+        </Link>
       </div>
-      <div>
-        <h3>Follow us</h3>
-        <a href="#instagram">Instagram ↗</a>
-        <a href="#youtube">YouTube ↗</a>
-        <a href="#email">hello@calypto.co</a>
+      <div className="flex flex-col gap-3">
+        <h3 className="text-[.65rem] uppercase tracking-[.16em] text-lime">Follow us</h3>
+        <a className="text-[.75rem] text-muted" href="#instagram">
+          Instagram ↗
+        </a>
+        <a className="text-[.75rem] text-muted" href="#youtube">
+          YouTube ↗
+        </a>
+        <a className="text-[.75rem] text-muted" href="#email">
+          hello@calypto.co
+        </a>
       </div>
-      <small>© 2026 Calypto. Built for the bite.</small>
+      <small className="col-span-full pt-8 text-[.75rem] text-muted">
+        © 2026 Calypto. Built for the bite.
+      </small>
     </footer>
   );
 }

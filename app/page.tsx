@@ -26,64 +26,74 @@ export default async function Home() {
   }
   return (
     <main>
-      <section className="hero">
+      <section className="relative min-h-[680px] overflow-hidden px-[7vw] pb-20 pt-[10vh] md:min-h-[calc(100vh-84px)] md:px-[10vw] md:pb-[8vh] md:pt-[12vh]">
         <Image
           src="/hero-fishing.jpeg"
           alt="Angler casting at sunrise"
           fill
           priority
           sizes="100vw"
-          className="hero-image"
+          className="z-[-2] object-cover object-[63%_center] md:object-center"
         />
-        <div className="hero-overlay" />
-        <div className="hero-content">
-          <p className="eyebrow">Performance soft plastics / Est. 2026</p>
-          <h1>
+        <div className="absolute inset-0 z-[-1] bg-[linear-gradient(90deg,rgba(13,14,12,.87),rgba(13,14,12,.32))] md:bg-[linear-gradient(90deg,rgba(13,14,12,.94),rgba(13,14,12,.48)_60%,rgba(13,14,12,.15))]" />
+        <div className="relative max-w-[700px]">
+          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+            Performance soft plastics / Est. 2026
+          </p>
+          <h1 className="my-[1.3rem] text-[4rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,7vw,7.2rem)]">
             Soft baits
             <br />
-            <em>that fish</em>
+            <em className="text-lime not-italic">that fish</em>
             <br />
             can&apos;t ignore.
           </h1>
-          <p className="hero-copy">
+          <p className="max-w-[390px] leading-[1.6] text-[#d0d2c7]">
             Purpose-built movement. Irresistible profiles. Every cast engineered to create the bite.
           </p>
-          <div className="button-row">
-            <a className="button button-accent" href="#shop">
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a
+              className="inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink"
+              href="#shop"
+            >
               Shop now <span>↗</span>
             </a>
-            <a className="button button-outline" href="/wholesale">
+            <a
+              className="inline-flex items-center gap-6 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em]"
+              href="/wholesale"
+            >
               Wholesale inquiry <span>↗</span>
             </a>
           </div>
         </div>
-        <div className="hero-foot">
+        <div className="absolute bottom-8 left-[7vw] right-[7vw] flex justify-between text-[.6rem] uppercase tracking-[.14em] text-muted md:left-[10vw] md:right-[10vw]">
           <span>Scroll to explore</span>
           <span>01 / 04</span>
         </div>
       </section>
-      <section className="trust-row">
+      <section className="grid grid-cols-1 gap-7 bg-[#171914] px-[7vw] py-10 md:grid-cols-4 md:gap-4 md:py-10">
         <IconFeature icon="◈" title="Realistic action" text="Motion that gets noticed" />
         <IconFeature icon="◇" title="Durable plastics" text="More bites per bait" />
         <IconFeature icon="↗" title="Fast shipping" text="Worldwide, always" />
         <IconFeature icon="＋" title="Wholesale ready" text="Retail & trade pricing" />
       </section>
-      <section className="section dark-section">
-        <div className="section-heading">
+      <section className="bg-[#12140f] px-[7vw] py-20 md:px-[10vw] md:py-36">
+        <div className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="eyebrow">The Calypto difference</p>
-            <h2>
+            <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+              The Calypto difference
+            </p>
+            <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
               Built for the
               <br />
-              <em>moment of truth.</em>
+              <em className="text-lime not-italic">moment of truth.</em>
             </h2>
           </div>
-          <p>
+          <p className="max-w-[290px] leading-[1.6] text-muted">
             Every shape, color, and action is refined for the instant a curious fish becomes a
             committed strike.
           </p>
         </div>
-        <div className="feature-grid">
+        <div className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
           <IconFeature
             icon="01"
             title="Dialed-in profiles"
@@ -101,71 +111,103 @@ export default async function Home() {
           />
         </div>
       </section>
-      <section className="section product-section" id="shop">
-        <div className="section-heading">
+      <section className="bg-paper px-[7vw] py-20 text-ink md:px-[10vw] md:py-36" id="shop">
+        <div className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="eyebrow">The lineup</p>
-            <h2>
+            <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+              The lineup
+            </p>
+            <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
               Our best-selling
               <br />
-              <em>soft baits.</em>
+              <em className="text-lime not-italic">soft baits.</em>
             </h2>
           </div>
-          <a className="text-link" href="/shop">
+          <a
+            className="border-b border-lime pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
+            href="/shop"
+          >
             View all baits ↗
           </a>
         </div>
-        <div className="product-grid">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {products.map((product) => (
             <ProductCard key={product.slug} product={product} />
           ))}
         </div>
       </section>
-      <section className="split-section">
-        <div className="split-image">
-          <Image src="/bait-detail.jpeg" alt="Calypto soft bait detail" fill sizes="50vw" />
+      <section className="grid grid-cols-1 md:grid-cols-2">
+        <div className="relative min-h-[420px] md:min-h-[620px]">
+          <Image
+            className="object-cover"
+            src="/bait-detail.jpeg"
+            alt="Calypto soft bait detail"
+            fill
+            sizes="50vw"
+          />
         </div>
-        <div className="split-copy">
-          <p className="eyebrow">Made with intent</p>
-          <h2>
+        <div className="max-w-[560px] self-center px-[7vw] py-16 md:px-[7vw] md:py-24">
+          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+            Made with intent
+          </p>
+          <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,5vw,5.5rem)]">
             Less guesswork.
             <br />
-            <em>More water time.</em>
+            <em className="text-lime not-italic">More water time.</em>
           </h2>
-          <p>
+          <p className="my-8 leading-[1.7] text-muted">
             We started Calypto because the best days on the water come from confidence. Confidence
             in your gear. Confidence in your presentation. Confidence that the next cast could be
             the one.
           </p>
-          <a className="text-link" href="/about">
+          <a
+            className="border-b border-lime pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
+            href="/about"
+          >
             Our story ↗
           </a>
         </div>
       </section>
-      <section className="wholesale-banner">
-        <p className="eyebrow">For the ones who stock the good stuff</p>
-        <h2>Own a tackle shop?</h2>
-        <p>Put proven soft plastics in your customers&apos; hands.</p>
-        <a className="button button-accent" href="/wholesale">
+      <section className="bg-lime px-[7vw] py-20 text-ink md:px-[10vw] md:py-24">
+        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-[#526213]">
+          For the ones who stock the good stuff
+        </p>
+        <h2 className="my-4 text-[clamp(3rem,7vw,7rem)] font-black uppercase leading-[.88] tracking-[-.07em]">
+          Own a tackle shop?
+        </h2>
+        <p className="mb-8">Put proven soft plastics in your customers&apos; hands.</p>
+        <a
+          className="inline-flex items-center gap-6 bg-ink px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-paper"
+          href="/wholesale"
+        >
           Partner with us <span>↗</span>
         </a>
       </section>
-      <section className="quotes">
-        <p className="eyebrow">From the water</p>
-        <blockquote>
+      <section className="px-[7vw] py-24 text-center md:px-[10vw] md:py-36">
+        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+          From the water
+        </p>
+        <blockquote className="mx-auto my-8 max-w-[950px] text-[2.3rem] font-extrabold leading-[.98] tracking-[-.05em] md:text-[clamp(2rem,4vw,4rem)]">
           “The action is subtle enough for clear water, but it still gets noticed. Calypto has
           earned a permanent spot in my box.”
         </blockquote>
-        <cite>— Marcus R. / Tournament angler</cite>
+        <cite className="text-[.7rem] uppercase tracking-[.1em] text-muted not-italic">
+          — Marcus R. / Tournament angler
+        </cite>
       </section>
-      <section className="final-cta">
-        <p className="eyebrow">Your next personal best</p>
-        <h2>
+      <section className="bg-[#20261a] px-[7vw] py-24 text-center md:px-[10vw] md:py-32">
+        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+          Your next personal best
+        </p>
+        <h2 className="my-[1.3rem] text-[clamp(3.5rem,8vw,8rem)] font-black uppercase leading-[.88] tracking-[-.07em]">
           Make the next cast
           <br />
-          <em>count.</em>
+          <em className="text-lime not-italic">count.</em>
         </h2>
-        <a className="button button-accent" href="/shop">
+        <a
+          className="inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink"
+          href="/shop"
+        >
           Shop Calypto <span>↗</span>
         </a>
       </section>
