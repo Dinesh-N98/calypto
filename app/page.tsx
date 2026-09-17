@@ -152,29 +152,28 @@ export default async function Home() {
           ))}
         </div>
       </section>
-      <section className="grid grid-cols-1 md:grid-cols-2">
-        <div className="relative min-h-[420px] md:min-h-[620px]">
-          <Image
-            className="object-cover"
-            src="/bait-detail.jpg"
-            alt="Calypto soft bait detail"
-            fill
-            sizes="50vw"
-          />
-        </div>
-        <div className="max-w-[560px] self-center px-[7vw] py-16 md:px-[7vw] md:py-24">
-          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
-            Made with intent
-          </p>
-          <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,5vw,5.5rem)]">
-            Less guesswork.
-            <br />
-            <em className="text-lime not-italic">More water time.</em>
+      <section className="relative min-h-[620px] overflow-hidden px-[7vw] py-20 md:min-h-[720px] md:px-[10vw] md:py-32">
+        <Image
+          src="/about-lifestyle.jpg"
+          alt="Angler enjoying a day on the water"
+          fill
+          sizes="100vw"
+          className="z-[-2] object-cover object-[75%_center]"
+        />
+        <div className="absolute inset-0 z-[-1] bg-[linear-gradient(90deg,rgba(13,14,12,.94),rgba(13,14,12,.48)_60%,rgba(13,14,12,.15))]" />
+        <div className="relative max-w-[620px]">
+          <h2 className="text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
+            About <em className="text-lime not-italic">Calypto</em>
           </h2>
-          <p className="my-8 leading-[1.7] text-muted">
-            We started Calypto because the best days on the water come from confidence. Confidence
-            in your gear. Confidence in your presentation. Confidence that the next cast could be
-            the one.
+          <div className="my-8 max-w-[500px] space-y-5 leading-[1.7] text-[#d0d2c7]">
+            <p>
+              Calypto is a fishing bait manufacturer focused on producing premium soft plastic baits
+              for anglers and tackle shops worldwide.
+            </p>
+            <p>From realistic worms to high-action swimbaits, every bait is designed with one goal:</p>
+          </div>
+          <p className="mb-8 text-xl font-black uppercase tracking-[-.02em] text-lime md:text-2xl">
+            Catch more fish.
           </p>
           <a
             className="border-b border-lime pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
