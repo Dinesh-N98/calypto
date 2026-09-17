@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ProductPurchase } from "@/components/ProductPurchase";
+import { formatPrice } from "@/lib/currency";
 export function ProductCard({
   product,
 }: {
@@ -24,7 +25,7 @@ export function ProductCard({
           {product.category}
         </span>
         <strong className="text-[1.05rem] uppercase">{product.name}</strong>
-        <b className="text-[.85rem]">${(product.priceCents / 100).toFixed(2)}</b>
+        <b className="text-[.85rem]">{formatPrice(product.priceCents)}</b>
         <div onClick={(event) => event.stopPropagation()}>
           <ProductPurchase product={product} />
         </div>

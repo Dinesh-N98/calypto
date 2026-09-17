@@ -7,23 +7,23 @@ import { IconFeature } from "@/components/IconFeature";
 const fallbackProducts = [
   {
     slug: "worm-01",
-    name: "Worm Bait — Color 01",
+    name: "Worm Bait Color 01",
     category: "Worm Bait",
-    priceCents: 699,
+    priceCents: 210000,
     imageUrl: "/products/worm/worm-01.jpg",
   },
   {
     slug: "swimbait-01",
-    name: "Swimbait — Color 01",
+    name: "Swimbait Color 01",
     category: "Swimbait",
-    priceCents: 899,
+    priceCents: 270000,
     imageUrl: "/products/swimbait/swimbait-01.jpg",
   },
   {
     slug: "jig-01",
-    name: "Jig — Color 01",
+    name: "Jig Color 01",
     category: "Jig",
-    priceCents: 599,
+    priceCents: 180000,
     imageUrl: "/products/jig/jig-01.jpg",
   },
 ];

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ProductPurchase } from "@/components/ProductPurchase";
+import { formatPrice } from "@/lib/currency";
 import { prisma } from "@/lib/prisma";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -29,7 +30,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <h1 className="my-5 text-[3.3rem] font-black uppercase leading-[.9] tracking-[-.06em] md:text-[clamp(3.5rem,6vw,6rem)]">
             {product.name}
           </h1>
-          <p className="text-2xl font-bold">${(product.priceCents / 100).toFixed(2)}</p>
+          <p className="text-2xl font-bold">{formatPrice(product.priceCents)}</p>
           <p className="my-8 max-w-lg leading-[1.7] text-[#697064]">{product.description}</p>
           <ProductPurchase
             prominent

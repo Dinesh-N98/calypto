@@ -8,10 +8,10 @@ const productsDirectory = path.join(process.cwd(), "public", "products");
 const description =
   "A tuned soft bait with natural movement, durable plastic, and a profile built to trigger decisive strikes.";
 const categories = [
-  { slug: "worm", displayName: "Worm Bait", priceCents: 699 },
-  { slug: "swimbait", displayName: "Swimbait", priceCents: 899 },
-  { slug: "curly-tail-grub", displayName: "Curly-Tail Grub", priceCents: 649 },
-  { slug: "jig", displayName: "Jig", priceCents: 599 },
+  { slug: "worm", displayName: "Worm Bait", priceCents: 210000 },
+  { slug: "swimbait", displayName: "Swimbait", priceCents: 270000 },
+  { slug: "curly-tail-grub", displayName: "Curly-Tail Grub", priceCents: 195000 },
+  { slug: "jig", displayName: "Jig", priceCents: 180000 },
 ];
 
 const products = [];
@@ -24,7 +24,7 @@ for (const category of categories) {
     const number = String(index + 1).padStart(2, "0");
     products.push({
       slug: `${category.slug}-${number}`,
-      name: `${category.displayName} — Color ${number}`,
+      name: `${category.displayName} Color ${number}`,
       category: category.displayName,
       // Placeholder pricing requires client input before launch.
       priceCents: category.priceCents,
