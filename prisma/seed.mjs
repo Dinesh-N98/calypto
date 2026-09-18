@@ -8,10 +8,10 @@ const productsDirectory = path.join(process.cwd(), "public", "products");
 const description =
   "A tuned soft bait with natural movement, durable plastic, and a profile built to trigger decisive strikes.";
 const categories = [
-  { slug: "worm", displayName: "Worm Bait", priceCents: 210000 },
-  { slug: "swimbait", displayName: "Swimbait", priceCents: 270000 },
-  { slug: "curly-tail-grub", displayName: "Curly-Tail Grub", priceCents: 195000 },
-  { slug: "jig", displayName: "Jig", priceCents: 180000 },
+  { slug: "worm", displayName: "Worm Bait", priceCents: 699 },
+  { slug: "swimbait", displayName: "Swimbait", priceCents: 899 },
+  { slug: "curly-tail-grub", displayName: "Curly-Tail Grub", priceCents: 649 },
+  { slug: "jig", displayName: "Jig", priceCents: 599 },
 ];
 
 const products = [];

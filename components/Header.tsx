@@ -14,7 +14,7 @@ export function Header() {
   return (
     <header className="relative z-[5] flex h-[72px] items-center justify-between bg-ink px-[6vw] md:h-[84px] md:px-[5vw]">
       <Link className="text-[1.4rem] font-black tracking-[.14em]" href="/">
-        CALYPTO<span className="align-top text-[.5em] text-lime">®</span>
+        calypto<span className="align-top text-[.5em] text-lime">®</span>
       </Link>
       <nav className="ml-auto mr-12 hidden gap-8 md:flex">
         {links.map(([label, href]) => (

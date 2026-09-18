@@ -1,4 +1,3 @@
 export function formatPrice(priceCents: number): string {
-  const rupees = Math.round(priceCents / 100);
-  return `Rs. ${rupees.toLocaleString("en-US")}`;
+  return `$${(priceCents / 100).toFixed(2)}`;
 }
