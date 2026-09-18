@@ -47,3 +47,4 @@ next-env.d.ts
 # local private files
 /private/
 .vscode/
+.neon
