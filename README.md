@@ -34,3 +34,33 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Authentication environment variables
+
+Add these variables to `.env.local` for local development and to the Vercel project
+environment settings for Preview and Production deployments:
+
+```env
+DATABASE_URL="your-existing-neon-connection-string"
+AUTH_SECRET="generate-a-long-random-secret"
+GOOGLE_CLIENT_ID="your-google-oauth-client-id"
+GOOGLE_CLIENT_SECRET="your-google-oauth-client-secret"
+```
+
+`AUTH_SECRET` is required. Generate one with `npx auth secret`. The Google variables
+are read by the Google provider; Auth.js's equivalent `AUTH_GOOGLE_ID` and
+`AUTH_GOOGLE_SECRET` names are also supported. Auth.js v5 infers the application URL
+from the request on Vercel, so `AUTH_URL` is optional. If you set it explicitly, use
+`http://localhost:3000` locally and your full production origin on Vercel.
+
+Register these Google OAuth redirect URIs in Google Cloud Console:
+
+```text
+http://localhost:3000/api/auth/callback/google
+https://YOUR-VERCEL-DOMAIN.vercel.app/api/auth/callback/google
+```
+
+Replace `YOUR-VERCEL-DOMAIN.vercel.app` with the exact Vercel deployment domain (or
+your custom production domain). No Auth.js `Email` provider or email-sending service
+is configured; email accounts use bcrypt-hashed passwords through the Credentials
+provider.

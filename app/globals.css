@@ -26,3 +26,44 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+.auth-input {
+  width: 100%;
+  border: 1px solid rgba(241, 240, 232, 0.25);
+  border-radius: 0;
+  background: rgba(241, 240, 232, 0.06);
+  padding: 0.9rem 1rem;
+  color: var(--color-paper);
+  outline: none;
+}
+
+.auth-input:focus {
+  border-color: var(--color-lime);
+}
+
+.auth-button,
+.auth-button-secondary {
+  border: 0;
+  border-radius: 0;
+  padding: 1rem 1.3rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.auth-button {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+.auth-button-secondary {
+  border: 1px solid rgba(241, 240, 232, 0.25);
+  background: transparent;
+  color: var(--color-paper);
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}

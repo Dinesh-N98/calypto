@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SiteShell } from "@/components/SiteShell";
+import { AuthSessionProvider } from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
   title: "Calypto | Soft Baits That Fish Can't Ignore",
@@ -10,7 +11,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
-        <SiteShell>{children}</SiteShell>
+        <AuthSessionProvider>
+          <SiteShell>{children}</SiteShell>
+        </AuthSessionProvider>
       </body>
     </html>
   );

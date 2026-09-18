@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import { useState } from "react";
 import { useCart } from "./CartProvider";
 const links = [
@@ -11,6 +12,9 @@ const links = [
 export function Header() {
   const [open, setOpen] = useState(false);
   const { itemCount } = useCart();
+  const { data: session, status } = useSession();
+  const isSignedIn = status === "authenticated";
+  const accountLabel = session?.user?.name || session?.user?.email || "Account";
   return (
     <header className="relative z-[5] flex h-[72px] items-center justify-between bg-ink px-[6vw] md:h-[84px] md:px-[5vw]">
       <Link className="text-[1.4rem] font-black tracking-[.14em]" href="/">
@@ -28,6 +32,29 @@ export function Header() {
         ))}
       </nav>
       <div className="flex items-center gap-6">
+        {isSignedIn ? (
+          <div className="hidden items-center gap-3 md:flex">
+            <Link className="flex items-center gap-2 text-[.72rem] font-bold uppercase tracking-[.12em]" href="/account">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-lime text-[.65rem] text-ink">
+                {accountLabel.charAt(0).toUpperCase()}
+              </span>
+              {accountLabel}
+            </Link>
+            <button
+              className="border-0 bg-transparent p-0 text-[.68rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime"
+              onClick={() => signOut({ callbackUrl: "/" })}
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <Link
+            className="hidden text-[.72rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime md:block"
+            href="/sign-in"
+          >
+            Sign In
+          </Link>
+        )}
         <Link
           className="text-[.72rem] font-bold uppercase tracking-[.12em] text-muted"
           href="/cart"
@@ -67,6 +94,23 @@ export function Header() {
               {label}
             </Link>
           ))}
+          {isSignedIn ? (
+            <>
+              <Link href="/account" onClick={() => setOpen(false)}>
+                Account
+              </Link>
+              <button
+                className="mt-4 self-start border-0 bg-transparent p-0 text-left text-[.7rem] font-bold uppercase tracking-[.12em] text-muted"
+                onClick={() => signOut({ callbackUrl: "/" })}
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <Link href="/sign-in" onClick={() => setOpen(false)}>
+              Sign In
+            </Link>
+          )}
           <Link href="/cart" onClick={() => setOpen(false)}>
             Cart ({itemCount})
           </Link>
