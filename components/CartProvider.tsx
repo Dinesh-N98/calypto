@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, startTransition, useContext, useEffect, useState } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useState } from "react";
 
 export type CartItem = {
   slug: string;
@@ -15,6 +15,9 @@ type CartContextValue = {
   items: CartItem[];
   itemCount: number;
   addItem: (item: CartProduct, quantity?: number) => void;
+  updateQuantity: (slug: string, quantity: number) => void;
+  removeItem: (slug: string) => void;
+  clearCart: () => void;
 };
 
 const CART_STORAGE_KEY = "calypto-cart";
@@ -71,9 +74,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         : [...current, { ...item, quantity }];
     });
 
+  const clearCart = useCallback(() => {
+    setItems([]);
+    window.localStorage.removeItem(CART_STORAGE_KEY);
+  }, []);
+
+  const updateQuantity = (slug: string, quantity: number) => {
+    if (quantity < 1) return removeItem(slug);
+    setItems((current) =>
+      current.map((item) => (item.slug === slug ? { ...item, quantity } : item)),
+    );
+  };
+
+  const removeItem = (slug: string) => {
+    setItems((current) => current.filter((item) => item.slug !== slug));
+  };
+
   return (
     <CartContext.Provider
-      value={{ items, itemCount: items.reduce((sum, item) => sum + item.quantity, 0), addItem }}
+      value={{
+        items,
+        itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+        addItem,
+        updateQuantity,
+        removeItem,
+        clearCart,
+      }}
     >
       {children}
     </CartContext.Provider>

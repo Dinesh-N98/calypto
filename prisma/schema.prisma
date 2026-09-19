@@ -39,6 +39,29 @@ model User {
   phone          String?
   accounts       Account[]
   sessions       Session[]
+  orders         Order[]
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+  email           String
+  stripeSessionId String      @unique
+  totalCents      Int
+  status          String      @default("paid")
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  order       Order  @relation(fields: [orderId], references: [id])
+  productSlug String
+  name        String
+  priceCents  Int
+  quantity    Int
 }
 
 model Account {
