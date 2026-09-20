@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SiteShell } from "@/components/SiteShell";
 import { AuthSessionProvider } from "@/components/SessionProvider";
+import { ToastProvider } from "@/components/ToastProvider";
 
 export const metadata: Metadata = {
   title: "Calypto | Soft Baits That Fish Can't Ignore",
@@ -12,7 +13,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <AuthSessionProvider>
-          <SiteShell>{children}</SiteShell>
+          <ToastProvider>
+            <SiteShell>{children}</SiteShell>
+          </ToastProvider>
         </AuthSessionProvider>
       </body>
     </html>

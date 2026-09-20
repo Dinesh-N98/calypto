@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { QuantitySelector } from "@/components/QuantitySelector";
+import { useToast } from "@/components/ToastProvider";
 
 type ProductPurchaseProps = {
   product: { slug: string; name: string; priceCents: number; imageUrl: string };
@@ -12,11 +13,13 @@ type ProductPurchaseProps = {
 export function ProductPurchase({ product, prominent = false }: ProductPurchaseProps) {
   const [quantity, setQuantity] = useState(1);
   const { addItem } = useCart();
+  const { showToast } = useToast();
 
   const handleAdd = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     addItem(product, quantity);
+    showToast(`${product.name} added to cart`);
   };
 
   return (
