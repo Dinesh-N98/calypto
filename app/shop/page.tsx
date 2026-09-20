@@ -20,14 +20,14 @@ function getCategory(value: string | undefined) {
 
 function ProductGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
       {Array.from({ length: 8 }, (_, index) => (
         <div key={index} className="animate-pulse overflow-hidden bg-[#e4e4d9]">
-          <div className="aspect-[1/1.1] bg-[#c9c9c0]" />
-          <div className="grid gap-3 p-5">
-            <div className="h-3 w-1/2 bg-[#c9c9c0]" />
-            <div className="h-5 w-4/5 bg-[#c9c9c0]" />
-            <div className="h-4 w-1/4 bg-[#c9c9c0]" />
+          <div className="aspect-square bg-[#c9c9c0]" />
+          <div className="grid gap-1 p-2.5">
+            <div className="h-4 w-4/5 bg-[#c9c9c0]" />
+            <div className="h-3 w-1/4 bg-[#c9c9c0]" />
+            <div className="h-7 w-full bg-[#c9c9c0]" />
           </div>
         </div>
       ))}
@@ -70,7 +70,7 @@ async function ProductGrid({ categoryName, sort }: { categoryName?: string; sort
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
       {products.map((product) => (
         <ProductCard key={product.slug} product={product} />
       ))}

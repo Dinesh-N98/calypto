@@ -27,10 +27,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-[#697b26]">
             {product.category}
           </p>
-          <h1 className="my-5 text-[3.3rem] font-black uppercase leading-[.9] tracking-[-.06em] md:text-[clamp(3.5rem,6vw,6rem)]">
+          <h1 className="my-5 text-[3.3rem] font-black uppercase leading-[.9] tracking-[-.06em] text-ink md:text-[clamp(3.5rem,6vw,6rem)]">
             {product.name}
           </h1>
-          <p className="text-2xl font-bold">{formatPrice(product.priceCents)}</p>
+          <p className="text-2xl font-bold text-ink">{formatPrice(product.priceCents)}</p>
           <p className="my-8 max-w-lg leading-[1.7] text-[#697064]">{product.description}</p>
           <ProductPurchase
             prominent
