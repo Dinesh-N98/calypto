@@ -68,12 +68,12 @@ export default async function Home() {
             Purpose-built movement. Irresistible profiles. Every cast engineered to create the bite.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a
+            <Link
               className="inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink"
-              href="#shop"
+              href="/shop"
             >
               Shop now <span>↗</span>
-            </a>
+            </Link>
             <a
               className="inline-flex items-center gap-6 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em]"
               href="/wholesale"
