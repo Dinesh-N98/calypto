@@ -63,6 +63,14 @@ a {
   color: var(--color-paper);
 }
 
+.button-primary {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 button:disabled {
   cursor: wait;
   opacity: 0.6;

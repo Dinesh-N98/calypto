@@ -37,7 +37,7 @@ export default async function AccountPage() {
           <section className="border-t border-[rgba(13,14,12,.18)] pt-6 md:border-l md:border-t-0 md:pl-10 md:pt-0">
             <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">Order history</p>
             {orders.length === 0 ? <><h2 className="mt-5 text-3xl font-black uppercase tracking-[-.04em]">No orders yet.</h2><p className="mt-4 max-w-md leading-[1.6] text-[#55584e]">Order history will appear here once you&apos;ve placed an order.</p></> : <div className="mt-5 grid gap-4">{orders.map((order) => <article className="border-b border-[rgba(13,14,12,.14)] pb-4" key={order.id}><div className="flex items-baseline justify-between gap-4"><h2 className="font-bold uppercase">{new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(order.createdAt)}</h2><strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.totalCents / 100)}</strong></div><p className="mt-2 text-sm text-[#55584e]">{order._count.items} {order._count.items === 1 ? "item" : "items"} · {order.status}</p></article>)}</div>}
-            <Link className="mt-8 inline-flex bg-ink px-5 py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-paper" href="/shop">Browse the lineup ↗</Link>
+            <Link className="button-primary mt-8 inline-flex px-5 py-4 text-[.7rem] tracking-[.1em] text-paper" href="/shop">Browse the lineup ↗</Link>
           </section>
         </div>
       </section>

@@ -173,7 +173,7 @@ export default async function Home() {
         </h2>
         <p className="mb-8">Put proven soft plastics in your customers&apos; hands.</p>
         <Link
-          className="inline-flex items-center gap-6 bg-ink px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-paper"
+          className="button-primary inline-flex items-center gap-6 px-[1.3rem] py-4 text-[.7rem] tracking-[.1em] text-paper"
           href="/wholesale"
         >
           Partner with us <span>↗</span>

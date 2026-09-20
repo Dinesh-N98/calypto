@@ -39,7 +39,7 @@ export default function CartPage() {
         {items.length === 0 ? (
           <div className="border-t border-[rgba(13,14,12,.18)] pt-8">
             <h2 className="text-3xl font-black uppercase tracking-[-.04em]">Your cart is empty.</h2>
-            <Link className="mt-8 inline-flex bg-ink px-5 py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-paper" href="/shop">Browse the lineup ↗</Link>
+            <Link className="button-primary mt-8 inline-flex px-5 py-4 text-[.7rem] tracking-[.1em] text-paper" href="/shop">Browse the lineup ↗</Link>
           </div>
         ) : (
           <div className="grid gap-10 border-t border-[rgba(13,14,12,.18)] pt-8 md:grid-cols-[1fr_18rem]">
@@ -54,7 +54,7 @@ export default function CartPage() {
                 </div>
               ))}
             </div>
-            <aside className="border-t border-ink pt-5 md:border-t-0 md:border-l md:pl-6"><p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">Total</p><p className="mt-3 text-3xl font-black">{formatPrice(totalCents)}</p><button className="mt-6 w-full bg-ink px-5 py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-paper" disabled={isCheckingOut} onClick={checkout} type="button">{isCheckingOut ? "Opening checkout..." : "Checkout ↗"}</button>{error && <p className="mt-4 text-sm text-red-700">{error}</p>}</aside>
+            <aside className="border-t border-ink pt-5 md:border-t-0 md:border-l md:pl-6"><p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">Total</p><p className="mt-3 text-3xl font-black">{formatPrice(totalCents)}</p><button className="button-primary mt-6 w-full px-5 py-4 text-[.7rem] tracking-[.1em] text-paper" disabled={isCheckingOut} onClick={checkout} type="button">{isCheckingOut ? "Opening checkout..." : "Checkout ↗"}</button>{error && <p className="mt-4 text-sm text-red-700">{error}</p>}</aside>
           </div>
         )}
       </section>
