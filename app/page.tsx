@@ -171,7 +171,9 @@ export default async function Home() {
         <h2 className="my-4 text-[clamp(3rem,7vw,7rem)] font-black uppercase leading-[.88] tracking-[-.07em]">
           Own a tackle shop?
         </h2>
-        <p className="mb-8">Put proven soft plastics in your customers&apos; hands.</p>
+        <p className="mb-8">
+          Custom bait mold design and airbrush painting, all handmade. Share your idea and we&apos;ll build it. Low MOQ, fast delivery, best quality on the market, and better communication from start to finish.
+        </p>
         <Link
           className="button-primary inline-flex items-center gap-6 px-[1.3rem] py-4 text-[.7rem] tracking-[.1em] text-paper"
           href="/wholesale"

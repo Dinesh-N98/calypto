@@ -34,7 +34,7 @@ export function ContactForm() {
       }
 
       form.reset();
-      showToast("Message sent — we'll be in touch");
+      showToast("Message sent. We'll be in touch.");
     } catch {
       setError("Unable to send your message. Please try again.");
     } finally {

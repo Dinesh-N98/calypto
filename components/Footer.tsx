@@ -6,7 +6,7 @@ export function Footer() {
     <footer className="grid grid-cols-2 gap-12 bg-[#080908] px-[7vw] pb-8 pt-16 md:grid-cols-[2fr_repeat(3,1fr)] md:px-[10vw] md:pb-8 md:pt-20">
       <div className="col-span-full flex flex-col gap-3 md:col-span-1">
         <Link className="text-[1.4rem] font-black tracking-[.14em]" href="/">
-          calypto<span className="align-top text-[.5em] text-lime">®</span>
+          calypto<span className="align-top text-[.5em] text-lime">™</span>
         </Link>
         <p>Soft plastics for serious water.</p>
       </div>
