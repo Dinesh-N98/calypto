@@ -4,8 +4,10 @@ import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useCart } from "./CartProvider";
 const links = [
+  ["Home", "/"],
   ["Shop", "/shop"],
   ["About Us", "/about"],
+  ["Wholesale", "/wholesale"],
   ["Contact", "/contact"],
 ];
 export function Header() {
@@ -30,11 +32,11 @@ export function Header() {
   }, [accountMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-50 flex h-[72px] items-center justify-between bg-ink px-[6vw] md:h-[84px] md:px-[5vw]">
-      <Link className="text-[1.4rem] font-black tracking-[.14em]" href="/">
+    <header className="sticky top-0 z-50 grid h-[72px] items-center bg-ink px-[6vw] md:grid-cols-[1fr_auto_1fr] md:h-[84px] md:px-[5vw]">
+      <Link className="justify-self-start text-[1.4rem] font-black tracking-[.14em]" href="/">
         calypto<span className="align-top text-[.5em] text-lime">™</span>
       </Link>
-      <nav className="ml-auto mr-12 hidden gap-8 md:flex">
+      <nav className="hidden items-center justify-center gap-8 md:flex">
         {links.map(([label, href]) => (
           <Link
             className="text-[.72rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime"
@@ -45,7 +47,7 @@ export function Header() {
           </Link>
         ))}
       </nav>
-      <div className="flex items-center gap-2 md:gap-6 md:border-l md:border-[rgba(241,240,232,.18)] md:pl-6">
+      <div className="flex items-center justify-self-end gap-2 md:gap-6 md:border-l md:border-[rgba(241,240,232,.18)] md:pl-6">
         {isSignedIn ? (
           <div className="relative hidden md:block" data-account-menu>
             <button
