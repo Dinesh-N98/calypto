@@ -13,7 +13,7 @@ export function QuantitySelector({ value, onChange }: QuantitySelectorProps) {
   };
 
   return (
-    <div className="flex h-11 items-center border border-[rgba(13,14,12,.2)] bg-paper text-ink">
+    <div className="flex h-11 w-fit items-center border border-[rgba(13,14,12,.2)] bg-paper text-ink">
       <button
         className="h-full w-10 text-lg font-bold hover:bg-[#e4e4d9]"
         type="button"
