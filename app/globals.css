@@ -29,9 +29,9 @@ a {
 
 .auth-input {
   width: 100%;
-  border: 1px solid rgba(241, 240, 232, 0.25);
+  border: 1px solid rgba(241, 240, 232, 0.45);
   border-radius: 0;
-  background: rgba(241, 240, 232, 0.06);
+  background: rgba(241, 240, 232, 0.08);
   padding: 0.9rem 1rem;
   color: var(--color-paper);
   outline: none;
@@ -39,6 +39,21 @@ a {
 
 .auth-input:focus {
   border-color: var(--color-lime);
+}
+
+.bg-paper .auth-input {
+  border: 1px solid rgba(13, 14, 12, 0.45);
+  background: #ffffff;
+  color: var(--color-ink);
+}
+
+.bg-paper .auth-input:focus {
+  border-color: var(--color-lime);
+  box-shadow: 0 0 0 1px var(--color-lime);
+}
+
+.auth-input::placeholder {
+  color: var(--color-muted);
 }
 
 .auth-button,
