@@ -47,6 +47,7 @@ export async function POST(request: Request) {
 
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "payment",
+    allow_promotion_codes: true,
     line_items: products.map((product) => ({
       quantity: quantities.get(product.slug),
       price_data: {

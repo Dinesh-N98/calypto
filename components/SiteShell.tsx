@@ -3,6 +3,7 @@
 import { CartProvider } from "@/components/CartProvider";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NewsletterPopup } from "@/components/NewsletterPopup";
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <Header />
       {children}
       <Footer />
+      <NewsletterPopup />
     </CartProvider>
   );
 }
