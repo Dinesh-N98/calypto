@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useState } from "react";
 import { useCart } from "./CartProvider";
 const links = [
   ["Home", "/"],
@@ -12,24 +12,10 @@ const links = [
 ];
 export function Header() {
   const [open, setOpen] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const { itemCount } = useCart();
   const { data: session, status } = useSession();
   const isSignedIn = status === "authenticated";
   const accountLabel = session?.user?.name || session?.user?.email || "Account";
-
-  useEffect(() => {
-    if (!accountMenuOpen) return;
-
-    const closeAccountMenu = (event: MouseEvent) => {
-      if (event.target instanceof Element && !event.target.closest("[data-account-menu]")) {
-        setAccountMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("click", closeAccountMenu);
-    return () => document.removeEventListener("click", closeAccountMenu);
-  }, [accountMenuOpen]);
 
   return (
     <header className="sticky top-0 z-50 flex h-[72px] items-center justify-between bg-ink px-[6vw] md:grid md:grid-cols-[1fr_auto_1fr] md:h-[84px] md:px-[5vw]">
@@ -48,43 +34,6 @@ export function Header() {
         ))}
       </nav>
       <div className="flex items-center justify-self-end gap-3 md:gap-6 md:border-l md:border-[rgba(241,240,232,.18)] md:pl-6">
-        {isSignedIn ? (
-          <div className="relative hidden md:block" data-account-menu>
-            <button
-              className="grid h-7 w-7 place-items-center rounded-full border-0 bg-lime p-0 text-[.65rem] text-ink"
-              onClick={() => setAccountMenuOpen((isOpen) => !isOpen)}
-              title={accountLabel}
-              aria-expanded={accountMenuOpen}
-              aria-label={`Open account menu for ${accountLabel}`}
-            >
-                {accountLabel.charAt(0).toUpperCase()}
-            </button>
-            {accountMenuOpen && (
-              <div className="absolute right-0 top-10 z-20 min-w-32 border border-[rgba(241,240,232,.18)] bg-ink p-3">
-                <Link
-                  className="block text-[.68rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime"
-                  href="/account"
-                  onClick={() => setAccountMenuOpen(false)}
-                >
-                  Account
-                </Link>
-                <button
-                  className="mt-3 block border-0 bg-transparent p-0 text-[.68rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime"
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                >
-                  Sign Out
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <Link
-            className="hidden text-[.72rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime md:block"
-            href="/sign-in"
-          >
-            Sign In
-          </Link>
-        )}
         <Link
           className="relative inline-flex min-h-12 min-w-12 items-center justify-center p-3 text-muted transition-colors hover:text-lime"
           href="/cart"
@@ -107,6 +56,36 @@ export function Header() {
             {itemCount}
           </b>
         </Link>
+        {isSignedIn ? (
+          <Link
+            className="hidden h-7 w-7 place-items-center rounded-full bg-lime text-[.65rem] font-bold text-ink md:grid"
+            href="/account"
+            title={accountLabel}
+            aria-label={`Go to account, ${accountLabel}`}
+          >
+            {accountLabel.charAt(0).toUpperCase()}
+          </Link>
+        ) : (
+          <Link
+            className="hidden h-12 w-12 items-center justify-center rounded-full text-muted transition-colors hover:text-lime focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:inline-flex"
+            href="/sign-in"
+            aria-label="Sign in"
+          >
+            <svg
+              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+          </Link>
+        )}
         {isSignedIn && (
           <Link
             className="grid h-12 w-12 place-items-center rounded-full md:hidden"
@@ -117,6 +96,27 @@ export function Header() {
             <span className="grid h-6 w-6 place-items-center rounded-full bg-lime text-[.65rem] text-ink">
               {accountLabel.charAt(0).toUpperCase()}
             </span>
+          </Link>
+        )}
+        {!isSignedIn && (
+          <Link
+            className="grid h-12 w-12 place-items-center rounded-full text-paper md:hidden"
+            href="/sign-in"
+            aria-label="Sign in"
+          >
+            <svg
+              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
           </Link>
         )}
         <button
@@ -150,26 +150,6 @@ export function Header() {
                 {label}
               </Link>
             ))}
-            {!isSignedIn && (
-              <Link
-                className="flex min-h-12 items-center border-b border-[rgba(241,240,232,.18)] py-4 text-[2rem] font-black uppercase tracking-[-.04em]"
-                href="/sign-in"
-                onClick={() => setOpen(false)}
-              >
-                Sign In
-              </Link>
-            )}
-            {isSignedIn && (
-              <button
-                className="flex min-h-12 items-center border-b border-[rgba(241,240,232,.18)] py-4 text-[2rem] font-black uppercase tracking-[-.04em]"
-                onClick={() => {
-                  setOpen(false);
-                  signOut({ callbackUrl: "/" });
-                }}
-              >
-                Sign Out
-              </button>
-            )}
           </nav>
         </div>
       )}
