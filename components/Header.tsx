@@ -32,7 +32,7 @@ export function Header() {
   }, [accountMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-50 grid h-[72px] items-center bg-ink px-[6vw] md:grid-cols-[1fr_auto_1fr] md:h-[84px] md:px-[5vw]">
+    <header className="sticky top-0 z-50 flex h-[72px] items-center justify-between bg-ink px-[6vw] md:grid md:grid-cols-[1fr_auto_1fr] md:h-[84px] md:px-[5vw]">
       <Link className="justify-self-start text-[1.4rem] font-black tracking-[.14em]" href="/">
         calypto<span className="align-top text-[.5em] text-lime">™</span>
       </Link>
@@ -47,7 +47,7 @@ export function Header() {
           </Link>
         ))}
       </nav>
-      <div className="flex items-center justify-self-end gap-2 md:gap-6 md:border-l md:border-[rgba(241,240,232,.18)] md:pl-6">
+      <div className="flex items-center justify-self-end gap-3 md:gap-6 md:border-l md:border-[rgba(241,240,232,.18)] md:pl-6">
         {isSignedIn ? (
           <div className="relative hidden md:block" data-account-menu>
             <button
@@ -107,47 +107,20 @@ export function Header() {
             {itemCount}
           </b>
         </Link>
-        {isSignedIn ? (
-          <div className="relative md:hidden" data-account-menu>
-            <button
-              className="grid h-12 w-12 place-items-center rounded-full border-0 bg-transparent p-3 text-ink"
-              onClick={() => setAccountMenuOpen((isOpen) => !isOpen)}
-              title={accountLabel}
-              aria-expanded={accountMenuOpen}
-              aria-label={`Open account menu for ${accountLabel}`}
-            >
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-lime text-[.65rem]">
-                {accountLabel.charAt(0).toUpperCase()}
-              </span>
-            </button>
-            {accountMenuOpen && (
-              <div className="absolute right-0 top-12 z-20 min-w-32 border border-[rgba(241,240,232,.18)] bg-ink p-3">
-                <Link
-                  className="block text-[.68rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime"
-                  href="/account"
-                  onClick={() => setAccountMenuOpen(false)}
-                >
-                  Account
-                </Link>
-                <button
-                  className="mt-3 block border-0 bg-transparent p-0 text-[.68rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime"
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                >
-                  Sign Out
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
+        {isSignedIn && (
           <Link
-            className="flex min-h-12 items-center border border-[rgba(241,240,232,.25)] px-3 py-2 text-[.65rem] font-bold uppercase tracking-[.1em] text-paper hover:text-lime md:hidden"
-            href="/sign-in"
+            className="grid h-12 w-12 place-items-center rounded-full md:hidden"
+            href="/account"
+            title={accountLabel}
+            aria-label={`Go to account, ${accountLabel}`}
           >
-            Sign In
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-lime text-[.65rem] text-ink">
+              {accountLabel.charAt(0).toUpperCase()}
+            </span>
           </Link>
         )}
         <button
-          className="block border-0 bg-transparent text-[1.5rem] text-paper md:hidden"
+          className="inline-flex min-h-12 min-w-12 items-center justify-center border-0 bg-transparent p-3 text-[1.5rem] text-paper md:hidden"
           onClick={() => setOpen(true)}
           aria-label="Open menu"
         >
@@ -177,6 +150,26 @@ export function Header() {
                 {label}
               </Link>
             ))}
+            {!isSignedIn && (
+              <Link
+                className="flex min-h-12 items-center border-b border-[rgba(241,240,232,.18)] py-4 text-[2rem] font-black uppercase tracking-[-.04em]"
+                href="/sign-in"
+                onClick={() => setOpen(false)}
+              >
+                Sign In
+              </Link>
+            )}
+            {isSignedIn && (
+              <button
+                className="flex min-h-12 items-center border-b border-[rgba(241,240,232,.18)] py-4 text-[2rem] font-black uppercase tracking-[-.04em]"
+                onClick={() => {
+                  setOpen(false);
+                  signOut({ callbackUrl: "/" });
+                }}
+              >
+                Sign Out
+              </button>
+            )}
           </nav>
         </div>
       )}
