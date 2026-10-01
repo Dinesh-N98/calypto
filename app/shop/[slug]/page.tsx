@@ -13,8 +13,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   if (!product) notFound();
 
   return (
-    <main className="bg-paper px-[7vw] py-16 text-ink md:px-[10vw] md:py-24">
-      <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
+    <main className="bg-paper px-[7vw] py-12 text-ink md:px-[10vw] md:py-20">
+      <div className="grid gap-8 md:grid-cols-2 md:items-center md:gap-14">
         <Reveal className="relative aspect-[1/1.1] overflow-hidden bg-[#e4e4d9]">
           <Image
             src={product.imageUrl}
@@ -28,14 +28,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           />
         </Reveal>
         <Reveal className="max-w-xl" delay={100}>
-          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-[#697b26]">
+          <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-[#697b26]">
             {product.category}
           </p>
-          <h1 className="my-5 text-[3.3rem] font-black uppercase leading-[.9] tracking-[-.06em] text-ink md:text-[clamp(3.5rem,6vw,6rem)]">
+          <h1 className="my-4 text-[clamp(2.35rem,8vw,3.2rem)] font-black uppercase leading-[.94] tracking-[-.06em] text-ink md:my-5 md:text-[clamp(3rem,5vw,5rem)]">
             {product.name}
           </h1>
-          <p className="text-2xl font-bold text-ink">{formatPrice(product.priceCents)}</p>
-          <p className="my-8 max-w-lg leading-[1.7] text-[#697064]">{product.description}</p>
+          <p className="text-xl font-bold text-ink md:text-2xl">
+            {formatPrice(product.priceCents)}
+          </p>
+          <p className="my-6 max-w-lg text-[.9rem] leading-[1.6] text-[#697064] md:my-8 md:text-base md:leading-[1.7]">
+            {product.description}
+          </p>
           <ProductPurchase
             prominent
             product={{

@@ -38,16 +38,16 @@ export function ProductCard({
             className="object-contain transition-transform duration-[400ms] ease-in-out group-hover:scale-105"
           />
         </div>
-        <div className="grid gap-1 p-2.5">
-          <strong className="line-clamp-2 text-xs uppercase leading-tight text-ink sm:text-sm">
+        <div className="grid gap-1 p-2">
+          <strong className="line-clamp-2 text-[.7rem] uppercase leading-tight text-ink sm:text-[.8rem]">
             {product.name}
           </strong>
           <b className="text-xs font-bold text-ink">{formatPrice(product.priceCents)}</b>
         </div>
       </Link>
-      <div className="px-2.5 pb-2.5">
+      <div className="px-2 pb-2">
         <button
-          className="inline-flex w-full items-center justify-center gap-1 bg-lime px-2 py-2 text-[.62rem] font-extrabold uppercase tracking-[.06em] text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 active:scale-95 motion-reduce:transform-none motion-reduce:transition-colors"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1 bg-lime px-2 py-2 text-[.6rem] font-extrabold uppercase tracking-[.05em] text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 active:scale-95 motion-reduce:transform-none motion-reduce:transition-colors"
           type="button"
           onClick={handleAdd}
         >

@@ -47,7 +47,7 @@ export default async function Home() {
   }
   return (
     <main>
-      <section className="relative min-h-[680px] overflow-hidden px-[7vw] pb-20 pt-[10vh] md:min-h-[calc(100vh-84px)] md:px-[10vw] md:pb-[8vh] md:pt-[12vh]">
+      <section className="relative min-h-[calc(100svh-64px)] overflow-hidden px-[7vw] pb-14 pt-[5vh] md:min-h-[calc(100vh-84px)] md:px-[10vw] md:pb-[8vh] md:pt-[12vh]">
         <Image
           src={heroImage}
           alt="Angler casting at sunrise"
@@ -61,13 +61,13 @@ export default async function Home() {
         <div className="absolute inset-0 z-[-1] bg-[linear-gradient(90deg,rgba(13,14,12,.87),rgba(13,14,12,.32))] md:bg-[linear-gradient(90deg,rgba(13,14,12,.94),rgba(13,14,12,.48)_60%,rgba(13,14,12,.15))]" />
         <div className="relative max-w-[700px]">
           <p
-            className="animate-hero-rise text-[.65rem] font-bold uppercase tracking-[.18em] text-lime motion-reduce:animate-none"
+            className="animate-hero-rise text-[.6rem] font-bold uppercase tracking-[.15em] text-lime motion-reduce:animate-none"
             style={{ animationDelay: "0ms" }}
           >
             Performance soft plastics / Est. 2026
           </p>
           <h1
-            className="animate-hero-rise my-[1.3rem] text-[4rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,7vw,7.2rem)] motion-reduce:animate-none"
+            className="animate-hero-rise my-4 text-[clamp(2.35rem,8.8vw,3.4rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3.5rem,6.5vw,6.5rem)] motion-reduce:animate-none"
             style={{ animationDelay: "120ms" }}
           >
             Soft baits
@@ -77,12 +77,12 @@ export default async function Home() {
             can&apos;t ignore.
           </h1>
           <p
-            className="animate-hero-rise max-w-[390px] leading-[1.6] text-[#d0d2c7] motion-reduce:animate-none"
+            className="animate-hero-rise max-w-[390px] text-[.9rem] leading-[1.5] text-[#d0d2c7] md:text-base motion-reduce:animate-none"
             style={{ animationDelay: "240ms" }}
           >
             Purpose-built movement. Irresistible profiles. Every cast engineered to create the bite.
           </p>
-          <div className="mt-7 grid grid-cols-4">
+          <div className="mt-5 grid grid-cols-4 md:mt-7">
             {[
               { icon: Waves, title: "Realistic Action", text: "Motion that gets noticed" },
               { icon: ShieldCheck, title: "Durable Plastics", text: "More bites per bait" },
@@ -101,7 +101,7 @@ export default async function Home() {
             ))}
           </div>
           <div
-            className="hero-cta-group animate-hero-rise mt-7 flex flex-wrap gap-3 motion-reduce:animate-none"
+            className="hero-cta-group animate-hero-rise mt-5 flex flex-wrap gap-3 motion-reduce:animate-none md:mt-7"
             style={{ animationDelay: "840ms" }}
           >
             <Link
@@ -129,24 +129,24 @@ export default async function Home() {
           <span>01 / 04</span>
         </div>
       </section>
-      <section className="bg-[#12140f] px-[7vw] py-20 md:px-[10vw] md:py-36">
-        <Reveal className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
+      <section className="bg-[#12140f] px-[7vw] py-14 md:px-[10vw] md:py-28">
+        <Reveal className="mb-8 flex flex-col items-start gap-3 md:mb-12 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+            <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
               The Calypto difference
             </p>
-            <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
+            <h2 className="my-4 text-[clamp(2.5rem,8vw,3.5rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3rem,5vw,5.25rem)]">
               Built for the
               <br />
               <em className="text-lime not-italic">moment of truth.</em>
             </h2>
           </div>
-          <p className="max-w-[290px] leading-[1.6] text-muted">
+          <p className="max-w-[290px] text-[.9rem] leading-[1.55] text-muted md:text-base">
             Every shape, color, and action is refined for the instant a curious fish becomes a
             committed strike.
           </p>
         </Reveal>
-        <RevealStagger className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
+        <RevealStagger className="grid grid-cols-1 gap-6 border-t border-[rgba(241,240,232,.18)] pt-6 md:grid-cols-3 md:gap-8 md:pt-8">
           <IconFeature
             label="01"
             title="Dialed-in profiles"
@@ -164,13 +164,13 @@ export default async function Home() {
           />
         </RevealStagger>
       </section>
-      <section className="bg-paper px-[7vw] py-20 text-ink md:px-[10vw] md:py-36" id="shop">
-        <Reveal className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
+      <section className="bg-paper px-[7vw] py-14 text-ink md:px-[10vw] md:py-28" id="shop">
+        <Reveal className="mb-8 flex flex-col items-start gap-3 md:mb-12 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+            <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
               The lineup
             </p>
-            <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
+            <h2 className="my-4 text-[clamp(2.5rem,8vw,3.5rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3rem,5vw,5.25rem)]">
               Our best-selling
               <br />
               <em className="text-lime not-italic">soft baits.</em>
@@ -203,11 +203,11 @@ export default async function Home() {
         ]}
         cta={{ label: "Our Story", href: "/about" }}
       />
-      <Reveal as="section" className="bg-lime px-[7vw] py-20 text-ink md:px-[10vw] md:py-24">
-        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-[#526213]">
+      <Reveal as="section" className="bg-lime px-[7vw] py-14 text-ink md:px-[10vw] md:py-20">
+        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-[#526213]">
           For the ones who stock the good stuff
         </p>
-        <h2 className="my-4 text-[clamp(3rem,7vw,7rem)] font-black uppercase leading-[.88] tracking-[-.07em]">
+        <h2 className="my-4 text-[clamp(2.5rem,8vw,4rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:text-[clamp(3.5rem,6vw,6rem)]">
           Own a tackle shop?
         </h2>
         <p className="mb-8">
@@ -225,11 +225,11 @@ export default async function Home() {
           </span>
         </Link>
       </Reveal>
-      <Reveal as="section" className="px-[7vw] py-24 text-center md:px-[10vw] md:py-36">
-        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+      <Reveal as="section" className="px-[7vw] py-16 text-center md:px-[10vw] md:py-28">
+        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
           From the water
         </p>
-        <blockquote className="mx-auto my-8 max-w-[950px] text-[2.3rem] font-extrabold leading-[.98] tracking-[-.05em] md:text-[clamp(2rem,4vw,4rem)]">
+        <blockquote className="mx-auto my-6 max-w-[950px] text-[1.65rem] font-extrabold leading-[1.08] tracking-[-.04em] md:my-8 md:text-[clamp(1.8rem,3.5vw,3.5rem)]">
           “The action is subtle enough for clear water, but it still gets noticed. Calypto has
           earned a permanent spot in my box.”
         </blockquote>
@@ -239,12 +239,12 @@ export default async function Home() {
       </Reveal>
       <Reveal
         as="section"
-        className="bg-[#20261a] px-[7vw] py-24 text-center md:px-[10vw] md:py-32"
+        className="bg-[#20261a] px-[7vw] py-16 text-center md:px-[10vw] md:py-24"
       >
-        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
           Your next personal best
         </p>
-        <h2 className="my-[1.3rem] text-[clamp(3.5rem,8vw,8rem)] font-black uppercase leading-[.88] tracking-[-.07em]">
+        <h2 className="my-4 text-[clamp(2.5rem,8vw,4rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3.5rem,6vw,6rem)]">
           Make the next cast
           <br />
           <em className="text-lime not-italic">count.</em>

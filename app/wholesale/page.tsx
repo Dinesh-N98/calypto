@@ -8,17 +8,17 @@ import { WholesaleForm } from "@/components/WholesaleForm";
 export default function WholesalePage() {
   return (
     <main>
-      <section className="bg-ink px-[7vw] py-20 text-paper md:px-[10vw] md:py-28">
+      <section className="bg-ink px-[7vw] py-14 text-paper md:px-[10vw] md:py-24">
         <Reveal className="mx-auto max-w-5xl">
-          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+          <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
             For the ones who stock the good stuff
           </p>
-          <h1 className="my-5 max-w-4xl text-[4rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(4rem,8vw,8rem)]">
+          <h1 className="my-4 max-w-4xl text-[clamp(2.65rem,9vw,3.8rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-5 md:text-[clamp(3.5rem,6vw,6rem)]">
             Built for tackle shops
             <br />
             <em className="text-lime not-italic">that sell more fish.</em>
           </h1>
-          <p className="max-w-2xl leading-[1.7] text-muted">
+          <p className="max-w-2xl text-[.9rem] leading-[1.55] text-muted md:text-base md:leading-[1.7]">
             We build custom bait mold designs and hand-finished airbrush paintwork for shops that
             want product with edge. Every run is handmade, designed around your idea, with low MOQ,
             fast delivery, and direct communication from first sketch to final shipment.
@@ -26,18 +26,18 @@ export default function WholesalePage() {
         </Reveal>
       </section>
 
-      <section className="bg-[#12140f] px-[7vw] py-20 md:px-[10vw] md:py-36">
-        <Reveal className="mb-10 md:mb-16">
-          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+      <section className="bg-[#12140f] px-[7vw] py-14 md:px-[10vw] md:py-28">
+        <Reveal className="mb-8 md:mb-12">
+          <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
             Why partner with Calypto
           </p>
-          <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
+          <h2 className="my-4 text-[clamp(2.5rem,8vw,3.5rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3rem,5vw,5.25rem)]">
             Built for
             <br />
             <em className="text-lime not-italic">real shop owners.</em>
           </h2>
         </Reveal>
-        <RevealStagger className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-4">
+        <RevealStagger className="grid grid-cols-1 gap-6 border-t border-[rgba(241,240,232,.18)] pt-6 md:grid-cols-4 md:gap-8 md:pt-8">
           <IconFeature
             icon={PencilRuler}
             title="Custom fit"
@@ -63,19 +63,19 @@ export default function WholesalePage() {
 
       <section
         id="wholesale-inquiry"
-        className="bg-paper px-[7vw] py-20 text-ink md:px-[10vw] md:py-28"
+        className="bg-paper px-[7vw] py-14 text-ink md:px-[10vw] md:py-24"
       >
         <Reveal className="mx-auto max-w-5xl">
-          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+          <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
             Wholesale inquiry
           </p>
-          <h2 className="my-5 max-w-3xl text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
+          <h2 className="my-4 max-w-3xl text-[clamp(2.5rem,8vw,3.5rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-5 md:text-[clamp(3rem,5vw,5.25rem)]">
             Tell us what
             <br />
             <em className="text-lime not-italic">you need.</em>
           </h2>
 
-          <div className="mt-12 grid gap-12 border-t border-[rgba(16,16,14,.18)] pt-8 md:grid-cols-[1fr_1.2fr] md:pt-10">
+          <div className="mt-9 grid gap-8 border-t border-[rgba(16,16,14,.18)] pt-6 md:mt-12 md:grid-cols-[1fr_1.2fr] md:gap-12 md:pt-10">
             <Reveal as="article">
               <p className="mb-5 text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
                 What we can do
@@ -105,12 +105,12 @@ export default function WholesalePage() {
 
       <Reveal
         as="section"
-        className="bg-[#20261a] px-[7vw] py-24 text-center md:px-[10vw] md:py-32"
+        className="bg-[#20261a] px-[7vw] py-16 text-center md:px-[10vw] md:py-24"
       >
-        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
           Ready when you are
         </p>
-        <h2 className="my-[1.3rem] text-[clamp(3.5rem,8vw,8rem)] font-black uppercase leading-[.88] tracking-[-.07em]">
+        <h2 className="my-4 text-[clamp(2.5rem,8vw,4rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3.5rem,6vw,6rem)]">
           Build a better aisle.
           <br />
           <em className="text-lime not-italic">Start with Calypto.</em>

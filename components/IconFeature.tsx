@@ -11,16 +11,20 @@ export function IconFeature({ icon, label, title, text, compact = false }: IconF
     <div
       className={
         compact
-          ? "group flex flex-col items-center gap-2 text-center"
-          : "group flex items-start gap-4"
+          ? "group flex flex-col items-center gap-1.5 text-center"
+          : "group flex items-start gap-3 md:gap-4"
       }
     >
       {Icon ? (
         <span className="text-lime transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 motion-reduce:transform-none motion-reduce:transition-none">
-          <Icon className={compact ? "h-5 w-5" : "h-6 w-6"} strokeWidth={1.5} aria-hidden="true" />
+          <Icon
+            className={compact ? "h-4 w-4 md:h-5 md:w-5" : "h-5 w-5 md:h-6 md:w-6"}
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
         </span>
       ) : (
-        <span className="text-[1.4rem] text-lime transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 motion-reduce:transform-none motion-reduce:transition-none">
+        <span className="text-[1.1rem] text-lime transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 motion-reduce:transform-none motion-reduce:transition-none">
           {label}
         </span>
       )}
@@ -28,8 +32,8 @@ export function IconFeature({ icon, label, title, text, compact = false }: IconF
         <strong
           className={
             compact
-              ? "block text-[.62rem] leading-tight uppercase tracking-[.1em]"
-              : "block text-[.72rem] uppercase tracking-[.1em]"
+              ? "block text-[.58rem] leading-tight uppercase tracking-[.08em] md:text-[.62rem]"
+              : "block text-[.68rem] uppercase tracking-[.08em] md:text-[.72rem]"
           }
         >
           {title}
@@ -38,8 +42,8 @@ export function IconFeature({ icon, label, title, text, compact = false }: IconF
           <p
             className={
               compact
-                ? "m-[.3rem_0_0] text-[.58rem] leading-[1.3] text-muted"
-                : "m-[.4rem_0_0] text-[.76rem] leading-[1.5] text-muted"
+                ? "m-[.2rem_0_0] text-[.54rem] leading-[1.25] text-muted md:text-[.58rem]"
+                : "m-[.3rem_0_0] text-[.72rem] leading-[1.45] text-muted md:text-[.76rem]"
             }
           >
             {text}

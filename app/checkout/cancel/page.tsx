@@ -4,12 +4,12 @@ import { Reveal } from "@/components/Reveal";
 
 export default function CheckoutCancelPage() {
   return (
-    <main className="bg-paper px-[7vw] py-24 text-ink md:px-[10vw]">
+    <main className="bg-paper px-[7vw] py-16 text-ink md:px-[10vw] md:py-20">
       <Reveal as="section" className="mx-auto max-w-3xl border-t border-ink pt-8">
-        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-[#65771b]">
+        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-[#65771b]">
           Checkout cancelled
         </p>
-        <h1 className="my-5 text-[4rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(4rem,8vw,8rem)]">
+        <h1 className="my-4 text-[clamp(2.65rem,9vw,3.8rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-5 md:text-[clamp(3.5rem,6vw,6rem)]">
           Still
           <br />
           <em className="text-[#829b22] not-italic">hooked.</em>

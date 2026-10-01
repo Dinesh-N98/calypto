@@ -40,15 +40,18 @@ export function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-50 flex h-[72px] items-center justify-between border-b bg-ink px-[6vw] transition-[height,border-color] duration-300 md:grid md:grid-cols-[1fr_auto_1fr] md:px-[5vw] ${isScrolled ? "border-[rgba(241,240,232,.18)] md:h-[68px]" : "border-transparent md:h-[84px]"}`}
+      className={`sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-ink px-[6vw] transition-[height,border-color] duration-300 md:grid md:grid-cols-[1fr_auto_1fr] md:px-[5vw] ${isScrolled ? "border-[rgba(241,240,232,.18)] md:h-[68px]" : "border-transparent md:h-[84px]"}`}
     >
-      <Link className="justify-self-start text-[1.4rem] font-black tracking-[.14em]" href="/">
+      <Link
+        className="justify-self-start text-[1.25rem] font-black tracking-[.12em] md:text-[1.35rem]"
+        href="/"
+      >
         calypto<span className="align-top text-[.5em] text-lime">™</span>
       </Link>
-      <nav className="hidden items-center justify-center gap-8 md:flex">
+      <nav className="hidden items-center justify-center gap-6 md:flex">
         {links.map(([label, href]) => (
           <Link
-            className="link-underline text-[.72rem] font-bold uppercase tracking-[.12em] text-muted transition-colors hover:text-lime"
+            className="link-underline text-[.68rem] font-bold uppercase tracking-[.1em] text-muted transition-colors hover:text-lime"
             key={href}
             href={href}
           >
@@ -62,7 +65,7 @@ export function Header() {
           href="/cart"
           aria-label={`Cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
         >
-          <ShoppingBag aria-hidden="true" className="h-[22px] w-[22px]" strokeWidth={2} />
+          <ShoppingBag aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
           <b
             key={itemCount}
             className="animate-badge-pop absolute right-1 top-1 inline-grid h-[19px] w-[19px] place-items-center rounded-full bg-lime text-[.6rem] text-ink motion-reduce:animate-none"
@@ -85,7 +88,7 @@ export function Header() {
             href="/sign-in"
             aria-label="Sign in"
           >
-            <UserRound aria-hidden="true" className="h-6 w-6" strokeWidth={2} />
+            <UserRound aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
           </Link>
         )}
         {isSignedIn && (
@@ -106,7 +109,7 @@ export function Header() {
             href="/sign-in"
             aria-label="Sign in"
           >
-            <UserRound aria-hidden="true" className="h-6 w-6" strokeWidth={2} />
+            <UserRound aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
           </Link>
         )}
         <button
@@ -114,7 +117,7 @@ export function Header() {
           onClick={() => setOpen(true)}
           aria-label="Open menu"
         >
-          <Menu aria-hidden="true" className="h-6 w-6" strokeWidth={2} />
+          <Menu aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
         </button>
       </div>
       {open && (
@@ -124,15 +127,15 @@ export function Header() {
             onClick={() => setOpen(false)}
             aria-label="Close menu"
           >
-            <X aria-hidden="true" className="h-8 w-8" strokeWidth={2} />
+            <X aria-hidden="true" className="h-6 w-6" strokeWidth={2} />
           </button>
-          <span className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+          <span className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
             CAST WITH INTENT
           </span>
           <nav className="mt-6 flex flex-col">
             {links.map(([label, href], index) => (
               <Link
-                className="animate-hero-rise flex min-h-12 items-center border-b border-[rgba(241,240,232,.18)] py-4 text-[2rem] font-black uppercase tracking-[-.04em] motion-reduce:animate-none"
+                className="animate-hero-rise flex min-h-12 items-center border-b border-[rgba(241,240,232,.18)] py-3 text-[1.6rem] font-black uppercase tracking-[-.04em] motion-reduce:animate-none"
                 key={href}
                 href={href}
                 onClick={() => setOpen(false)}

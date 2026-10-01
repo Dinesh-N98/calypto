@@ -4,28 +4,28 @@ import { Reveal } from "@/components/Reveal";
 
 export default function ContactPage() {
   return (
-    <main className="bg-ink px-[7vw] py-20 text-paper md:px-[10vw] md:py-28">
+    <main className="bg-ink px-[7vw] py-14 text-paper md:px-[10vw] md:py-24">
       <section className="mx-auto max-w-5xl">
         <Reveal>
-          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+          <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
             Get in touch
           </p>
-          <h1 className="my-5 max-w-3xl text-[4rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(4rem,8vw,8rem)]">
+          <h1 className="my-4 max-w-3xl text-[clamp(2.65rem,9vw,3.8rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-5 md:text-[clamp(3.5rem,6vw,6rem)]">
             Let&apos;s talk
             <br />
             <em className="text-lime not-italic">shop.</em>
           </h1>
-          <p className="max-w-xl leading-[1.7] text-muted">
+          <p className="max-w-xl text-[.9rem] leading-[1.55] text-muted md:text-base md:leading-[1.7]">
             Questions about an order, a bait, or anything else. We read every message.
           </p>
         </Reveal>
 
-        <div className="mt-12 grid gap-12 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-[1fr_1.2fr] md:pt-10">
+        <div className="mt-9 grid gap-8 border-t border-[rgba(241,240,232,.18)] pt-6 md:mt-12 md:grid-cols-[1fr_1.2fr] md:gap-12 md:pt-10">
           <Reveal as="article">
             <p className="mb-5 text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
               Direct contact
             </p>
-            <a className="text-xl font-bold" href="mailto:hello@calypto.co">
+            <a className="text-lg font-bold md:text-xl" href="mailto:hello@calypto.co">
               hello@calypto.co
             </a>
             <p className="mt-3 max-w-xs leading-[1.6] text-muted">

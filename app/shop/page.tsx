@@ -27,7 +27,7 @@ function ProductGridSkeleton() {
       {Array.from({ length: 8 }, (_, index) => (
         <div key={index} className="animate-pulse overflow-hidden bg-[#e4e4d9]">
           <div className="aspect-square bg-[#c9c9c0]" />
-          <div className="grid gap-1 p-2.5">
+          <div className="grid gap-1 p-2">
             <div className="h-4 w-4/5 bg-[#c9c9c0]" />
             <div className="h-3 w-1/4 bg-[#c9c9c0]" />
             <div className="h-7 w-full bg-[#c9c9c0]" />
@@ -58,8 +58,8 @@ async function ProductGrid({ categoryName, sort }: { categoryName?: string; sort
 
   if (products.length === 0) {
     return (
-      <div className="border border-[rgba(241,240,232,.18)] px-6 py-20 text-center">
-        <p className="text-xl font-bold uppercase tracking-[-.03em]">
+      <div className="border border-[rgba(241,240,232,.18)] px-5 py-14 text-center md:px-6 md:py-16">
+        <p className="text-lg font-bold uppercase tracking-[-.03em] md:text-xl">
           No products match this category
         </p>
         <Link
@@ -95,23 +95,23 @@ export default async function ShopPage({
   const sortQuery = `sort=${sort}`;
 
   return (
-    <main className="bg-ink px-[7vw] py-16 text-paper md:px-[10vw] md:py-24">
-      <Reveal as="section" className="mb-12 max-w-3xl md:mb-16">
-        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+    <main className="bg-ink px-[7vw] py-12 text-paper md:px-[10vw] md:py-20">
+      <Reveal as="section" className="mb-9 max-w-3xl md:mb-12">
+        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
           The Calypto lineup
         </p>
-        <h1 className="my-5 text-[3.8rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(4rem,8vw,8rem)]">
+        <h1 className="my-4 text-[clamp(2.65rem,9vw,3.8rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-5 md:text-[clamp(3.5rem,6vw,6rem)]">
           Find your
           <br />
           <em className="text-lime not-italic">next bite.</em>
         </h1>
-        <p className="max-w-xl leading-[1.7] text-muted">
+        <p className="max-w-xl text-[.9rem] leading-[1.55] text-muted md:text-base md:leading-[1.7]">
           Purpose-built soft plastics and terminal tackle for the casts that matter.
         </p>
       </Reveal>
 
-      <Reveal as="section" className="mb-10 border-y border-[rgba(241,240,232,.18)] py-5">
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+      <Reveal as="section" className="mb-8 border-y border-[rgba(241,240,232,.18)] py-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <nav className="flex flex-wrap gap-x-5 gap-y-3" aria-label="Product categories">
             <Link
               className={`text-[.68rem] font-extrabold uppercase tracking-[.12em] ${selectedCategory ? "text-muted hover:text-paper" : "text-lime"}`}

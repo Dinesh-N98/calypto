@@ -20,26 +20,24 @@ export default function AboutPage() {
         ]}
         emphasizedLine="Catch more fish."
       />
-      <section className="px-[7vw] py-24 text-center md:px-[10vw] md:py-36">
+      <section className="px-[7vw] py-16 text-center md:px-[10vw] md:py-28">
         <Reveal>
-          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
-            Our Mission
-          </p>
-          <p className="mx-auto my-8 max-w-[950px] text-[2.3rem] font-extrabold leading-[.98] tracking-[-.05em] md:text-[clamp(2rem,4vw,4rem)]">
+          <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">Our Mission</p>
+          <p className="mx-auto my-6 max-w-[950px] text-[1.65rem] font-extrabold leading-[1.08] tracking-[-.04em] md:my-8 md:text-[clamp(1.8rem,3.5vw,3.5rem)]">
             We believe every angler deserves gear that performs as hard as they do. Soft plastics
             engineered with intent, tested on the water, built to earn a permanent spot in your box.
           </p>
         </Reveal>
       </section>
-      <section className="bg-[#12140f] px-[7vw] py-20 md:px-[10vw] md:py-36">
-        <Reveal className="mb-10 md:mb-16">
-          <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
+      <section className="bg-[#12140f] px-[7vw] py-14 md:px-[10vw] md:py-28">
+        <Reveal className="mb-8 md:mb-12">
+          <h2 className="my-4 text-[clamp(2.5rem,8vw,3.5rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3rem,5vw,5.25rem)]">
             What We
             <br />
             <em className="text-lime not-italic">Stand For.</em>
           </h2>
         </Reveal>
-        <RevealStagger className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
+        <RevealStagger className="grid grid-cols-1 gap-6 border-t border-[rgba(241,240,232,.18)] pt-6 md:grid-cols-3 md:gap-8 md:pt-8">
           <IconFeature
             icon={Award}
             title="Quality Materials"
@@ -59,12 +57,12 @@ export default function AboutPage() {
       </section>
       <Reveal
         as="section"
-        className="bg-[#20261a] px-[7vw] py-24 text-center md:px-[10vw] md:py-32"
+        className="bg-[#20261a] px-[7vw] py-16 text-center md:px-[10vw] md:py-24"
       >
-        <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
           Your next personal best
         </p>
-        <h2 className="my-[1.3rem] text-[clamp(3.5rem,8vw,8rem)] font-black uppercase leading-[.88] tracking-[-.07em]">
+        <h2 className="my-4 text-[clamp(2.5rem,8vw,4rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3.5rem,6vw,6rem)]">
           Make the next cast
           <br />
           <em className="text-lime not-italic">count.</em>
