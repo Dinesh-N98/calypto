@@ -6,7 +6,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "calypto-newsletter-popup";
 const DISMISS_DAYS = 7;
-const DELAY_MS = 3000;
+const DELAY_MS = 6000;
 const HIDDEN_PATHS = ["/cart", "/checkout", "/sign-in", "/sign-up"];
 const DISCOUNT_CODE = "CALYPTO15";
 
@@ -126,14 +126,14 @@ export function NewsletterPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-black/75 p-3 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4 animate-fade-in motion-reduce:animate-none"
       onClick={close}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="newsletter-title"
-        className="relative grid max-h-[calc(100dvh-1.5rem)] w-full max-w-[920px] overflow-y-auto border border-[rgba(241,240,232,.18)] bg-ink text-paper shadow-2xl md:grid-cols-[1.05fr_1fr]"
+        className="relative grid max-h-[calc(100dvh-2rem)] w-full max-w-[360px] overflow-y-auto border border-[rgba(241,240,232,.18)] bg-ink text-paper shadow-2xl md:max-w-[780px] md:grid-cols-2 animate-popup-up motion-reduce:animate-none"
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -145,7 +145,7 @@ export function NewsletterPopup() {
           ×
         </button>
 
-        <div className="relative h-44 md:h-auto md:min-h-[540px]">
+        <div className="relative h-28 md:h-auto">
           <Image
             src="/popup-angler.jpg"
             alt="Angler holding a perch caught on a Calypto soft bait"
@@ -157,25 +157,25 @@ export function NewsletterPopup() {
           <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-ink/70" />
         </div>
 
-        <div className="flex flex-col items-center px-6 pb-6 pt-2 text-center md:px-10 md:py-12">
-          <p className="text-[2rem] font-black leading-none tracking-[.14em] md:text-[2.4rem]">
+        <div className="flex flex-col items-center px-5 pb-5 pt-1 text-center md:px-8 md:py-8">
+          <p className="text-[1.6rem] font-black leading-none tracking-[.14em] md:text-[2rem]">
             calypto
           </p>
-          <p className="mt-2 text-[.55rem] font-bold uppercase tracking-[.3em] text-muted">
+          <p className="mt-1.5 text-[.55rem] font-bold uppercase tracking-[.3em] text-muted">
             Handcrafted soft baits
           </p>
 
-          <p className="mt-6 text-[.7rem] font-bold uppercase tracking-[.3em]">Join our crew</p>
+          <p className="mt-4 text-[.65rem] font-bold uppercase tracking-[.3em] md:mt-5">Join our crew</p>
           <h2
             id="newsletter-title"
-            className="my-2 -skew-x-6 text-[4.5rem] font-black uppercase leading-[.85] tracking-[-.04em] md:text-[6rem]"
+            className="my-1 -skew-x-6 text-[3.25rem] font-black uppercase leading-[.85] tracking-[-.04em] md:text-[4.25rem]"
           >
             <span className="text-lime">15%</span> Off
           </h2>
           <p className="text-[.75rem] font-bold uppercase tracking-[.3em]">Your first order</p>
 
           {status === "success" ? (
-            <div className="mt-7 w-full">
+            <div className="mt-5 w-full">
               <p className="text-xl font-black uppercase tracking-[-.02em]">You&apos;re in.</p>
               <p className="mt-2 text-sm leading-[1.6] text-muted">
                 Use this code at checkout for 15% off your first order.
@@ -202,10 +202,10 @@ export function NewsletterPopup() {
             </div>
           ) : (
             <>
-              <p className="mt-5 max-w-xs text-sm leading-[1.6] text-muted">
+              <p className="mt-3 max-w-xs text-[.8rem] leading-[1.6] text-muted">
                 Get exclusive offers, new designs and fishing tips straight to your inbox.
               </p>
-              <form className="mt-5 grid w-full gap-3" onSubmit={handleSubmit} noValidate>
+              <form className="mt-4 grid w-full gap-2.5" onSubmit={handleSubmit} noValidate>
                 <label className="relative block">
                   <span className="sr-only">Your email address</span>
                   <svg
@@ -222,7 +222,7 @@ export function NewsletterPopup() {
                     <path d="m3 7 9 6 9-6" />
                   </svg>
                   <input
-                    className="h-12 w-full bg-paper pl-11 pr-3 text-base text-ink outline-none placeholder:text-[#8a8d80] focus:ring-2 focus:ring-lime"
+                    className="h-11 w-full bg-paper pl-11 pr-3 text-base text-ink outline-none placeholder:text-[#8a8d80] focus:ring-2 focus:ring-lime"
                     name="email"
                     type="email"
                     required
@@ -231,7 +231,7 @@ export function NewsletterPopup() {
                   />
                 </label>
                 <button
-                  className="inline-flex h-12 items-center justify-center gap-3 bg-lime px-5 text-[.8rem] font-extrabold uppercase tracking-[.08em] text-ink hover:bg-[#b6cf45]"
+                  className="inline-flex h-11 items-center justify-center gap-3 bg-lime px-5 text-[.8rem] font-extrabold uppercase tracking-[.08em] text-ink hover:bg-[#b6cf45]"
                   type="submit"
                   disabled={status === "submitting"}
                 >
@@ -244,11 +244,11 @@ export function NewsletterPopup() {
                   </p>
                 )}
               </form>
-              <p className="mt-3 text-[.7rem] text-muted">No spam. Unsubscribe anytime.</p>
+              <p className="mt-2 text-[.7rem] text-muted">No spam. Unsubscribe anytime.</p>
             </>
           )}
 
-          <ul className="mt-6 grid w-full grid-cols-3 gap-2 border-t border-[rgba(241,240,232,.18)] pt-5">
+          <ul className="mt-5 hidden w-full grid-cols-3 gap-2 border-t border-[rgba(241,240,232,.18)] pt-4 md:grid">
             {perks.map((perk) => (
               <li className="flex flex-col items-center gap-1.5 md:flex-row md:gap-2 md:text-left" key={perk.label}>
                 <span className="text-lg text-lime" aria-hidden="true">

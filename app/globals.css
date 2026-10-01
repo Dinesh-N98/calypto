@@ -5,6 +5,17 @@
   --color-paper: #f1f0e8;
   --color-muted: #a8a99e;
   --color-lime: #a3bd32;
+  --animate-popup-up: popup-up 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: fade-in 1s ease-out both;
+
+  @keyframes popup-up {
+    from { opacity: 0; transform: translateY(3rem); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
 }
 
 * {
