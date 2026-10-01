@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import popupAnglerImage from "../public/popup-angler.jpg";
 import { ArrowRight, BadgeCheck, Fish, Leaf, Mail, X, type LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
@@ -164,11 +165,13 @@ export function NewsletterPopup() {
 
         <div className="relative h-28 md:h-auto">
           <Image
-            src="/popup-angler.jpg"
+            src={popupAnglerImage}
             alt="Angler holding a perch caught on a Calypto soft bait"
             fill
-            priority
-            sizes="(max-width: 767px) 100vw, 460px"
+            loading="lazy"
+            placeholder="blur"
+            blurDataURL={popupAnglerImage.blurDataURL}
+            sizes="(max-width: 767px) calc(100vw - 32px), 390px"
             className="object-cover object-[30%_center]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-ink/70" />

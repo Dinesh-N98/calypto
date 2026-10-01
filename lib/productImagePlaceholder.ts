@@ -1,0 +1,2 @@
+export const productImageBlurDataURL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cfilter id='blur'%3E%3CfeGaussianBlur stdDeviation='2'/%3E%3C/filter%3E%3Crect width='16' height='16' fill='%23e4e4d9'/%3E%3Cpath d='M2 8c3-5 9 5 12 0' fill='none' stroke='%23a3bd32' stroke-width='3' filter='url(%23blur)'/%3E%3C/svg%3E";

@@ -8,6 +8,7 @@ import { useCart } from "@/components/CartProvider";
 import { Reveal } from "@/components/Reveal";
 import { QuantitySelector } from "@/components/QuantitySelector";
 import { formatPrice } from "@/lib/currency";
+import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem } = useCart();
@@ -70,6 +71,9 @@ export default function CartPage() {
                       src={item.imageUrl}
                       alt={item.name}
                       fill
+                      loading="lazy"
+                      placeholder="blur"
+                      blurDataURL={productImageBlurDataURL}
                       sizes="96px"
                       className="object-contain"
                     />

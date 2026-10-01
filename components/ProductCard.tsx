@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
 import { useToast } from "@/components/ToastProvider";
 import { formatPrice } from "@/lib/currency";
+import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 
 export function ProductCard({
   product,
@@ -30,7 +31,10 @@ export function ProductCard({
             src={product.imageUrl}
             alt={product.name}
             fill
-            sizes="(max-width: 1023px) 50vw, 25vw"
+            loading="lazy"
+            placeholder="blur"
+            blurDataURL={productImageBlurDataURL}
+            sizes="(max-width: 767px) 43vw, (max-width: 1023px) 26vw, 19vw"
             className="object-contain transition-transform duration-[400ms] ease-in-out group-hover:scale-105"
           />
         </div>

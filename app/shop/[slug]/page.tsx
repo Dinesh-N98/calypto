@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 import { Reveal } from "@/components/Reveal";
 import { ProductPurchase } from "@/components/ProductPurchase";
 import { formatPrice } from "@/lib/currency";
@@ -19,8 +20,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             src={product.imageUrl}
             alt={product.name}
             fill
-            priority
-            sizes="(max-width: 767px) 86vw, 50vw"
+            loading="lazy"
+            placeholder="blur"
+            blurDataURL={productImageBlurDataURL}
+            sizes="(max-width: 767px) 86vw, 40vw"
             className="object-contain"
           />
         </Reveal>

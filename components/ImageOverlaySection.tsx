@@ -1,4 +1,5 @@
 import Image from "next/image";
+import lifestyleImage from "../public/about-lifestyle.jpg";
 import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 
@@ -20,9 +21,12 @@ export function ImageOverlaySection({
   return (
     <section className="relative min-h-[620px] overflow-hidden px-[7vw] py-20 md:min-h-[720px] md:px-[10vw] md:py-32">
       <Image
-        src="/about-lifestyle.jpg"
+        src={lifestyleImage}
         alt="Angler enjoying a day on the water"
         fill
+        loading="lazy"
+        placeholder="blur"
+        blurDataURL={lifestyleImage.blurDataURL}
         sizes="100vw"
         className="z-[-2] object-cover object-[75%_center]"
       />

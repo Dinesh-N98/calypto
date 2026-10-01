@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import heroImage from "../public/hero-fishing.jpeg";
 import { ArrowUpRight, ShieldCheck, Store, Truck, Waves } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ImageOverlaySection } from "@/components/ImageOverlaySection";
@@ -48,10 +49,12 @@ export default async function Home() {
     <main>
       <section className="relative min-h-[680px] overflow-hidden px-[7vw] pb-20 pt-[10vh] md:min-h-[calc(100vh-84px)] md:px-[10vw] md:pb-[8vh] md:pt-[12vh]">
         <Image
-          src="/hero-fishing.jpeg"
+          src={heroImage}
           alt="Angler casting at sunrise"
           fill
           priority
+          placeholder="blur"
+          blurDataURL={heroImage.blurDataURL}
           sizes="100vw"
           className="z-[-2] animate-ken-burns object-cover object-[75%_center] md:object-center motion-reduce:animate-none"
         />
