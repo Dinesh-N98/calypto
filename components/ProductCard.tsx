@@ -22,7 +22,7 @@ export function ProductCard({
   };
 
   return (
-    <article className="group overflow-hidden bg-[#e4e4d9]">
+    <article className="group overflow-hidden bg-[#e4e4d9] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(0,0,0,0.25)] motion-reduce:transform-none motion-reduce:transition-none">
       <Link className="block" href={`/shop/${product.slug}`}>
         <div className="relative aspect-square overflow-hidden">
           <Image
@@ -42,7 +42,7 @@ export function ProductCard({
       </Link>
       <div className="px-2.5 pb-2.5">
         <button
-          className="inline-flex w-full items-center justify-center gap-1 bg-lime px-2 py-2 text-[.62rem] font-extrabold uppercase tracking-[.06em] text-ink hover:bg-[#b6cf45]"
+          className="inline-flex w-full items-center justify-center gap-1 bg-lime px-2 py-2 text-[.62rem] font-extrabold uppercase tracking-[.06em] text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 active:scale-95 motion-reduce:transform-none motion-reduce:transition-colors"
           type="button"
           onClick={handleAdd}
         >

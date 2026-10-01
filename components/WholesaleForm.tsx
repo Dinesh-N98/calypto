@@ -67,7 +67,11 @@ export function WholesaleForm() {
         <textarea className="auth-input min-h-36 resize-y" name="message" required />
       </label>
       {error && <p className="text-sm text-[#e89b87]">{error}</p>}
-      <button className="auth-button" type="submit" disabled={isSubmitting}>
+      <button
+        className="auth-button transition-[background-color,transform] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none motion-reduce:transition-colors"
+        type="submit"
+        disabled={isSubmitting}
+      >
         {isSubmitting ? "Sending inquiry..." : "Send inquiry"}
       </button>
     </form>

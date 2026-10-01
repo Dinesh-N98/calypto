@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Reveal } from "@/components/Reveal";
 
 type ImageOverlaySectionProps = {
   eyebrow?: string;
@@ -25,16 +26,13 @@ export function ImageOverlaySection({
         className="z-[-2] object-cover object-[75%_center]"
       />
       <div className="absolute inset-0 z-[-1] bg-[linear-gradient(90deg,rgba(13,14,12,.94),rgba(13,14,12,.48)_60%,rgba(13,14,12,.15))]" />
-      <div className="relative max-w-[620px]">
+      <Reveal className="relative max-w-[620px]">
         {eyebrow && (
           <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">{eyebrow}</p>
         )}
         <h2 className="my-[1.3rem] text-[3.5rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,6vw,6rem)]">
           {headingLines.map((line, index) => (
-            <span
-              className={line.color === "lime" ? "text-lime" : "text-paper"}
-              key={line.text}
-            >
+            <span className={line.color === "lime" ? "text-lime" : "text-paper"} key={line.text}>
               {index > 0 && <br />}
               {line.text}
             </span>
@@ -52,13 +50,16 @@ export function ImageOverlaySection({
         )}
         {cta && (
           <a
-            className="border-b border-lime pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
+            className="group link-underline pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
             href={cta.href}
           >
-            {cta.label} ↗
+            {cta.label}{" "}
+            <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+              ↗
+            </span>
           </a>
         )}
-      </div>
+      </Reveal>
     </section>
   );
 }

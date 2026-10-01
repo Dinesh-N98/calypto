@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { ImageOverlaySection } from "@/components/ImageOverlaySection";
 import { ProductCard } from "@/components/ProductCard";
 import { IconFeature } from "@/components/IconFeature";
+import { Reveal } from "@/components/Reveal";
+import { RevealStagger } from "@/components/RevealStagger";
 
 const fallbackProducts = [
   {
@@ -50,35 +52,53 @@ export default async function Home() {
           fill
           priority
           sizes="100vw"
-          className="z-[-2] object-cover object-[75%_center] md:object-center"
+          className="z-[-2] animate-ken-burns object-cover object-[75%_center] md:object-center motion-reduce:animate-none"
         />
         <div className="absolute inset-0 z-[-1] bg-[linear-gradient(90deg,rgba(13,14,12,.87),rgba(13,14,12,.32))] md:bg-[linear-gradient(90deg,rgba(13,14,12,.94),rgba(13,14,12,.48)_60%,rgba(13,14,12,.15))]" />
         <div className="relative max-w-[700px]">
-          <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
+          <p
+            className="animate-hero-rise text-[.65rem] font-bold uppercase tracking-[.18em] text-lime motion-reduce:animate-none"
+            style={{ animationDelay: "0ms" }}
+          >
             Performance soft plastics / Est. 2026
           </p>
-          <h1 className="my-[1.3rem] text-[4rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,7vw,7.2rem)]">
+          <h1
+            className="animate-hero-rise my-[1.3rem] text-[4rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(3rem,7vw,7.2rem)] motion-reduce:animate-none"
+            style={{ animationDelay: "120ms" }}
+          >
             Soft baits
             <br />
             <em className="text-lime not-italic">that fish</em>
             <br />
             can&apos;t ignore.
           </h1>
-          <p className="max-w-[390px] leading-[1.6] text-[#d0d2c7]">
+          <p
+            className="animate-hero-rise max-w-[390px] leading-[1.6] text-[#d0d2c7] motion-reduce:animate-none"
+            style={{ animationDelay: "240ms" }}
+          >
             Purpose-built movement. Irresistible profiles. Every cast engineered to create the bite.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div
+            className="animate-hero-rise mt-8 flex flex-wrap gap-3 motion-reduce:animate-none"
+            style={{ animationDelay: "360ms" }}
+          >
             <Link
-              className="inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink"
+              className="group inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
               href="/shop"
             >
-              Shop now <span>↗</span>
+              Shop now{" "}
+              <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+                ↗
+              </span>
             </Link>
             <a
-              className="inline-flex items-center gap-6 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em]"
+              className="group inline-flex items-center gap-6 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] transition-colors duration-300 hover:text-lime"
               href="/wholesale"
             >
-              Wholesale inquiry <span>↗</span>
+              Wholesale inquiry{" "}
+              <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+                ↗
+              </span>
             </a>
           </div>
         </div>
@@ -87,14 +107,16 @@ export default async function Home() {
           <span>01 / 04</span>
         </div>
       </section>
-      <section className="grid grid-cols-1 gap-7 bg-[#171914] px-[7vw] py-10 md:grid-cols-4 md:gap-4 md:py-10">
-        <IconFeature icon="◈" title="Realistic action" text="Motion that gets noticed" />
-        <IconFeature icon="◇" title="Durable plastics" text="More bites per bait" />
-        <IconFeature icon="↗" title="Fast shipping" text="Worldwide, always" />
-        <IconFeature icon="＋" title="Wholesale ready" text="Retail & trade pricing" />
+      <section className="bg-[#171914] px-[7vw] py-10 md:py-10">
+        <Reveal className="grid grid-cols-1 gap-7 md:grid-cols-4 md:gap-4">
+          <IconFeature icon="◈" title="Realistic action" text="Motion that gets noticed" />
+          <IconFeature icon="◇" title="Durable plastics" text="More bites per bait" />
+          <IconFeature icon="↗" title="Fast shipping" text="Worldwide, always" />
+          <IconFeature icon="＋" title="Wholesale ready" text="Retail & trade pricing" />
+        </Reveal>
       </section>
       <section className="bg-[#12140f] px-[7vw] py-20 md:px-[10vw] md:py-36">
-        <div className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
+        <Reveal className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
               The Calypto difference
@@ -109,8 +131,8 @@ export default async function Home() {
             Every shape, color, and action is refined for the instant a curious fish becomes a
             committed strike.
           </p>
-        </div>
-        <div className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
+        </Reveal>
+        <Reveal className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
           <IconFeature
             icon="01"
             title="Dialed-in profiles"
@@ -126,10 +148,10 @@ export default async function Home() {
             title="Tough by design"
             text="Soft enough to fool them. Tough enough to last."
           />
-        </div>
+        </Reveal>
       </section>
       <section className="bg-paper px-[7vw] py-20 text-ink md:px-[10vw] md:py-36" id="shop">
-        <div className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
+        <Reveal className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
               The lineup
@@ -141,17 +163,20 @@ export default async function Home() {
             </h2>
           </div>
           <Link
-            className="border-b border-lime pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
+            className="group link-underline pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
             href="/shop"
           >
-            View all baits ↗
+            View all baits{" "}
+            <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+              ↗
+            </span>
           </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
+        </Reveal>
+        <RevealStagger className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
           {products.map((product) => (
             <ProductCard key={product.slug} product={product} />
           ))}
-        </div>
+        </RevealStagger>
       </section>
       <ImageOverlaySection
         eyebrow="Made with intent"
@@ -164,7 +189,7 @@ export default async function Home() {
         ]}
         cta={{ label: "Our Story", href: "/about" }}
       />
-      <section className="bg-lime px-[7vw] py-20 text-ink md:px-[10vw] md:py-24">
+      <Reveal as="section" className="bg-lime px-[7vw] py-20 text-ink md:px-[10vw] md:py-24">
         <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-[#526213]">
           For the ones who stock the good stuff
         </p>
@@ -172,28 +197,38 @@ export default async function Home() {
           Own a tackle shop?
         </h2>
         <p className="mb-8">
-          Custom bait mold design and airbrush painting, all handmade. Share your idea and we&apos;ll build it. Low MOQ, fast delivery, best quality on the market, and better communication from start to finish.
+          Custom bait mold design and airbrush painting, all handmade. Share your idea and
+          we&apos;ll build it. Low MOQ, fast delivery, best quality on the market, and better
+          communication from start to finish.
         </p>
         <Link
-          className="button-primary inline-flex items-center gap-6 px-[1.3rem] py-4 text-[.7rem] tracking-[.1em] text-paper"
+          className="button-primary group inline-flex items-center gap-6 px-[1.3rem] py-4 text-[.7rem] tracking-[.1em] text-paper transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
           href="/wholesale"
         >
-          Partner with us <span>↗</span>
+          Partner with us{" "}
+          <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+            ↗
+          </span>
         </Link>
-      </section>
+      </Reveal>
       <section className="px-[7vw] py-24 text-center md:px-[10vw] md:py-36">
         <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
           From the water
         </p>
         <blockquote className="mx-auto my-8 max-w-[950px] text-[2.3rem] font-extrabold leading-[.98] tracking-[-.05em] md:text-[clamp(2rem,4vw,4rem)]">
-          “The action is subtle enough for clear water, but it still gets noticed. Calypto has
-          earned a permanent spot in my box.”
+          <Reveal>
+            “The action is subtle enough for clear water, but it still gets noticed. Calypto has
+            earned a permanent spot in my box.”
+          </Reveal>
         </blockquote>
         <cite className="text-[.7rem] uppercase tracking-[.1em] text-muted not-italic">
           — Marcus R. / Tournament angler
         </cite>
       </section>
-      <section className="bg-[#20261a] px-[7vw] py-24 text-center md:px-[10vw] md:py-32">
+      <Reveal
+        as="section"
+        className="bg-[#20261a] px-[7vw] py-24 text-center md:px-[10vw] md:py-32"
+      >
         <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
           Your next personal best
         </p>
@@ -203,12 +238,15 @@ export default async function Home() {
           <em className="text-lime not-italic">count.</em>
         </h2>
         <Link
-          className="inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink"
+          className="group inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
           href="/shop"
         >
-          Shop Calypto <span>↗</span>
+          Shop Calypto{" "}
+          <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+            ↗
+          </span>
         </Link>
-      </section>
+      </Reveal>
     </main>
   );
 }

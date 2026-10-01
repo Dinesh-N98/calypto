@@ -60,7 +60,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       >
         {toasts.map((toast) => (
           <div
-            className={`flex items-center gap-3 bg-[#4a7a1e] px-4 py-3 text-paper shadow-lg transition-all duration-250 ${toast.isExiting ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}
+            className={`flex items-center gap-3 bg-[#4a7a1e] px-4 py-3 text-paper shadow-lg transition-all duration-250 motion-reduce:translate-y-0 motion-reduce:transition-opacity ${toast.isExiting ? "translate-y-2 opacity-0" : "animate-toast-in translate-y-0 opacity-100 motion-reduce:animate-none"}`}
             key={toast.id}
           >
             <svg

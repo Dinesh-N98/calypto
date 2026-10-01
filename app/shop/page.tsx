@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { IconFeature } from "@/components/IconFeature";
 import { ProductCard } from "@/components/ProductCard";
+import { Reveal } from "@/components/Reveal";
+import { RevealStagger } from "@/components/RevealStagger";
 import { SortSelect } from "@/components/SortSelect";
 import { categories } from "@/lib/categories";
 import { prisma } from "@/lib/prisma";
@@ -60,21 +62,24 @@ async function ProductGrid({ categoryName, sort }: { categoryName?: string; sort
           No products match this category
         </p>
         <Link
-          className="mt-6 inline-block border-b border-lime pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
+          className="group link-underline mt-6 pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
           href="/shop"
         >
-          View all products ↗
+          View all products{" "}
+          <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+            ↗
+          </span>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
+    <RevealStagger className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
       {products.map((product) => (
         <ProductCard key={product.slug} product={product} />
       ))}
-    </div>
+    </RevealStagger>
   );
 }
 
@@ -90,7 +95,7 @@ export default async function ShopPage({
 
   return (
     <main className="bg-ink px-[7vw] py-16 text-paper md:px-[10vw] md:py-24">
-      <section className="mb-12 max-w-3xl md:mb-16">
+      <Reveal as="section" className="mb-12 max-w-3xl md:mb-16">
         <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
           The Calypto lineup
         </p>
@@ -102,7 +107,7 @@ export default async function ShopPage({
         <p className="max-w-xl leading-[1.7] text-muted">
           Purpose-built soft plastics and terminal tackle for the casts that matter.
         </p>
-      </section>
+      </Reveal>
 
       <section className="mb-10 border-y border-[rgba(241,240,232,.18)] py-5">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -134,11 +139,14 @@ export default async function ShopPage({
         <ProductGrid categoryName={selectedCategory?.displayName} sort={sort} />
       </Suspense>
 
-      <section className="mt-20 grid gap-6 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
+      <Reveal
+        as="section"
+        className="mt-20 grid gap-6 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3"
+      >
         <IconFeature icon="◈" title="Realistic action" text="Motion that gets noticed" />
         <IconFeature icon="◇" title="Durable plastics" text="More bites per bait" />
         <IconFeature icon="↗" title="Fast shipping" text="Worldwide, always" />
-      </section>
+      </Reveal>
     </main>
   );
 }

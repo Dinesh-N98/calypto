@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "./CartProvider";
 const links = [
   ["Home", "/"],
@@ -12,20 +12,42 @@ const links = [
 ];
 export function Header() {
   const [open, setOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { itemCount } = useCart();
   const { data: session, status } = useSession();
   const isSignedIn = status === "authenticated";
   const accountLabel = session?.user?.name || session?.user?.email || "Account";
 
+  useEffect(() => {
+    let animationFrame = 0;
+
+    const updateScrollState = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        setIsScrolled(window.scrollY > 24);
+        animationFrame = 0;
+      });
+    };
+
+    updateScrollState();
+    window.addEventListener("scroll", updateScrollState, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", updateScrollState);
+      window.cancelAnimationFrame(animationFrame);
+    };
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 flex h-[72px] items-center justify-between bg-ink px-[6vw] md:grid md:grid-cols-[1fr_auto_1fr] md:h-[84px] md:px-[5vw]">
+    <header
+      className={`sticky top-0 z-50 flex h-[72px] items-center justify-between border-b bg-ink px-[6vw] transition-[height,border-color] duration-300 md:grid md:grid-cols-[1fr_auto_1fr] md:px-[5vw] ${isScrolled ? "border-[rgba(241,240,232,.18)] md:h-[68px]" : "border-transparent md:h-[84px]"}`}
+    >
       <Link className="justify-self-start text-[1.4rem] font-black tracking-[.14em]" href="/">
         calypto<span className="align-top text-[.5em] text-lime">™</span>
       </Link>
       <nav className="hidden items-center justify-center gap-8 md:flex">
         {links.map(([label, href]) => (
           <Link
-            className="text-[.72rem] font-bold uppercase tracking-[.12em] text-muted hover:text-lime"
+            className="link-underline text-[.72rem] font-bold uppercase tracking-[.12em] text-muted transition-colors hover:text-lime"
             key={href}
             href={href}
           >
@@ -52,7 +74,10 @@ export function Header() {
             <path d="M6 8h12l1 13H5L6 8Z" />
             <path d="M9 8a3 3 0 0 1 6 0" />
           </svg>
-          <b className="absolute right-1 top-1 inline-grid h-[19px] w-[19px] place-items-center rounded-full bg-lime text-[.6rem] text-ink">
+          <b
+            key={itemCount}
+            className="animate-badge-pop absolute right-1 top-1 inline-grid h-[19px] w-[19px] place-items-center rounded-full bg-lime text-[.6rem] text-ink motion-reduce:animate-none"
+          >
             {itemCount}
           </b>
         </Link>
@@ -128,7 +153,7 @@ export function Header() {
         </button>
       </div>
       {open && (
-        <div className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-ink px-[10vw] pb-8 pt-[8rem]">
+        <div className="fixed inset-0 z-[60] flex animate-fade-in flex-col overflow-y-auto bg-ink px-[10vw] pb-8 pt-[8rem] motion-reduce:animate-none">
           <button
             className="absolute right-[8vw] top-6 grid h-12 w-12 place-items-center border-0 bg-transparent p-0 text-[2rem] text-paper"
             onClick={() => setOpen(false)}
@@ -140,12 +165,13 @@ export function Header() {
             CAST WITH INTENT
           </span>
           <nav className="mt-6 flex flex-col">
-            {links.map(([label, href]) => (
+            {links.map(([label, href], index) => (
               <Link
-                className="flex min-h-12 items-center border-b border-[rgba(241,240,232,.18)] py-4 text-[2rem] font-black uppercase tracking-[-.04em]"
+                className="animate-hero-rise flex min-h-12 items-center border-b border-[rgba(241,240,232,.18)] py-4 text-[2rem] font-black uppercase tracking-[-.04em] motion-reduce:animate-none"
                 key={href}
                 href={href}
                 onClick={() => setOpen(false)}
+                style={{ animationDelay: `${Math.min(index * 80, 400)}ms` }}
               >
                 {label}
               </Link>
