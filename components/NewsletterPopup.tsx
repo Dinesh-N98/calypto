@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { COOKIE_CONSENT_EVENT, getCookieConsent } from "@/lib/cookieConsent";
 
 const STORAGE_KEY = "calypto-newsletter-popup";
 const DISMISS_DAYS = 7;
@@ -53,11 +54,24 @@ export function NewsletterPopup() {
   useEffect(() => {
     if (hidden) return;
 
-    const timer = window.setTimeout(() => {
-      if (shouldShow()) setOpen(true);
-    }, DELAY_MS);
+    let timer: number | undefined;
+    const startTimer = () => {
+      if (timer !== undefined) return;
+      timer = window.setTimeout(() => {
+        if (shouldShow()) setOpen(true);
+      }, DELAY_MS);
+    };
 
-    return () => window.clearTimeout(timer);
+    if (getCookieConsent() !== null) {
+      startTimer();
+    } else {
+      window.addEventListener(COOKIE_CONSENT_EVENT, startTimer, { once: true });
+    }
+
+    return () => {
+      window.removeEventListener(COOKIE_CONSENT_EVENT, startTimer);
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [hidden]);
 
   const close = useCallback(() => {
@@ -88,7 +102,9 @@ export function NewsletterPopup() {
     setStatus("submitting");
 
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email") ?? "").toLowerCase().trim();
+    const email = String(formData.get("email") ?? "")
+      .toLowerCase()
+      .trim();
 
     try {
       const response = await fetch("/api/subscribe", {
@@ -165,7 +181,9 @@ export function NewsletterPopup() {
             Handcrafted soft baits
           </p>
 
-          <p className="mt-4 text-[.65rem] font-bold uppercase tracking-[.3em] md:mt-5">Join our crew</p>
+          <p className="mt-4 text-[.65rem] font-bold uppercase tracking-[.3em] md:mt-5">
+            Join our crew
+          </p>
           <h2
             id="newsletter-title"
             className="my-1 -skew-x-6 text-[3.25rem] font-black uppercase leading-[.85] tracking-[-.04em] md:text-[4.25rem]"
@@ -250,7 +268,10 @@ export function NewsletterPopup() {
 
           <ul className="mt-5 hidden w-full grid-cols-3 gap-2 border-t border-[rgba(241,240,232,.18)] pt-4 md:grid">
             {perks.map((perk) => (
-              <li className="flex flex-col items-center gap-1.5 md:flex-row md:gap-2 md:text-left" key={perk.label}>
+              <li
+                className="flex flex-col items-center gap-1.5 md:flex-row md:gap-2 md:text-left"
+                key={perk.label}
+              >
                 <span className="text-lg text-lime" aria-hidden="true">
                   {perk.icon}
                 </span>
