@@ -13,7 +13,7 @@ export function RevealStagger({ children, className = "", direction = "up" }: Re
   return (
     <div className={className}>
       {Children.map(children, (child, index) => (
-        <Reveal delay={Math.min(index * 80, 400)} direction={direction}>
+        <Reveal delay={Math.min(index * 100, 400)} direction={direction}>
           {child}
         </Reveal>
       ))}

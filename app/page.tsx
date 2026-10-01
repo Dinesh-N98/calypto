@@ -109,12 +109,12 @@ export default async function Home() {
         </div>
       </section>
       <section className="bg-[#171914] px-[7vw] py-10 md:py-10">
-        <Reveal className="grid grid-cols-1 gap-7 md:grid-cols-4 md:gap-4">
+        <RevealStagger className="grid grid-cols-1 gap-7 md:grid-cols-4 md:gap-4">
           <IconFeature icon={Waves} title="Realistic action" text="Motion that gets noticed" />
           <IconFeature icon={ShieldCheck} title="Durable plastics" text="More bites per bait" />
           <IconFeature icon={Truck} title="Fast shipping" text="Worldwide, always" />
           <IconFeature icon={Store} title="Wholesale ready" text="Retail & trade pricing" />
-        </Reveal>
+        </RevealStagger>
       </section>
       <section className="bg-[#12140f] px-[7vw] py-20 md:px-[10vw] md:py-36">
         <Reveal className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
@@ -133,7 +133,7 @@ export default async function Home() {
             committed strike.
           </p>
         </Reveal>
-        <Reveal className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
+        <RevealStagger className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
           <IconFeature
             label="01"
             title="Dialed-in profiles"
@@ -149,7 +149,7 @@ export default async function Home() {
             title="Tough by design"
             text="Soft enough to fool them. Tough enough to last."
           />
-        </Reveal>
+        </RevealStagger>
       </section>
       <section className="bg-paper px-[7vw] py-20 text-ink md:px-[10vw] md:py-36" id="shop">
         <Reveal className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
@@ -212,20 +212,18 @@ export default async function Home() {
           </span>
         </Link>
       </Reveal>
-      <section className="px-[7vw] py-24 text-center md:px-[10vw] md:py-36">
+      <Reveal as="section" className="px-[7vw] py-24 text-center md:px-[10vw] md:py-36">
         <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-lime">
           From the water
         </p>
         <blockquote className="mx-auto my-8 max-w-[950px] text-[2.3rem] font-extrabold leading-[.98] tracking-[-.05em] md:text-[clamp(2rem,4vw,4rem)]">
-          <Reveal>
-            “The action is subtle enough for clear water, but it still gets noticed. Calypto has
-            earned a permanent spot in my box.”
-          </Reveal>
+          “The action is subtle enough for clear water, but it still gets noticed. Calypto has
+          earned a permanent spot in my box.”
         </blockquote>
         <cite className="text-[.7rem] uppercase tracking-[.1em] text-muted not-italic">
           — Marcus R. / Tournament angler
         </cite>
-      </section>
+      </Reveal>
       <Reveal
         as="section"
         className="bg-[#20261a] px-[7vw] py-24 text-center md:px-[10vw] md:py-32"

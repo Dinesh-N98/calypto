@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
+import { Reveal } from "@/components/Reveal";
 import { QuantitySelector } from "@/components/QuantitySelector";
 import { formatPrice } from "@/lib/currency";
 
@@ -36,7 +37,7 @@ export default function CartPage() {
 
   return (
     <main className="bg-paper px-[7vw] py-16 text-ink md:px-[10vw] md:py-24">
-      <section className="mx-auto max-w-5xl">
+      <Reveal as="section" className="mx-auto max-w-5xl">
         <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-[#65771b]">
           Your cart
         </p>
@@ -121,7 +122,7 @@ export default function CartPage() {
             </aside>
           </div>
         )}
-      </section>
+      </Reveal>
     </main>
   );
 }

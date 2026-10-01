@@ -4,6 +4,7 @@ import { ArrowRight, Award, Fish, Waves } from "lucide-react";
 import { IconFeature } from "@/components/IconFeature";
 import { ImageOverlaySection } from "@/components/ImageOverlaySection";
 import { Reveal } from "@/components/Reveal";
+import { RevealStagger } from "@/components/RevealStagger";
 
 export default function AboutPage() {
   return (
@@ -38,7 +39,7 @@ export default function AboutPage() {
             <em className="text-lime not-italic">Stand For.</em>
           </h2>
         </Reveal>
-        <Reveal className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
+        <RevealStagger className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
           <IconFeature
             icon={Award}
             title="Quality Materials"
@@ -54,7 +55,7 @@ export default function AboutPage() {
             title="Built for Anglers"
             text="From weekend casts to tournament day, gear that holds up to how it's actually used."
           />
-        </Reveal>
+        </RevealStagger>
       </section>
       <Reveal
         as="section"

@@ -16,6 +16,7 @@
     "@neon/config": "^1.7.2",
     "@neon/env": "^1.4.3",
     "@prisma/client": "^6.19.3",
+    "aos": "^2.3.4",
     "bcrypt": "^6.0.0",
     "lucide-react": "^1.49.0",
     "next": "16.3.5",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/aos": "^3.0.8",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/react": "^19",

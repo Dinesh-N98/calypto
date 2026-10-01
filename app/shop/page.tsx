@@ -110,7 +110,7 @@ export default async function ShopPage({
         </p>
       </Reveal>
 
-      <section className="mb-10 border-y border-[rgba(241,240,232,.18)] py-5">
+      <Reveal as="section" className="mb-10 border-y border-[rgba(241,240,232,.18)] py-5">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <nav className="flex flex-wrap gap-x-5 gap-y-3" aria-label="Product categories">
             <Link
@@ -134,20 +134,17 @@ export default async function ShopPage({
           </nav>
           <SortSelect value={sort} />
         </div>
-      </section>
+      </Reveal>
 
       <Suspense fallback={<ProductGridSkeleton />}>
         <ProductGrid categoryName={selectedCategory?.displayName} sort={sort} />
       </Suspense>
 
-      <Reveal
-        as="section"
-        className="mt-20 grid gap-6 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3"
-      >
+      <RevealStagger className="mt-20 grid gap-6 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
         <IconFeature icon={Waves} title="Realistic action" text="Motion that gets noticed" />
         <IconFeature icon={ShieldCheck} title="Durable plastics" text="More bites per bait" />
         <IconFeature icon={Truck} title="Fast shipping" text="Worldwide, always" />
-      </Reveal>
+      </RevealStagger>
     </main>
   );
 }

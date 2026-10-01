@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { Reveal } from "@/components/Reveal";
 import { ProfileForm } from "@/components/ProfileForm";
 import { SignOutButton } from "@/components/SignOutButton";
 import { prisma } from "@/lib/prisma";
@@ -24,7 +25,7 @@ export default async function AccountPage() {
 
   return (
     <main className="bg-paper px-[7vw] py-16 text-ink md:px-[10vw] md:py-24">
-      <section className="mx-auto max-w-5xl">
+      <Reveal as="section" className="mx-auto max-w-5xl">
         <p className="text-[.65rem] font-bold uppercase tracking-[.18em] text-[#65771b]">Account</p>
         <h1 className="my-5 text-[4rem] font-black uppercase leading-[.88] tracking-[-.07em] md:text-[clamp(4rem,8vw,8rem)]">
           {user.name || "Your"}
@@ -92,7 +93,7 @@ export default async function AccountPage() {
             </div>
           </section>
         </div>
-      </section>
+      </Reveal>
     </main>
   );
 }

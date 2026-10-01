@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, MessageCircle, Package, PencilRuler, Timer } from "lucide-react";
 import { IconFeature } from "@/components/IconFeature";
 import { Reveal } from "@/components/Reveal";
+import { RevealStagger } from "@/components/RevealStagger";
 import { WholesaleForm } from "@/components/WholesaleForm";
 
 export default function WholesalePage() {
@@ -36,7 +37,7 @@ export default function WholesalePage() {
             <em className="text-lime not-italic">real shop owners.</em>
           </h2>
         </Reveal>
-        <Reveal className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-4">
+        <RevealStagger className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-4">
           <IconFeature
             icon={PencilRuler}
             title="Custom fit"
@@ -57,7 +58,7 @@ export default function WholesalePage() {
             title="Direct contact"
             text="Better communication from the maker, with clear updates and no lost detail."
           />
-        </Reveal>
+        </RevealStagger>
       </section>
 
       <section
