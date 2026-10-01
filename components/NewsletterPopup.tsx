@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { ArrowRight, BadgeCheck, Fish, Leaf, Mail, X, type LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { COOKIE_CONSENT_EVENT, getCookieConsent } from "@/lib/cookieConsent";
@@ -35,10 +36,10 @@ function remember(status: Stored["status"]) {
   }
 }
 
-const perks = [
-  { icon: "◈", label: "Eco-friendly materials" },
-  { icon: "◇", label: "Premium quality" },
-  { icon: "↗", label: "Built for real anglers" },
+const perks: { icon: LucideIcon; label: string }[] = [
+  { icon: Leaf, label: "Eco-friendly materials" },
+  { icon: BadgeCheck, label: "Premium quality" },
+  { icon: Fish, label: "Built for real anglers" },
 ];
 
 export function NewsletterPopup() {
@@ -153,12 +154,12 @@ export function NewsletterPopup() {
         onClick={(event) => event.stopPropagation()}
       >
         <button
-          className="absolute right-1 top-1 z-10 grid h-11 w-11 place-items-center bg-transparent text-3xl leading-none text-paper hover:text-lime"
+          className="absolute right-1 top-1 z-10 grid h-11 w-11 place-items-center bg-transparent text-paper hover:text-lime"
           type="button"
           onClick={close}
           aria-label="Close"
         >
-          ×
+          <X aria-hidden="true" className="h-7 w-7" strokeWidth={2} />
         </button>
 
         <div className="relative h-28 md:h-auto">
@@ -226,19 +227,11 @@ export function NewsletterPopup() {
               <form className="mt-4 grid w-full gap-2.5" onSubmit={handleSubmit} noValidate>
                 <label className="relative block">
                   <span className="sr-only">Your email address</span>
-                  <svg
-                    className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-ink"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <Mail
                     aria-hidden="true"
-                  >
-                    <rect x="3" y="5" width="18" height="14" rx="1" />
-                    <path d="m3 7 9 6 9-6" />
-                  </svg>
+                    className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-ink"
+                    strokeWidth={2}
+                  />
                   <input
                     className="h-11 w-full bg-paper pl-11 pr-3 text-base text-ink outline-none placeholder:text-[#8a8d80] focus:ring-2 focus:ring-lime"
                     name="email"
@@ -254,7 +247,7 @@ export function NewsletterPopup() {
                   disabled={status === "submitting"}
                 >
                   {status === "submitting" ? "Sending..." : "Get my 15% off"}
-                  <span aria-hidden="true">→</span>
+                  <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
                 </button>
                 {error && (
                   <p className="text-sm text-[#e89b87]" role="alert">
@@ -272,9 +265,7 @@ export function NewsletterPopup() {
                 className="flex flex-col items-center gap-1.5 md:flex-row md:gap-2 md:text-left"
                 key={perk.label}
               >
-                <span className="text-lg text-lime" aria-hidden="true">
-                  {perk.icon}
-                </span>
+                <perk.icon aria-hidden="true" className="h-5 w-5 text-lime" strokeWidth={1.5} />
                 <span className="text-[.52rem] font-bold uppercase leading-tight tracking-[.12em] text-muted md:text-[.55rem]">
                   {perk.label}
                 </span>
