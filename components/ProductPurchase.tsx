@@ -27,11 +27,11 @@ export function ProductPurchase({ product, prominent = false }: ProductPurchaseP
     <div className={`flex ${prominent ? "flex-col gap-4 sm:flex-row" : "flex-col gap-3"}`}>
       <QuantitySelector value={quantity} onChange={setQuantity} />
       <button
-        className={`inline-flex items-center justify-center gap-4 bg-lime px-5 py-3 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 motion-reduce:transform-none motion-reduce:transition-colors ${prominent ? "min-h-11 flex-1" : "w-full"}`}
+        className={`inline-flex items-center justify-center gap-2 bg-lime px-5 py-3 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 motion-reduce:transform-none motion-reduce:transition-colors ${prominent ? "min-h-11 flex-1" : "w-full"}`}
         type="button"
         onClick={handleAdd}
       >
-        Add to Cart <Plus aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+        Add to Cart <Plus aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
       </button>
     </div>
   );

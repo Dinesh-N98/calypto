@@ -45,11 +45,19 @@ export function Footer() {
         </div>
         <div className="flex flex-col gap-3">
           <h3 className="text-[.65rem] uppercase tracking-[.16em] text-lime">Follow us</h3>
-          <a className="text-[.75rem] text-muted" href="#instagram">
-            Instagram{" "}<ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+          <a
+            className="inline-flex items-center gap-1.5 self-start text-[.75rem] text-muted"
+            href="#instagram"
+          >
+            Instagram{" "}
+            <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
           </a>
-          <a className="text-[.75rem] text-muted" href="#youtube">
-            YouTube{" "}<ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+          <a
+            className="inline-flex items-center gap-1.5 self-start text-[.75rem] text-muted"
+            href="#youtube"
+          >
+            YouTube{" "}
+            <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
           </a>
           <a className="text-[.75rem] text-muted" href="#email">
             hello@calypto.co

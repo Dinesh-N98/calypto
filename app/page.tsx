@@ -84,21 +84,21 @@ export default async function Home() {
             style={{ animationDelay: "360ms" }}
           >
             <Link
-              className="group inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
+              className="group inline-flex items-center justify-center gap-3 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
               href="/shop"
             >
               Shop now{" "}
               <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-                <ArrowUpRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
               </span>
             </Link>
             <a
-              className="group inline-flex items-center gap-6 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] transition-colors duration-300 hover:text-lime"
+              className="group inline-flex items-center justify-center gap-3 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] transition-colors duration-300 hover:text-lime"
               href="/wholesale"
             >
               Wholesale inquiry{" "}
               <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-                <ArrowUpRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
               </span>
             </a>
           </div>
@@ -164,12 +164,12 @@ export default async function Home() {
             </h2>
           </div>
           <Link
-            className="group link-underline pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
+            className="group link-underline inline-flex items-center gap-1.5 pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
             href="/shop"
           >
             View all baits{" "}
             <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+              <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
             </span>
           </Link>
         </Reveal>
@@ -203,12 +203,12 @@ export default async function Home() {
           communication from start to finish.
         </p>
         <Link
-          className="button-primary group inline-flex items-center gap-6 px-[1.3rem] py-4 text-[.7rem] tracking-[.1em] text-paper transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
+          className="button-primary group inline-flex items-center justify-center gap-3 px-[1.3rem] py-4 text-[.7rem] tracking-[.1em] text-paper transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
           href="/wholesale"
         >
           Partner with us{" "}
           <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-            <ArrowUpRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+            <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
           </span>
         </Link>
       </Reveal>
@@ -239,12 +239,12 @@ export default async function Home() {
           <em className="text-lime not-italic">count.</em>
         </h2>
         <Link
-          className="group inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
+          className="group inline-flex items-center justify-center gap-3 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
           href="/shop"
         >
           Shop Calypto{" "}
           <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-            <ArrowUpRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+            <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
           </span>
         </Link>
       </Reveal>

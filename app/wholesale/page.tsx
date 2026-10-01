@@ -116,12 +116,12 @@ export default function WholesalePage() {
         </h2>
         <div className="flex justify-center">
           <Link
-            className="group inline-flex items-center gap-6 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
+            className="group inline-flex items-center justify-center gap-3 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
             href="/contact"
           >
             General inquiries{" "}
             <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+              <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
             </span>
           </Link>
         </div>

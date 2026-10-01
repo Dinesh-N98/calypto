@@ -32,8 +32,14 @@ export default function ContactPage() {
               We usually reply within 1 business day.
             </p>
             <div className="mt-8 flex gap-5 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime">
-              <a href="#instagram">Instagram{" "}<ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} /></a>
-              <a href="#youtube">YouTube{" "}<ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} /></a>
+              <a className="inline-flex items-center gap-1.5" href="#instagram">
+                Instagram{" "}
+                <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              </a>
+              <a className="inline-flex items-center gap-1.5" href="#youtube">
+                YouTube{" "}
+                <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              </a>
             </div>
           </Reveal>
 

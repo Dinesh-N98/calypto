@@ -49,11 +49,11 @@ export default function CartPage() {
           <div className="border-t border-[rgba(13,14,12,.18)] pt-8">
             <h2 className="text-3xl font-black uppercase tracking-[-.04em]">Your cart is empty.</h2>
             <Link
-              className="button-primary mt-8 inline-flex px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
+              className="button-primary mt-8 inline-flex items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
               href="/shop"
             >
               Browse the lineup{" "}
-              <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+              <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
             </Link>
           </div>
         ) : (
@@ -103,7 +103,7 @@ export default function CartPage() {
               </p>
               <p className="mt-3 text-3xl font-black">{formatPrice(totalCents)}</p>
               <button
-                className="button-primary mt-6 w-full px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
+                className="button-primary mt-6 inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
                 disabled={isCheckingOut}
                 onClick={checkout}
                 type="button"
@@ -112,7 +112,8 @@ export default function CartPage() {
                   "Opening checkout..."
                 ) : (
                   <>
-                    Checkout <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+                    Checkout{" "}
+                    <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
                   </>
                 )}
               </button>

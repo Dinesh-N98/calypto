@@ -82,11 +82,11 @@ export default async function AccountPage() {
             )}
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                className="button-primary inline-flex px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
+                className="button-primary inline-flex items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
                 href="/shop"
               >
                 Browse the lineup{" "}
-                <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
               <SignOutButton />
             </div>

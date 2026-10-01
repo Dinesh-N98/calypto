@@ -63,12 +63,12 @@ async function ProductGrid({ categoryName, sort }: { categoryName?: string; sort
           No products match this category
         </p>
         <Link
-          className="group link-underline mt-6 pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
+          className="group link-underline mt-6 inline-flex items-center gap-1.5 pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
           href="/shop"
         >
           View all products{" "}
           <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-            <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+            <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
           </span>
         </Link>
       </div>

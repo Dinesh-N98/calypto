@@ -51,12 +51,12 @@ export function ImageOverlaySection({
         )}
         {cta && (
           <a
-            className="group link-underline pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
+            className="group link-underline inline-flex items-center gap-1.5 pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
             href={cta.href}
           >
             {cta.label}{" "}
             <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+              <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
             </span>
           </a>
         )}
