@@ -10,7 +10,7 @@ export function IconFeature({ icon, label, title, text }: IconFeatureProps) {
   return (
     <div className="group flex items-start gap-4">
       {Icon ? (
-        <span className="group text-lime transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 motion-reduce:transform-none motion-reduce:transition-none">
+        <span className="text-lime transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 motion-reduce:transform-none motion-reduce:transition-none">
           <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
         </span>
       ) : (
