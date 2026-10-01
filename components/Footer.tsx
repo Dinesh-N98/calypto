@@ -64,7 +64,7 @@ export function Footer() {
           </a>
         </div>
         <small className="col-span-full pt-8 text-[.75rem] text-muted">
-          © 2026 Calypto. Built for the bite.
+          © 2026 calypto. Built for the bite.
         </small>
       </Reveal>
     </footer>

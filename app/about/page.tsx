@@ -26,7 +26,7 @@ export default function AboutPage() {
             Our Mission
           </p>
           <p className="mx-auto my-8 max-w-[950px] text-[2.3rem] font-extrabold leading-[.98] tracking-[-.05em] md:text-[clamp(2rem,4vw,4rem)]">
-            We believe every angler deserves gear that performs as hard as they do — soft plastics
+            We believe every angler deserves gear that performs as hard as they do. Soft plastics
             engineered with intent, tested on the water, built to earn a permanent spot in your box.
           </p>
         </Reveal>

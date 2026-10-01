@@ -175,6 +175,48 @@ a {
   transform: scaleX(1);
 }
 
+@media (max-width: 767px) {
+  .hero-cta-group {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .hero-cta-group .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    font-size: clamp(8px, 2.8vw, 11px);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .hero-cta-group .hero-cta-shop {
+    flex: 0 0 auto;
+    padding-inline: clamp(8px, 2.5vw, 14px);
+  }
+
+  .hero-cta-group .hero-cta-wholesale {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-inline: clamp(4px, 1.5vw, 10px);
+  }
+
+  .hero-cta-group .cta-arrow {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  .hero-cta-group .hero-cta svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

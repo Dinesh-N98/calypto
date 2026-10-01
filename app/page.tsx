@@ -82,25 +82,43 @@ export default async function Home() {
           >
             Purpose-built movement. Irresistible profiles. Every cast engineered to create the bite.
           </p>
+          <div className="mt-7 grid grid-cols-4">
+            {[
+              { icon: Waves, title: "Realistic Action", text: "Motion that gets noticed" },
+              { icon: ShieldCheck, title: "Durable Plastics", text: "More bites per bait" },
+              { icon: Truck, title: "Fast Shipping", text: "Worldwide, always" },
+              { icon: Store, title: "Wholesale Ready", text: "Retail & trade pricing" },
+            ].map(({ icon, title, text }, index) => (
+              <div
+                key={title}
+                className={`animate-hero-rise flex min-w-0 items-center justify-center motion-reduce:animate-none ${
+                  index > 0 ? "pl-1.5 md:pl-4" : ""
+                } ${index < 3 ? "border-r border-white/15 pr-1.5 md:pr-4" : ""}`}
+                style={{ animationDelay: `${360 + index * 120}ms` }}
+              >
+                <IconFeature compact icon={icon} title={title} text={text} />
+              </div>
+            ))}
+          </div>
           <div
-            className="animate-hero-rise mt-8 flex flex-wrap gap-3 motion-reduce:animate-none"
-            style={{ animationDelay: "360ms" }}
+            className="hero-cta-group animate-hero-rise mt-7 flex flex-wrap gap-3 motion-reduce:animate-none"
+            style={{ animationDelay: "840ms" }}
           >
             <Link
-              className="group inline-flex items-center justify-center gap-3 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
+              className="hero-cta hero-cta-shop group inline-flex items-center justify-center gap-3 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
               href="/shop"
             >
-              Shop now{" "}
-              <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+              Shop now
+              <span className="cta-arrow transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
                 <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
               </span>
             </Link>
             <a
-              className="group inline-flex items-center justify-center gap-3 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] transition-colors duration-300 hover:text-lime"
+              className="hero-cta hero-cta-wholesale group inline-flex items-center justify-center gap-3 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] transition-colors duration-300 hover:text-lime"
               href="/wholesale"
             >
-              Wholesale inquiry{" "}
-              <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+              Wholesale inquiry
+              <span className="cta-arrow transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
                 <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
               </span>
             </a>
@@ -110,14 +128,6 @@ export default async function Home() {
           <span>Scroll to explore</span>
           <span>01 / 04</span>
         </div>
-      </section>
-      <section className="bg-[#171914] px-[7vw] py-10 md:py-10">
-        <RevealStagger className="grid grid-cols-1 gap-7 md:grid-cols-4 md:gap-4">
-          <IconFeature icon={Waves} title="Realistic action" text="Motion that gets noticed" />
-          <IconFeature icon={ShieldCheck} title="Durable plastics" text="More bites per bait" />
-          <IconFeature icon={Truck} title="Fast shipping" text="Worldwide, always" />
-          <IconFeature icon={Store} title="Wholesale ready" text="Retail & trade pricing" />
-        </RevealStagger>
       </section>
       <section className="bg-[#12140f] px-[7vw] py-20 md:px-[10vw] md:py-36">
         <Reveal className="mb-10 flex flex-col items-start gap-4 md:mb-16 md:flex-row md:items-end md:justify-between">
