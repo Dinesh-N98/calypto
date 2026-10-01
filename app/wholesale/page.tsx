@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight, MessageCircle, Package, PencilRuler, Timer } from "lucide-react";
 import { IconFeature } from "@/components/IconFeature";
 import { Reveal } from "@/components/Reveal";
 import { WholesaleForm } from "@/components/WholesaleForm";
@@ -37,22 +38,22 @@ export default function WholesalePage() {
         </Reveal>
         <Reveal className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-4">
           <IconFeature
-            icon="◈"
+            icon={PencilRuler}
             title="Custom fit"
             text="Custom bait mold design and airbrush painting built around your customer base."
           />
           <IconFeature
-            icon="◇"
+            icon={Package}
             title="Low MOQ"
             text="Start smaller, test faster, and stock the baits your customers actually ask for."
           />
           <IconFeature
-            icon="↗"
+            icon={Timer}
             title="Fast turnaround"
             text="Quick production and dependable delivery so you can stay in stock and ahead of demand."
           />
           <IconFeature
-            icon="✓"
+            icon={MessageCircle}
             title="Direct contact"
             text="Better communication from the maker, with clear updates and no lost detail."
           />
@@ -120,7 +121,7 @@ export default function WholesalePage() {
           >
             General inquiries{" "}
             <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              →
+              <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
             </span>
           </Link>
         </div>

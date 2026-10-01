@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 import { categories } from "@/lib/categories";
 
@@ -45,10 +46,10 @@ export function Footer() {
         <div className="flex flex-col gap-3">
           <h3 className="text-[.65rem] uppercase tracking-[.16em] text-lime">Follow us</h3>
           <a className="text-[.75rem] text-muted" href="#instagram">
-            Instagram ↗
+            Instagram{" "}<ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
           </a>
           <a className="text-[.75rem] text-muted" href="#youtube">
-            YouTube ↗
+            YouTube{" "}<ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
           </a>
           <a className="text-[.75rem] text-muted" href="#email">
             hello@calypto.co

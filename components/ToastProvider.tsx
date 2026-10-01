@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
 
 type Toast = {
   id: number;
@@ -63,18 +64,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={`flex items-center gap-3 bg-[#4a7a1e] px-4 py-3 text-paper shadow-lg transition-all duration-250 motion-reduce:translate-y-0 motion-reduce:transition-opacity ${toast.isExiting ? "translate-y-2 opacity-0" : "animate-toast-in translate-y-0 opacity-100 motion-reduce:animate-none"}`}
             key={toast.id}
           >
-            <svg
-              className="h-5 w-5 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m5 12 4 4L19 6" />
-            </svg>
+            <Check aria-hidden="true" className="h-5 w-5 shrink-0" strokeWidth={2} />
             <span className="text-sm font-bold">{toast.message}</span>
           </div>
         ))}

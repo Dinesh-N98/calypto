@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowUpRight, ShieldCheck, Truck, Waves } from "lucide-react";
 import { IconFeature } from "@/components/IconFeature";
 import { ProductCard } from "@/components/ProductCard";
 import { Reveal } from "@/components/Reveal";
@@ -67,7 +68,7 @@ async function ProductGrid({ categoryName, sort }: { categoryName?: string; sort
         >
           View all products{" "}
           <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-            ↗
+            <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
           </span>
         </Link>
       </div>
@@ -143,9 +144,9 @@ export default async function ShopPage({
         as="section"
         className="mt-20 grid gap-6 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3"
       >
-        <IconFeature icon="◈" title="Realistic action" text="Motion that gets noticed" />
-        <IconFeature icon="◇" title="Durable plastics" text="More bites per bait" />
-        <IconFeature icon="↗" title="Fast shipping" text="Worldwide, always" />
+        <IconFeature icon={Waves} title="Realistic action" text="Motion that gets noticed" />
+        <IconFeature icon={ShieldCheck} title="Durable plastics" text="More bites per bait" />
+        <IconFeature icon={Truck} title="Fast shipping" text="Worldwide, always" />
       </Reveal>
     </main>
   );

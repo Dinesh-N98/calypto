@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
 import { useToast } from "@/components/ToastProvider";
 import { formatPrice } from "@/lib/currency";
@@ -46,7 +47,7 @@ export function ProductCard({
           type="button"
           onClick={handleAdd}
         >
-          Add to Cart <span aria-hidden="true">＋</span>
+          Add to Cart <Plus aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
         </button>
       </div>
     </article>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { QuantitySelector } from "@/components/QuantitySelector";
@@ -30,7 +31,7 @@ export function ProductPurchase({ product, prominent = false }: ProductPurchaseP
         type="button"
         onClick={handleAdd}
       >
-        Add to Cart <span>＋</span>
+        Add to Cart <Plus aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
       </button>
     </div>
   );

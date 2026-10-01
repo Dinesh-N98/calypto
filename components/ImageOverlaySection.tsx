@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 
 type ImageOverlaySectionProps = {
@@ -55,7 +56,7 @@ export function ImageOverlaySection({
           >
             {cta.label}{" "}
             <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              ↗
+              <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
             </span>
           </a>
         )}

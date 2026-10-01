@@ -1,4 +1,5 @@
 import { ContactForm } from "@/components/ContactForm";
+import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 
 export default function ContactPage() {
@@ -31,8 +32,8 @@ export default function ContactPage() {
               We usually reply within 1 business day.
             </p>
             <div className="mt-8 flex gap-5 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime">
-              <a href="#instagram">Instagram ↗</a>
-              <a href="#youtube">YouTube ↗</a>
+              <a href="#instagram">Instagram{" "}<ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} /></a>
+              <a href="#youtube">YouTube{" "}<ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} /></a>
             </div>
           </Reveal>
 

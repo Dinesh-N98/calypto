@@ -1,5 +1,6 @@
 // Mission/values copy is placeholder — needs client review before launch.
 import Link from "next/link";
+import { ArrowRight, Award, Fish, Waves } from "lucide-react";
 import { IconFeature } from "@/components/IconFeature";
 import { ImageOverlaySection } from "@/components/ImageOverlaySection";
 import { Reveal } from "@/components/Reveal";
@@ -39,17 +40,17 @@ export default function AboutPage() {
         </Reveal>
         <Reveal className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
           <IconFeature
-            icon="◈"
+            icon={Award}
             title="Quality Materials"
             text="Every bait starts with premium soft plastic and consistent color runs."
           />
           <IconFeature
-            icon="◇"
+            icon={Waves}
             title="Field-Tested Action"
             text="Profiles and movement refined through real time on the water, not just in the lab."
           />
           <IconFeature
-            icon="↗"
+            icon={Fish}
             title="Built for Anglers"
             text="From weekend casts to tournament day, gear that holds up to how it's actually used."
           />
@@ -74,7 +75,7 @@ export default function AboutPage() {
           >
             Shop the lineup{" "}
             <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              →
+              <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
             </span>
           </Link>
           <Link
@@ -83,7 +84,7 @@ export default function AboutPage() {
           >
             Get in touch{" "}
             <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              →
+              <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
             </span>
           </Link>
         </div>

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowUpRight, ShieldCheck, Store, Truck, Waves } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ImageOverlaySection } from "@/components/ImageOverlaySection";
 import { ProductCard } from "@/components/ProductCard";
@@ -88,7 +89,7 @@ export default async function Home() {
             >
               Shop now{" "}
               <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-                ↗
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
               </span>
             </Link>
             <a
@@ -97,7 +98,7 @@ export default async function Home() {
             >
               Wholesale inquiry{" "}
               <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-                ↗
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
               </span>
             </a>
           </div>
@@ -109,10 +110,10 @@ export default async function Home() {
       </section>
       <section className="bg-[#171914] px-[7vw] py-10 md:py-10">
         <Reveal className="grid grid-cols-1 gap-7 md:grid-cols-4 md:gap-4">
-          <IconFeature icon="◈" title="Realistic action" text="Motion that gets noticed" />
-          <IconFeature icon="◇" title="Durable plastics" text="More bites per bait" />
-          <IconFeature icon="↗" title="Fast shipping" text="Worldwide, always" />
-          <IconFeature icon="＋" title="Wholesale ready" text="Retail & trade pricing" />
+          <IconFeature icon={Waves} title="Realistic action" text="Motion that gets noticed" />
+          <IconFeature icon={ShieldCheck} title="Durable plastics" text="More bites per bait" />
+          <IconFeature icon={Truck} title="Fast shipping" text="Worldwide, always" />
+          <IconFeature icon={Store} title="Wholesale ready" text="Retail & trade pricing" />
         </Reveal>
       </section>
       <section className="bg-[#12140f] px-[7vw] py-20 md:px-[10vw] md:py-36">
@@ -134,17 +135,17 @@ export default async function Home() {
         </Reveal>
         <Reveal className="grid grid-cols-1 gap-8 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">
           <IconFeature
-            icon="01"
+            label="01"
             title="Dialed-in profiles"
             text="Natural silhouettes that make fish look twice."
           />
           <IconFeature
-            icon="02"
+            label="02"
             title="Proven action"
             text="Subtle vibration and kick at every retrieve speed."
           />
           <IconFeature
-            icon="03"
+            label="03"
             title="Tough by design"
             text="Soft enough to fool them. Tough enough to last."
           />
@@ -168,7 +169,7 @@ export default async function Home() {
           >
             View all baits{" "}
             <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              ↗
+              <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
             </span>
           </Link>
         </Reveal>
@@ -207,7 +208,7 @@ export default async function Home() {
         >
           Partner with us{" "}
           <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-            ↗
+            <ArrowUpRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
           </span>
         </Link>
       </Reveal>
@@ -243,7 +244,7 @@ export default async function Home() {
         >
           Shop Calypto{" "}
           <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-            ↗
+            <ArrowUpRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
           </span>
         </Link>
       </Reveal>
