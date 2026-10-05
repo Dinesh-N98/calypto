@@ -69,7 +69,7 @@ export default async function AccountPage() {
                       <strong>
                         {new Intl.NumberFormat("en-US", {
                           style: "currency",
-                          currency: "USD",
+                          currency: order.currency,
                         }).format(order.totalCents / 100)}
                       </strong>
                     </div>

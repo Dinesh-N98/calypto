@@ -1,0 +1,32 @@
+import { prisma } from "@/lib/prisma";
+import { refreshOnePayOrderStatus } from "@/lib/onepay";
+
+export async function POST(request: Request) {
+  const body: unknown = await request.json().catch(() => null);
+  const transactionId =
+    body && typeof body === "object" && "transaction_id" in body ? body.transaction_id : null;
+  if (typeof transactionId !== "string" || !transactionId) {
+    return Response.json({ error: "Missing OnePay transaction ID." }, { status: 400 });
+  }
+
+  const order = await prisma.order.findFirst({
+    where: { paymentProvider: "ONEPAY", providerTransactionId: transactionId },
+    select: {
+      id: true,
+      providerTransactionId: true,
+      totalCents: true,
+      currency: true,
+      status: true,
+    },
+  });
+  if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
+  if (order.status !== "pending") return Response.json({ received: true, status: order.status });
+
+  try {
+    const status = await refreshOnePayOrderStatus(order);
+    return Response.json({ received: true, status });
+  } catch (error) {
+    console.error("Unable to verify OnePay callback.", error);
+    return Response.json({ error: "Unable to verify OnePay transaction." }, { status: 502 });
+  }
+}

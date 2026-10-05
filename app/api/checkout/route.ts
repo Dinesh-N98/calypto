@@ -1,35 +1,116 @@
-import Stripe from "stripe";
+import { randomUUID } from "node:crypto";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  assertOnePayConfigured,
+  createOnePayCheckout,
+  OnePayApiError,
+  ONEPAY_CURRENCY,
+} from "@/lib/onepay";
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+type CartItemPayload = { slug: string; quantity: number };
+type CheckoutCustomer = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+};
 
-type CartPayload = { slug?: unknown; quantity?: unknown };
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-function isValidCartItem(item: CartPayload): item is { slug: string; quantity: number } {
+function isValidCartItem(item: unknown): item is CartItemPayload {
+  if (!isObject(item)) return false;
+  const cartItem = item;
   return (
-    typeof item.slug === "string" &&
-    item.slug.length > 0 &&
-    typeof item.quantity === "number" &&
-    Number.isInteger(item.quantity) &&
-    item.quantity > 0
+    typeof cartItem.slug === "string" &&
+    cartItem.slug.length > 0 &&
+    typeof cartItem.quantity === "number" &&
+    Number.isSafeInteger(cartItem.quantity) &&
+    cartItem.quantity > 0
   );
 }
 
-export async function POST(request: Request) {
-  if (!stripeSecretKey) {
-    return Response.json({ error: "Stripe is not configured." }, { status: 500 });
+function parseCustomer(value: unknown): CheckoutCustomer | null {
+  if (!isObject(value)) return null;
+  const customer = value;
+  const firstName = typeof customer.firstName === "string" ? customer.firstName.trim() : "";
+  const lastName = typeof customer.lastName === "string" ? customer.lastName.trim() : "";
+  const email = typeof customer.email === "string" ? customer.email.trim().toLowerCase() : "";
+  const phone = typeof customer.phone === "string" ? customer.phone.trim() : "";
+
+  if (
+    !firstName ||
+    firstName.length > 100 ||
+    !lastName ||
+    lastName.length > 100 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email) ||
+    email.length > 254 ||
+    !/^\+[1-9]\d{7,14}$/u.test(phone)
+  ) {
+    return null;
   }
 
+  return { firstName, lastName, email, phone };
+}
+
+function getAppBaseUrl(): string | null {
+  const value = process.env.APP_BASE_URL;
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+export async function POST(request: Request) {
   const body: unknown = await request.json().catch(() => null);
-  const rawItems = body && typeof body === "object" && "items" in body ? body.items : null;
+  const payload = isObject(body) ? body : null;
+  const rawItems = payload?.items;
+  const customer = parseCustomer(payload?.customer);
   if (!Array.isArray(rawItems) || rawItems.length === 0 || !rawItems.every(isValidCartItem)) {
     return Response.json({ error: "Your cart is empty or invalid." }, { status: 400 });
+  }
+  if (!customer) {
+    return Response.json(
+      {
+        error: "Enter your first name, last name, email, and phone number in E.164 format.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const config = getAppBaseUrl();
+  if (!config) {
+    return Response.json({ error: "APP_BASE_URL must be a public HTTPS origin." }, { status: 500 });
+  }
+  try {
+    assertOnePayConfigured();
+  } catch {
+    return Response.json({ error: "OnePay credentials are not configured." }, { status: 500 });
   }
 
   const quantities = new Map<string, number>();
   for (const item of rawItems) {
-    quantities.set(item.slug, (quantities.get(item.slug) ?? 0) + item.quantity);
+    const quantity = (quantities.get(item.slug) ?? 0) + item.quantity;
+    if (!Number.isSafeInteger(quantity) || quantity > 2_147_483_647) {
+      return Response.json({ error: "One or more item quantities are invalid." }, { status: 400 });
+    }
+    quantities.set(item.slug, quantity);
   }
 
   const products = await prisma.product.findMany({
@@ -37,36 +118,81 @@ export async function POST(request: Request) {
     select: { slug: true, name: true, priceCents: true },
   });
   if (products.length !== quantities.size) {
-    return Response.json({ error: "One or more products are no longer available." }, { status: 400 });
+    return Response.json(
+      { error: "One or more products are no longer available." },
+      { status: 400 },
+    );
+  }
+
+  const orderItems = products.map((product) => ({
+    productSlug: product.slug,
+    name: product.name,
+    priceCents: product.priceCents,
+    quantity: quantities.get(product.slug) ?? 0,
+  }));
+  const totalCents = orderItems.reduce((total, item) => total + item.priceCents * item.quantity, 0);
+  if (
+    totalCents <= 0 ||
+    !Number.isSafeInteger(totalCents) ||
+    totalCents > 2_147_483_647 ||
+    orderItems.some((item) => item.priceCents < 0 || item.quantity < 1)
+  ) {
+    return Response.json({ error: "The order total is invalid." }, { status: 400 });
   }
 
   const session = await auth();
-  const userId = session?.user?.id;
-  const origin = request.headers.get("origin") ?? new URL(request.url).origin;
-  const stripe = new Stripe(stripeSecretKey);
-
-  const checkoutSession = await stripe.checkout.sessions.create({
-    mode: "payment",
-    allow_promotion_codes: true,
-    line_items: products.map((product) => ({
-      quantity: quantities.get(product.slug),
-      price_data: {
-        currency: "usd",
-        unit_amount: product.priceCents,
-        product_data: {
-          name: product.name,
-          metadata: { slug: product.slug },
-        },
-      },
-    })),
-    metadata: userId ? { userId } : undefined,
-    success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/checkout/cancel`,
+  const reference = `CAL-${randomUUID().replaceAll("-", "").toUpperCase()}`;
+  const order = await prisma.order.create({
+    data: {
+      paymentProvider: "ONEPAY",
+      providerReference: reference,
+      currency: ONEPAY_CURRENCY,
+      userId: session?.user?.id ?? null,
+      email: customer.email,
+      customerFirstName: customer.firstName,
+      customerLastName: customer.lastName,
+      customerPhone: customer.phone,
+      totalCents,
+      status: "pending",
+      items: { create: orderItems },
+    },
   });
 
-  if (!checkoutSession.url) {
-    return Response.json({ error: "Stripe did not return a checkout URL." }, { status: 502 });
+  try {
+    const checkout = await createOnePayCheckout({
+      appBaseUrl: config,
+      amountCents: totalCents,
+      customer,
+      reference,
+    });
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { providerTransactionId: checkout.transactionId },
+    });
+    if (typeof checkout.redirectUrl !== "string") {
+      throw new Error("OnePay did not return the documented checkout URL.");
+    }
+    const redirectUrl = new URL(checkout.redirectUrl);
+    if (redirectUrl.protocol !== "https:") {
+      throw new Error("OnePay returned a non-HTTPS checkout URL.");
+    }
+    return Response.json({ url: redirectUrl.toString() });
+  } catch (error) {
+    if (error instanceof OnePayApiError && error.status >= 400 && error.status < 500) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: "failed" },
+      });
+    }
+    console.error("Unable to start OnePay checkout.", error);
+    return Response.json(
+      {
+        error:
+          error instanceof OnePayApiError && error.status >= 400 && error.status < 500
+            ? "OnePay rejected the checkout request. Please review your details and try again."
+            : `Checkout could not be confirmed. Keep reference ${reference} and contact support if you were charged.`,
+      },
+      { status: 502 },
+    );
   }
-
-  return Response.json({ url: checkoutSession.url });
 }

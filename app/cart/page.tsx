@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { Reveal } from "@/components/Reveal";
 import { QuantitySelector } from "@/components/QuantitySelector";
@@ -16,14 +16,24 @@ export default function CartPage() {
   const [error, setError] = useState<string | null>(null);
   const totalCents = items.reduce((total, item) => total + item.priceCents * item.quantity, 0);
 
-  async function checkout() {
+  async function checkout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setIsCheckingOut(true);
     setError(null);
     try {
+      const formData = new FormData(event.currentTarget);
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: items.map(({ slug, quantity }) => ({ slug, quantity })) }),
+        body: JSON.stringify({
+          items: items.map(({ slug, quantity }) => ({ slug, quantity })),
+          customer: {
+            firstName: formData.get("firstName"),
+            lastName: formData.get("lastName"),
+            email: formData.get("email"),
+            phone: formData.get("phone"),
+          },
+        }),
       });
       const result = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !result.url) throw new Error(result.error || "Unable to start checkout.");
@@ -109,21 +119,72 @@ export default function CartPage() {
                 Total
               </p>
               <p className="mt-3 text-2xl font-black md:text-3xl">{formatPrice(totalCents)}</p>
-              <button
-                className="button-primary mt-6 inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
-                disabled={isCheckingOut}
-                onClick={checkout}
-                type="button"
-              >
-                {isCheckingOut ? (
-                  "Opening checkout..."
-                ) : (
-                  <>
-                    Checkout{" "}
-                    <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
-                  </>
-                )}
-              </button>
+              <form className="mt-6 grid gap-4" onSubmit={checkout}>
+                <p className="text-sm leading-[1.6] text-[#55584e]">
+                  OnePay requires your name, email, and phone number to create the payment.
+                </p>
+                <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+                  First name
+                  <input
+                    autoComplete="given-name"
+                    className="auth-input"
+                    maxLength={100}
+                    name="firstName"
+                    required
+                  />
+                </label>
+                <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+                  Last name
+                  <input
+                    autoComplete="family-name"
+                    className="auth-input"
+                    maxLength={100}
+                    name="lastName"
+                    required
+                  />
+                </label>
+                <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+                  Email
+                  <input
+                    autoComplete="email"
+                    className="auth-input"
+                    maxLength={254}
+                    name="email"
+                    required
+                    type="email"
+                  />
+                </label>
+                <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+                  Phone number (E.164, e.g. +94771234567)
+                  <input
+                    autoComplete="tel"
+                    className="auth-input"
+                    name="phone"
+                    pattern="\+[1-9][0-9]{7,14}"
+                    placeholder="+94771234567"
+                    required
+                    type="tel"
+                  />
+                </label>
+                <button
+                  className="button-primary inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
+                  disabled={isCheckingOut}
+                  type="submit"
+                >
+                  {isCheckingOut ? (
+                    "Opening checkout..."
+                  ) : (
+                    <>
+                      Checkout{" "}
+                      <ArrowUpRight
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0"
+                        strokeWidth={2}
+                      />
+                    </>
+                  )}
+                </button>
+              </form>
               {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
             </aside>
           </div>

@@ -3,14 +3,19 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
   CUSTOMER
   ADMIN
+}
+
+enum PaymentProvider {
+  STRIPE
+  ONEPAY
 }
 
 model Product {
@@ -50,15 +55,21 @@ model User {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  userId          String?
-  user            User?       @relation(fields: [userId], references: [id])
-  email           String
-  stripeSessionId String      @unique
-  totalCents      Int
-  status          String      @default("paid")
-  items           OrderItem[]
-  createdAt       DateTime    @default(now())
+  id                    String          @id @default(cuid())
+  userId                String?
+  user                  User?           @relation(fields: [userId], references: [id])
+  email                 String
+  customerFirstName     String?
+  customerLastName      String?
+  customerPhone         String?
+  paymentProvider       PaymentProvider
+  providerReference     String          @unique
+  providerTransactionId String?         @unique
+  totalCents            Int
+  currency              String
+  status                String          @default("pending")
+  items                 OrderItem[]
+  createdAt             DateTime        @default(now())
 }
 
 model OrderItem {
