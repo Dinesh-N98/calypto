@@ -42,10 +42,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user?.id) token.id = user.id;
+      const hasRoleHint = token.role === "CUSTOMER" || token.role === "ADMIN";
+      const userId = user?.id ?? (typeof token.id === "string" ? token.id : undefined);
+
+      if (userId && (user || !hasRoleHint)) {
+        try {
+          const currentUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
+          });
+          if (currentUser) token.role = currentUser.role;
+          else delete token.role;
+        } catch {
+          // A role hint lookup must not interrupt sign-in or session reads.
+        }
+      }
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.id) session.user.id = token.id as string;
+      if (session.user) {
+        if (token.id) session.user.id = token.id as string;
+        if (token.role === "CUSTOMER" || token.role === "ADMIN") {
+          session.user.role = token.role;
+        }
+      }
       return session;
     },
   },
