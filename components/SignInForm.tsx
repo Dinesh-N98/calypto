@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function SignInForm() {
+export function SignInForm({ callbackUrl }: { callbackUrl: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,7 +27,7 @@ export function SignInForm() {
       return;
     }
 
-    router.push("/account");
+    router.push(callbackUrl);
     router.refresh();
   }
 
@@ -58,7 +58,7 @@ export function SignInForm() {
         or
         <span className="h-px flex-1 bg-[rgba(241,240,232,.18)]" />
       </div>
-      <button className="auth-button-secondary w-full" onClick={() => signIn("google", { callbackUrl: "/account" })}>
+      <button className="auth-button-secondary w-full" onClick={() => signIn("google", { callbackUrl })}>
         Continue with Google
       </button>
       <p className="mt-8 text-sm text-muted">

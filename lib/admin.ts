@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getValidatedAdminReturnPath } from "@/lib/admin-return-path";
 
 export type AdminUser = {
   id: string;
@@ -23,23 +24,10 @@ async function findAdminUser(userId: string): Promise<AdminUser | null> {
   return user?.role === "ADMIN" ? user : null;
 }
 
-function isValidAdminReturnPath(value: unknown): value is string {
-  // Accept literal admin paths only; query strings and fragments are intentionally rejected.
-  return (
-    typeof value === "string" &&
-    /^\/admin(?:\/|$)/.test(value) &&
-    !/[\\\s\u0000-\u001f\u007f-\u009f]/u.test(value) &&
-    !value.includes("//") &&
-    !value.includes(":") &&
-    !value.includes("?") &&
-    !value.includes("#")
-  );
-}
-
 export async function requireAdminPage(returnPath?: string): Promise<AdminUser> {
   const session = await auth();
   if (!session) {
-    const callbackUrl = isValidAdminReturnPath(returnPath) ? returnPath : "/admin";
+    const callbackUrl = getValidatedAdminReturnPath(returnPath, "/admin");
     redirect(`/sign-in?${new URLSearchParams({ callbackUrl })}`);
   }
   if (!session.user?.id) notFound();

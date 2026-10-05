@@ -64,3 +64,20 @@ Replace `YOUR-VERCEL-DOMAIN.vercel.app` with the exact Vercel deployment domain 
 your custom production domain). No Auth.js `Email` provider or email-sending service
 is configured; email accounts use bcrypt-hashed passwords through the Credentials
 provider.
+
+## Admin role maintenance
+
+Sign up normally before changing an account's role, then run one of these commands
+with that account's email address:
+
+```bash
+npm run admin:promote -- your-existing-account@example.com
+npm run admin:demote -- your-existing-account@example.com
+```
+
+The script first prints the database endpoint and database name. Type the printed
+endpoint identifier exactly to confirm the target, then review the email and role
+change and type `CHANGE` exactly to apply it. Any other response aborts without a
+write. Check the printed endpoint carefully before confirming, especially when
+using production. After promotion, the user must sign in again for the session's
+UI role hint to refresh. The script refuses to demote the last remaining admin.

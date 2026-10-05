@@ -9,7 +9,9 @@
     "lint": "eslint",
     "format": "prettier --write app components lib prisma/seed.mjs",
     "db:push": "prisma db push",
-    "db:seed": "node prisma/seed.mjs"
+    "db:seed": "node prisma/seed.mjs",
+    "admin:promote": "node prisma/admin-role.mjs promote",
+    "admin:demote": "node prisma/admin-role.mjs demote"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

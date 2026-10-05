@@ -1,7 +1,15 @@
 import { SignInForm } from "@/components/SignInForm";
 import { Reveal } from "@/components/Reveal";
+import { getValidatedAdminReturnPath } from "@/lib/admin-return-path";
 
-export default function SignInPage() {
+type SignInPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function SignInPage({ searchParams }: SignInPageProps) {
+  const params = await searchParams;
+  const callbackUrl = getValidatedAdminReturnPath(params.callbackUrl, "/account");
+
   return (
     <main className="bg-ink px-[7vw] py-14 text-paper md:px-[10vw] md:py-24">
       <Reveal as="section" className="mx-auto max-w-5xl">
@@ -13,7 +21,7 @@ export default function SignInPage() {
           <br />
           <em className="text-lime not-italic">back.</em>
         </h1>
-        <SignInForm />
+        <SignInForm callbackUrl={callbackUrl} />
       </Reveal>
     </main>
   );
