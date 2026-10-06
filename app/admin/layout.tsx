@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { requireAdminPage } from "@/lib/admin";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Admin Dashboard",
+    template: "%s | Calypto Admin",
+  },
+  description: "Calypto store administration panel.",
+};
 
 export const dynamic = "force-dynamic";
 

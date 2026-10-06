@@ -1,10 +1,49 @@
 import Image from "next/image";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 import { Reveal } from "@/components/Reveal";
 import { ProductPurchase } from "@/components/ProductPurchase";
 import { formatPrice } from "@/lib/currency";
 import { prisma } from "@/lib/prisma";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    include: { category: { select: { name: true } } },
+  });
+
+  if (!product) notFound();
+
+  const title = `${product.name} - ${product.category.name}`;
+  const description = `${product.description} Explore ${product.category.name} soft baits from Calypto.`;
+  const image = {
+    url: product.imageUrl,
+    alt: product.name,
+  };
+
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      images: [image],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image.url],
+    },
+  };
+}
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
