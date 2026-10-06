@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import heroImage from "../public/hero-fishing.jpeg";
+import heroImage from "../../public/hero-fishing.jpeg";
 import { ArrowUpRight, ShieldCheck, Store, Truck, Waves } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ImageOverlaySection } from "@/components/ImageOverlaySection";
