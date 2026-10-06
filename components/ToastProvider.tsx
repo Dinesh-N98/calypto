@@ -1,16 +1,17 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { CircleAlert, Check } from "lucide-react";
 
 type Toast = {
   id: number;
   message: string;
+  variant: "success" | "error";
   isExiting: boolean;
 };
 
 type ToastContextValue = {
-  showToast: (message: string) => void;
+  showToast: (message: string, variant?: Toast["variant"]) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -32,9 +33,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const showToast = useCallback((message: string) => {
+  const showToast = useCallback((message: string, variant: Toast["variant"] = "success") => {
     const id = nextId.current++;
-    setToasts((current) => [...current, { id, message, isExiting: false }]);
+    setToasts((current) => [...current, { id, message, variant, isExiting: false }]);
 
     const exitTimer = setTimeout(() => {
       setToasts((current) =>
@@ -61,10 +62,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       >
         {toasts.map((toast) => (
           <div
-            className={`flex items-center gap-3 bg-[#4a7a1e] px-4 py-3 text-paper shadow-lg transition-all duration-250 motion-reduce:translate-y-0 motion-reduce:transition-opacity ${toast.isExiting ? "translate-y-2 opacity-0" : "animate-toast-in translate-y-0 opacity-100 motion-reduce:animate-none"}`}
+            className={`flex items-center gap-3 px-4 py-3 text-paper shadow-lg transition-all duration-250 motion-reduce:translate-y-0 motion-reduce:transition-opacity ${toast.variant === "error" ? "bg-[#9f2929]" : "bg-[#4a7a1e]"} ${toast.isExiting ? "translate-y-2 opacity-0" : "animate-toast-in translate-y-0 opacity-100 motion-reduce:animate-none"}`}
             key={toast.id}
           >
-            <Check aria-hidden="true" className="h-5 w-5 shrink-0" strokeWidth={2} />
+            {toast.variant === "error" ? (
+              <CircleAlert aria-hidden="true" className="h-5 w-5 shrink-0" strokeWidth={2} />
+            ) : (
+              <Check aria-hidden="true" className="h-5 w-5 shrink-0" strokeWidth={2} />
+            )}
             <span className="text-sm font-bold">{toast.message}</span>
           </div>
         ))}

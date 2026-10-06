@@ -2,13 +2,8 @@
 
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
-
-function redirectWithNotice(path: string, notice: string): never {
-  redirect(`${path}?${new URLSearchParams({ notice })}`);
-}
 
 function getText(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -51,52 +46,90 @@ function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-export async function createCategory(formData: FormData): Promise<void> {
-  await requireAdminPage("/admin/categories");
+function readCategory(formData: FormData) {
   const name = getText(formData, "name");
-  const slug = slugify(name);
-  if (!name || name.length > 100 || !isValidSlug(slug)) {
-    redirectWithNotice(
-      "/admin/categories",
-      "Enter a category name that produces a valid URL slug.",
-    );
+  const slug = slugify(getText(formData, "slug") || name);
+
+  if (!name || name.length > 100) {
+    return { error: "Category name is required (max 100 characters)." } as const;
+  }
+  if (!isValidSlug(slug)) {
+    return { error: "Use a URL-safe slug with lowercase letters, numbers, and hyphens." } as const;
   }
 
+  return { data: { name, slug } } as const;
+}
+
+export async function createCategory(
+  formData: FormData,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  await requireAdminPage("/admin/categories");
+  const category = readCategory(formData);
+  if (category.error) return { ok: false, error: category.error };
+
   try {
-    await prisma.category.create({ data: { name, slug } });
+    await prisma.category.create({ data: category.data });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      redirectWithNotice("/admin/categories", "A category with this name or slug already exists.");
+      return { ok: false, error: "A category with this name or slug already exists." };
     }
     throw error;
   }
 
   revalidateCatalog();
-  redirectWithNotice("/admin/categories", "Category created.");
+  return { ok: true, message: "Category created." };
 }
 
-export async function deleteCategory(formData: FormData): Promise<void> {
+export async function updateCategory(
+  formData: FormData,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
   await requireAdminPage("/admin/categories");
   const id = getText(formData, "id");
-  if (!id) redirectWithNotice("/admin/categories", "Choose a valid category.");
+  if (!id) return { ok: false, error: "Choose a valid category." };
+
+  const category = readCategory(formData);
+  if (category.error) return { ok: false, error: category.error };
+
+  try {
+    await prisma.category.update({ where: { id }, data: category.data });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      return { ok: false, error: "A category with this name or slug already exists." };
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return { ok: false, error: "That category no longer exists." };
+    }
+    throw error;
+  }
+
+  revalidateCatalog();
+  return { ok: true, message: "Category updated." };
+}
+
+export async function deleteCategory(
+  formData: FormData,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  await requireAdminPage("/admin/categories");
+  const id = getText(formData, "id");
+  if (!id) return { ok: false, error: "Choose a valid category." };
 
   try {
     await prisma.category.delete({ where: { id } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      redirectWithNotice(
-        "/admin/categories",
-        "This category still has products. Reassign or delete them before deleting the category.",
-      );
+      return {
+        ok: false,
+        error: "This category still has products. Reassign or delete them before deleting the category.",
+      };
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      redirectWithNotice("/admin/categories", "That category no longer exists.");
+      return { ok: false, error: "That category no longer exists." };
     }
     throw error;
   }
 
   revalidateCatalog();
-  redirectWithNotice("/admin/categories", "Category deleted.");
+  return { ok: true, message: "Category deleted." };
 }
 
 function readProduct(formData: FormData) {
