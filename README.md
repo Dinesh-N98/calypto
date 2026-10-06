@@ -106,5 +106,6 @@ The script first prints the database endpoint and database name. Type the printe
 endpoint identifier exactly to confirm the target, then review the email and role
 change and type `CHANGE` exactly to apply it. Any other response aborts without a
 write. Check the printed endpoint carefully before confirming, especially when
-using production. After promotion, the user must sign in again for the session's
-UI role hint to refresh. The script refuses to demote the last remaining admin.
+using production. Session role claims refresh from the database when Auth.js reads
+the token, and protected admin pages and API routes independently re-check the
+current database role. The script refuses to demote the last remaining admin.
