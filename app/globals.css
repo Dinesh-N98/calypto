@@ -69,6 +69,15 @@
   }
 }
 
+:root {
+  --site-content-max-width: 90rem;
+}
+
+.site-container {
+  max-width: var(--site-content-max-width);
+  margin-inline: auto;
+}
+
 * {
   box-sizing: border-box;
 }

@@ -14,7 +14,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <main className="bg-paper px-[7vw] py-12 text-ink md:px-[10vw] md:py-20">
-      <div className="grid gap-8 md:grid-cols-2 md:items-center md:gap-14">
+      <div className="site-container grid gap-8 md:grid-cols-2 md:items-center md:gap-14">
         <Reveal className="relative aspect-[1/1.1] overflow-hidden bg-[#e4e4d9]">
           <Image
             src={product.imageUrl}

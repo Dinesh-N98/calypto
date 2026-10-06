@@ -1,6 +1,6 @@
 function ProductGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-2 px-[7vw] py-16 md:grid-cols-3 md:gap-3 md:px-[10vw] md:py-24 lg:grid-cols-4">
+    <div className="site-container grid grid-cols-2 gap-2 px-[7vw] py-16 md:grid-cols-3 md:gap-3 md:px-[10vw] md:py-24 lg:grid-cols-4">
       {Array.from({ length: 8 }, (_, index) => (
         <div key={index} className="animate-pulse overflow-hidden bg-[#e4e4d9]">
           <div className="aspect-square bg-[#c9c9c0]" />

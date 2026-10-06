@@ -7,7 +7,7 @@ export function Footer() {
   return (
     <footer className="bg-[#080908]">
       <Reveal
-        className="grid grid-cols-2 gap-12 px-[7vw] pb-8 pt-16 md:grid-cols-[2fr_repeat(3,1fr)] md:px-[10vw] md:pb-8 md:pt-20"
+        className="site-container grid grid-cols-2 gap-12 px-[7vw] pb-8 pt-16 md:grid-cols-[2fr_repeat(3,1fr)] md:px-[10vw] md:pb-8 md:pt-20"
         direction="none"
       >
         <div className="col-span-full flex flex-col gap-3 md:col-span-1">

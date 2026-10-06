@@ -27,7 +27,7 @@ export default function WholesalePage() {
       </section>
 
       <section className="bg-[#12140f] px-[7vw] py-14 md:px-[10vw] md:py-28">
-        <Reveal className="mb-8 md:mb-12">
+        <Reveal className="site-container mb-8 md:mb-12">
           <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
             Why partner with Calypto
           </p>
@@ -37,7 +37,7 @@ export default function WholesalePage() {
             <em className="text-lime not-italic">real shop owners.</em>
           </h2>
         </Reveal>
-        <RevealStagger className="grid grid-cols-1 gap-6 border-t border-[rgba(241,240,232,.18)] pt-6 md:grid-cols-4 md:gap-8 md:pt-8">
+        <RevealStagger className="site-container grid grid-cols-1 gap-6 border-t border-[rgba(241,240,232,.18)] pt-6 md:grid-cols-4 md:gap-8 md:pt-8">
           <IconFeature
             icon={PencilRuler}
             title="Custom fit"
@@ -107,24 +107,26 @@ export default function WholesalePage() {
         as="section"
         className="bg-[#20261a] px-[7vw] py-16 text-center md:px-[10vw] md:py-24"
       >
-        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
-          Ready when you are
-        </p>
-        <h2 className="my-4 text-[clamp(2.5rem,8vw,4rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3.5rem,6vw,6rem)]">
-          Build a better aisle.
-          <br />
-          <em className="text-lime not-italic">Start with Calypto.</em>
-        </h2>
-        <div className="flex justify-center">
-          <Link
-            className="group inline-flex items-center justify-center gap-3 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
-            href="/contact"
-          >
-            General inquiries{" "}
-            <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
-            </span>
-          </Link>
+        <div className="site-container">
+          <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
+            Ready when you are
+          </p>
+          <h2 className="my-4 text-[clamp(2.5rem,8vw,4rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3.5rem,6vw,6rem)]">
+            Build a better aisle.
+            <br />
+            <em className="text-lime not-italic">Start with Calypto.</em>
+          </h2>
+          <div className="flex justify-center">
+            <Link
+              className="group inline-flex items-center justify-center gap-3 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
+              href="/contact"
+            >
+              General inquiries{" "}
+              <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+                <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
+              </span>
+            </Link>
+          </div>
         </div>
       </Reveal>
     </main>
