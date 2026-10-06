@@ -14,6 +14,17 @@ const categories = [
   { slug: "jig", displayName: "Jig", priceCents: 599 },
 ];
 
+const categoryIds = new Map();
+for (const category of categories) {
+  const savedCategory = await prisma.category.upsert({
+    where: { slug: category.slug },
+    create: { slug: category.slug, name: category.displayName },
+    update: { name: category.displayName },
+    select: { id: true },
+  });
+  categoryIds.set(category.slug, savedCategory.id);
+}
+
 const products = [];
 for (const category of categories) {
   const files = (await readdir(path.join(productsDirectory, category.slug)))
@@ -25,7 +36,7 @@ for (const category of categories) {
     products.push({
       slug: `${category.slug}-${number}`,
       name: `${category.displayName} Color ${number}`,
-      category: category.displayName,
+      categoryId: categoryIds.get(category.slug),
       // Placeholder pricing requires client input before launch.
       priceCents: category.priceCents,
       description,

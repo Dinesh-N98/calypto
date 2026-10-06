@@ -11,7 +11,7 @@ import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 export function ProductCard({
   product,
 }: {
-  product: { slug: string; name: string; category: string; priceCents: number; imageUrl: string };
+  product: { slug: string; name: string; priceCents: number; imageUrl: string };
 }) {
   const { addItem } = useCart();
   const { showToast } = useToast();

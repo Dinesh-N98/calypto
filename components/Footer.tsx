@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
-import { categories } from "@/lib/categories";
 
-export function Footer() {
+export function Footer({ categories }: { categories: { name: string; slug: string }[] }) {
   return (
     <footer className="bg-[#080908]">
       <Reveal
@@ -27,7 +26,7 @@ export function Footer() {
               href={`/shop?category=${category.slug}`}
               key={category.slug}
             >
-              {category.displayName}
+              {category.name}
             </Link>
           ))}
         </div>

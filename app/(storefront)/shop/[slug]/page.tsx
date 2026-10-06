@@ -8,7 +8,10 @@ import { prisma } from "@/lib/prisma";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = await prisma.product.findUnique({ where: { slug } });
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    include: { category: { select: { name: true } } },
+  });
 
   if (!product) notFound();
 
@@ -29,7 +32,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </Reveal>
         <Reveal className="max-w-xl" delay={100}>
           <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-[#697b26]">
-            {product.category}
+            {product.category.name}
           </p>
           <h1 className="my-4 text-[clamp(2.35rem,8vw,3.2rem)] font-black uppercase leading-[.94] tracking-[-.06em] text-ink md:my-5 md:text-[clamp(3rem,5vw,5rem)]">
             {product.name}

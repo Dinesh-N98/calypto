@@ -6,7 +6,6 @@ import { ProductCard } from "@/components/ProductCard";
 import { Reveal } from "@/components/Reveal";
 import { RevealStagger } from "@/components/RevealStagger";
 import { SortSelect } from "@/components/SortSelect";
-import { categories } from "@/lib/categories";
 import { prisma } from "@/lib/prisma";
 
 const sortOptions = ["price-asc", "price-desc", "newest"] as const;
@@ -15,10 +14,6 @@ type ShopSearchParams = { category?: string; sort?: string };
 
 function getSortOption(value: string | undefined): SortOption {
   return sortOptions.includes(value as SortOption) ? (value as SortOption) : "newest";
-}
-
-function getCategory(value: string | undefined) {
-  return categories.find((category) => category.slug === value);
 }
 
 function ProductGridSkeleton() {
@@ -38,9 +33,9 @@ function ProductGridSkeleton() {
   );
 }
 
-async function ProductGrid({ categoryName, sort }: { categoryName?: string; sort: SortOption }) {
+async function ProductGrid({ categoryId, sort }: { categoryId?: string; sort: SortOption }) {
   const products = await prisma.product.findMany({
-    where: categoryName ? { category: categoryName } : undefined,
+    where: categoryId ? { categoryId } : undefined,
     orderBy:
       sort === "price-asc"
         ? { priceCents: "asc" }
@@ -50,7 +45,6 @@ async function ProductGrid({ categoryName, sort }: { categoryName?: string; sort
     select: {
       slug: true,
       name: true,
-      category: true,
       priceCents: true,
       imageUrl: true,
     },
@@ -90,7 +84,11 @@ export default async function ShopPage({
   searchParams: Promise<ShopSearchParams>;
 }) {
   const params = await searchParams;
-  const selectedCategory = getCategory(params.category);
+  const categories = await prisma.category.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, slug: true },
+  });
+  const selectedCategory = categories.find((category) => category.slug === params.category);
   const sort = getSortOption(params.sort);
   const sortQuery = `sort=${sort}`;
 
@@ -128,7 +126,7 @@ export default async function ShopPage({
                     href={`/shop?category=${category.slug}&${sortQuery}`}
                     key={category.slug}
                   >
-                    {category.displayName}
+                    {category.name}
                   </Link>
                 );
               })}
@@ -138,7 +136,7 @@ export default async function ShopPage({
         </Reveal>
 
         <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid categoryName={selectedCategory?.displayName} sort={sort} />
+          <ProductGrid categoryId={selectedCategory?.id} sort={sort} />
         </Suspense>
 
         <RevealStagger className="mt-20 grid gap-6 border-t border-[rgba(241,240,232,.18)] pt-8 md:grid-cols-3">

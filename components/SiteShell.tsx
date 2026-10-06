@@ -16,7 +16,13 @@ const NewsletterPopup = dynamic(
   { loading: () => null },
 );
 
-export function SiteShell({ children }: { children: React.ReactNode }) {
+export function SiteShell({
+  children,
+  categories,
+}: {
+  children: React.ReactNode;
+  categories: { name: string; slug: string }[];
+}) {
   const [loadDeferredComponents, setLoadDeferredComponents] = useState(false);
 
   useEffect(() => {
@@ -28,7 +34,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     <CartProvider>
       <Header />
       {children}
-      <Footer />
+      <Footer categories={categories} />
       <CookieBanner />
       {loadDeferredComponents && (
         <>

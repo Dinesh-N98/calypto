@@ -27,6 +27,19 @@ The documented status API returns a boolean `status` (`true` means paid); it doe
 
 Official references: [Payment API](https://docs.onepay.lk/api-documentation/payment-api), [Integration Guide](https://docs.onepay.lk/guide/integration-guide), and [Currencies](https://docs.onepay.lk/api-documentation/currencies).
 
+## Catalog management
+
+The storefront reads products and categories from PostgreSQL. Admin users can manage products at `/admin/products` and categories at `/admin/categories`; product image values are paths to files served from the app, such as `/products/worm/worm-01.jpg`.
+
+For a local development database, apply the catalog migration and regenerate Prisma before starting the app:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+The catalog migration converts existing distinct product category names into category records and attaches products to those records before removing the old string field. Back up production data and test the migration against a Neon development branch before applying it to production. Once migrated, `npm run db:seed` recreates the sample product catalog and its four starter categories; it deletes existing products, so do not run it against a catalog whose data should be preserved.
+
 ## Getting Started
 
 First, run the development server:

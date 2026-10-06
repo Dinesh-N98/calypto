@@ -1,20 +1,4 @@
-const adminSections = [
-  {
-    id: "products",
-    title: "Products",
-    description: "Product catalog tools will be available here.",
-  },
-  {
-    id: "orders",
-    title: "Orders",
-    description: "Order management tools will be available here.",
-  },
-  {
-    id: "customers",
-    title: "Customers",
-    description: "Customer management tools will be available here.",
-  },
-];
+import Link from "next/link";
 
 export default function AdminPage() {
   return (
@@ -28,26 +12,28 @@ export default function AdminPage() {
           Dashboard
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#65695f]">
-          Welcome to Calypto administration. Admin tools and store activity will appear here.
+          Manage the products and categories available in the Calypto storefront.
         </p>
       </section>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {adminSections.map((section) => (
-          <section
-            aria-labelledby={`${section.id}-title`}
-            className="scroll-mt-24 rounded-lg border border-black/10 bg-white p-5 shadow-sm sm:p-7"
-            id={section.id}
-            key={section.id}
-          >
-            <h2 className="text-base font-bold" id={`${section.id}-title`}>
-              {section.title}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-[#65695f]">{section.description}</p>
-            <p className="mt-5 text-xs font-bold uppercase tracking-[.1em] text-[#718126]">
-              Coming soon
-            </p>
-          </section>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
+          href="/admin/products"
+        >
+          <h2 className="text-base font-bold">Products</h2>
+          <p className="mt-2 text-sm leading-6 text-[#65695f]">
+            Create, edit, and remove products from the storefront catalog.
+          </p>
+        </Link>
+        <Link
+          className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
+          href="/admin/categories"
+        >
+          <h2 className="text-base font-bold">Categories</h2>
+          <p className="mt-2 text-sm leading-6 text-[#65695f]">
+            Create and delete categories used to organize products.
+          </p>
+        </Link>
       </div>
     </div>
   );
