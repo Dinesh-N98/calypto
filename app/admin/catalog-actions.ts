@@ -126,68 +126,74 @@ function readProduct(formData: FormData) {
   } as const;
 }
 
-export async function createProduct(formData: FormData): Promise<void> {
+export async function createProduct(
+  formData: FormData,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
   await requireAdminPage("/admin/products");
   const product = readProduct(formData);
-  if (product.error) redirectWithNotice("/admin/products", product.error);
+  if (product.error) return { ok: false, error: product.error };
 
   try {
     await prisma.product.create({ data: product.data });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      redirectWithNotice("/admin/products", "A product with this slug already exists.");
+      return { ok: false, error: "A product with this slug already exists." };
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      redirectWithNotice("/admin/products", "Choose an existing category.");
+      return { ok: false, error: "Choose an existing category." };
     }
     throw error;
   }
 
   revalidateCatalog();
-  redirectWithNotice("/admin/products", "Product created.");
+  return { ok: true, message: "Product created." };
 }
 
-export async function updateProduct(formData: FormData): Promise<void> {
+export async function updateProduct(
+  formData: FormData,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
   await requireAdminPage("/admin/products");
   const id = getText(formData, "id");
-  if (!id) redirectWithNotice("/admin/products", "Choose a valid product.");
+  if (!id) return { ok: false, error: "Choose a valid product." };
 
   const product = readProduct(formData);
-  if (product.error) redirectWithNotice("/admin/products", product.error);
+  if (product.error) return { ok: false, error: product.error };
 
   try {
     await prisma.product.update({ where: { id }, data: product.data });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      redirectWithNotice("/admin/products", "A product with this slug already exists.");
+      return { ok: false, error: "A product with this slug already exists." };
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      redirectWithNotice("/admin/products", "That product no longer exists.");
+      return { ok: false, error: "That product no longer exists." };
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      redirectWithNotice("/admin/products", "Choose an existing category.");
+      return { ok: false, error: "Choose an existing category." };
     }
     throw error;
   }
 
   revalidateCatalog();
-  redirectWithNotice("/admin/products", "Product updated.");
+  return { ok: true, message: "Product updated." };
 }
 
-export async function deleteProduct(formData: FormData): Promise<void> {
+export async function deleteProduct(
+  formData: FormData,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
   await requireAdminPage("/admin/products");
   const id = getText(formData, "id");
-  if (!id) redirectWithNotice("/admin/products", "Choose a valid product.");
+  if (!id) return { ok: false, error: "Choose a valid product." };
 
   try {
     await prisma.product.delete({ where: { id } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      redirectWithNotice("/admin/products", "That product no longer exists.");
+      return { ok: false, error: "That product no longer exists." };
     }
     throw error;
   }
 
   revalidateCatalog();
-  redirectWithNotice("/admin/products", "Product deleted.");
+  return { ok: true, message: "Product deleted." };
 }
