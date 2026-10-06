@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "aos/dist/aos.css";
 import "./globals.css";
-import { SiteShell } from "@/components/SiteShell";
 import { AuthSessionProvider } from "@/components/SessionProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 
@@ -14,9 +13,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <AuthSessionProvider>
-          <ToastProvider>
-            <SiteShell>{children}</SiteShell>
-          </ToastProvider>
+          <ToastProvider>{children}</ToastProvider>
         </AuthSessionProvider>
       </body>
     </html>
