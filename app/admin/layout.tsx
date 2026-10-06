@@ -4,10 +4,10 @@ import { requireAdminPage } from "@/lib/admin";
 
 export const metadata: Metadata = {
   title: {
-    default: "Admin Dashboard",
-    template: "%s | Calypto Admin",
+    default: "Admin Dashboard | calypto Admin",
+    template: "%s | calypto Admin",
   },
-  description: "Calypto store administration panel.",
+  description: "calypto store administration panel.",
 };
 
 export const dynamic = "force-dynamic";

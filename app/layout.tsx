@@ -7,28 +7,28 @@ import { ToastProvider } from "@/components/ToastProvider";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.calyptobait.com"),
   title: {
-    default: "Calypto | Soft Baits That Fish Can't Ignore",
-    template: "%s | Calypto",
+    default: "calypto | Soft Baits That Fish Can't Ignore",
+    template: "%s | calypto",
   },
-  description: "Performance soft plastics for serious anglers.",
+  description: "calypto performance soft plastics for serious anglers.",
   icons: {
     icon: [
+      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
     ],
-    shortcut: "/favicon.ico",
-    apple: "/favicon.svg",
+    shortcut: "/favicon.svg?v=2",
+    apple: "/favicon.svg?v=2",
   },
   openGraph: {
     type: "website",
-    siteName: "Calypto",
-    title: "Calypto | Soft Baits That Fish Can't Ignore",
-    description: "Performance soft plastics for serious anglers.",
+    siteName: "calypto",
+    title: "calypto | Soft Baits That Fish Can't Ignore",
+    description: "calypto performance soft plastics for serious anglers.",
   },
   twitter: {
     card: "summary",
-    title: "Calypto | Soft Baits That Fish Can't Ignore",
-    description: "Performance soft plastics for serious anglers.",
+    title: "calypto | Soft Baits That Fish Can't Ignore",
+    description: "calypto performance soft plastics for serious anglers.",
   },
 };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

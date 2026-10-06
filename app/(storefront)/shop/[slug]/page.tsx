@@ -21,7 +21,7 @@ export async function generateMetadata({
   if (!product) notFound();
 
   const title = `${product.name} - ${product.category.name}`;
-  const description = `${product.description} Explore ${product.category.name} soft baits from Calypto.`;
+  const description = `${product.description} Explore ${product.category.name} soft baits from calypto.`;
   const image = {
     url: product.imageUrl,
     alt: product.name,
