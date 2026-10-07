@@ -41,8 +41,8 @@ export default async function AccountOverviewPage() {
   const greeting = user?.firstName || user?.name?.split(" ")[0] || "Angler";
 
   return (
-    <div className="grid gap-8">
-      <header className="border-b border-ink/15 pb-7">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:gap-8">
+      <header className="box-border w-full max-w-full border-b border-ink/15 pb-7">
         <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
           Your account
         </p>
@@ -57,7 +57,7 @@ export default async function AccountOverviewPage() {
       {activeOrder ? (
         <section
           aria-label="Active order"
-          className="flex flex-col justify-between gap-5 border border-ink bg-ink p-5 text-paper shadow-md sm:flex-row sm:items-center sm:p-7"
+          className="box-border flex w-full max-w-full flex-col justify-between gap-5 border border-ink bg-ink p-5 text-paper shadow-md sm:flex-row sm:items-center sm:p-7"
         >
           <div>
             <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
@@ -81,7 +81,7 @@ export default async function AccountOverviewPage() {
           </Link>
         </section>
       ) : (
-        <section className="border border-ink/15 bg-white/60 p-5 sm:p-7">
+        <section className="box-border w-full max-w-full border border-ink/15 bg-white/60 p-5 sm:p-7">
           <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
             Order update
           </p>
@@ -90,7 +90,7 @@ export default async function AccountOverviewPage() {
         </section>
       )}
 
-      <section aria-labelledby="recent-orders-title">
+      <section aria-labelledby="recent-orders-title" className="w-full min-w-0 max-w-full">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-black uppercase tracking-[-.03em]" id="recent-orders-title">
             Recent orders
@@ -103,14 +103,14 @@ export default async function AccountOverviewPage() {
           </Link>
         </div>
         {orders.length === 0 ? (
-          <div className="border-t border-ink/15 py-6">
+          <div className="box-border w-full max-w-full border-t border-ink/15 py-6">
             <p className="text-sm text-[#55584e]">Your order history will appear here.</p>
             <Link className="mt-4 inline-flex min-h-11 items-center text-sm font-bold underline underline-offset-4" href="/shop">
               Browse the shop
             </Link>
           </div>
         ) : (
-          <ul className="divide-y divide-ink/15 border-y border-ink/15">
+          <ul className="box-border w-full max-w-full divide-y divide-ink/15 border-y border-ink/15">
             {orders.slice(0, 3).map((order) => (
               <li className="flex flex-wrap items-center justify-between gap-3 py-4" key={order.id}>
                 <div>
@@ -136,7 +136,7 @@ export default async function AccountOverviewPage() {
         )}
       </section>
 
-      <section aria-label="Quick actions" className="grid gap-3 sm:grid-cols-3">
+      <section aria-label="Quick actions" className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
         <QuickAction href="/account/orders" icon={<PackageCheck aria-hidden="true" />} title="Orders" />
         <QuickAction href="/account/addresses" icon={<MapPin aria-hidden="true" />} title="Addresses" />
         <QuickAction
@@ -160,7 +160,7 @@ function QuickAction({
 }) {
   return (
     <Link
-      className="flex min-h-20 items-center justify-between gap-3 border border-ink/10 bg-white/70 p-4 text-sm font-bold uppercase tracking-[.04em] shadow-sm transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-ink/25 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive motion-reduce:transform-none motion-reduce:transition-none"
+      className="box-border flex min-h-20 w-full max-w-full min-w-0 items-center justify-between gap-3 border border-ink/10 bg-white/70 p-4 text-sm font-bold uppercase tracking-[.04em] shadow-sm transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-ink/25 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive motion-reduce:transform-none motion-reduce:transition-none"
       href={href}
     >
       <span className="flex items-center gap-3">

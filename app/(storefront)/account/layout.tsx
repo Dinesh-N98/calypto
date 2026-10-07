@@ -9,8 +9,8 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
   if (!session?.user?.id) redirect("/sign-in?callbackUrl=%2Faccount");
 
   return (
-    <main className="min-h-[60vh] bg-paper px-4 py-8 text-ink sm:px-6 md:px-[5vw] md:py-14">
-      <div className="site-container mx-auto max-w-7xl">
+    <main className="box-border min-h-[60vh] w-full max-w-full overflow-x-hidden bg-paper px-4 py-8 text-ink sm:px-6 md:px-[5vw] md:py-14">
+      <div className="site-container mx-auto w-full max-w-full">
         <div className="mb-7 flex flex-col gap-3 border-b border-ink/15 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-3">
@@ -32,8 +32,8 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
             <SignOutButton />
           </div>
         </div>
-        <div className="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-12">
-          <aside className="grid content-start gap-4">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-12">
+          <aside className="grid w-full min-w-0 content-start gap-4">
             <AccountNavigation />
           </aside>
           <div className="min-w-0">{children}</div>
