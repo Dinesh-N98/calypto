@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, MapPin, PackageCheck, Settings2 } from "lucide-react";
 import { auth } from "@/auth";
+import { OrderStatus } from "@/components/account/OrderStatus";
 import { prisma } from "@/lib/prisma";
 
 export default async function AccountOverviewPage() {
@@ -62,9 +63,9 @@ export default async function AccountOverviewPage() {
             <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
               Order update
             </p>
-            <h2 className="mt-2 text-2xl font-black uppercase tracking-[-.04em]">
-              {activeOrder.fulfillmentStatus || activeOrder.status}
-            </h2>
+            <div className="mt-2">
+              <OrderStatus value={activeOrder.fulfillmentStatus || activeOrder.status} />
+            </div>
             <p className="mt-1 text-sm text-paper/70">
               {activeOrder.providerReference} ·{" "}
               {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
@@ -117,16 +118,18 @@ export default async function AccountOverviewPage() {
                   <p className="mt-1 text-xs text-[#55584e]">
                     {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
                       order.createdAt,
-                    )}{" "}
-                    · {order.fulfillmentStatus || order.status}
+                    )}
                   </p>
                 </div>
-                <strong className="text-sm">
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: order.currency,
-                  }).format(order.totalCents / 100)}
-                </strong>
+                <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                  <OrderStatus value={order.fulfillmentStatus || order.status} />
+                  <strong className="text-sm">
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: order.currency,
+                    }).format(order.totalCents / 100)}
+                  </strong>
+                </div>
               </li>
             ))}
           </ul>

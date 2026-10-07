@@ -23,11 +23,11 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
               Continue shopping
             </Link>
           </div>
+          <SignOutButton />
         </div>
         <div className="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-12">
           <aside className="grid content-start gap-4">
             <AccountNavigation />
-            <SignOutButton />
           </aside>
           <div className="min-w-0">{children}</div>
         </div>
