@@ -13,7 +13,14 @@ export default async function AccountPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, email: true, address: true, phone: true },
+    select: {
+      name: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      address: true,
+      phone: true,
+    },
   });
   if (!user) redirect("/sign-in");
 
@@ -40,7 +47,12 @@ export default async function AccountPage() {
             <p className="text-xl font-bold">{user.name || "Calypto angler"}</p>
             <p className="mt-2 text-muted">{user.email}</p>
             <div className="mt-8">
-              <ProfileForm address={user.address || ""} phone={user.phone || ""} />
+              <ProfileForm
+                firstName={user.firstName || ""}
+                lastName={user.lastName || ""}
+                address={user.address || ""}
+                phone={user.phone || ""}
+              />
             </div>
           </section>
           <section className="border-t border-[rgba(13,14,12,.18)] pt-6 md:border-l md:border-t-0 md:pl-10 md:pt-0">

@@ -1,12 +1,29 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
+import {
+  useCustomerProfileAutofill,
+  type CustomerProfile,
+} from "@/components/CustomerProfileProvider";
 
 export function WholesaleForm() {
   const { showToast } = useToast();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const resolveWholesaleFields = useCallback(
+    (profile: CustomerProfile) => ({
+      name: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.name || "",
+      email: profile.email,
+      phone: profile.phone,
+    }),
+    [],
+  );
+  const {
+    formRef,
+    onChange,
+    status: profileStatus,
+  } = useCustomerProfileAutofill(resolveWholesaleFields);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,7 +62,7 @@ export function WholesaleForm() {
   }
 
   return (
-    <form className="grid max-w-xl gap-5" onSubmit={handleSubmit}>
+    <form className="grid max-w-xl gap-5" onChange={onChange} onSubmit={handleSubmit} ref={formRef}>
       <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
         Business / Shop name
         <input className="auth-input" name="businessName" required autoComplete="organization" />
@@ -66,6 +83,11 @@ export function WholesaleForm() {
         Message / details
         <textarea className="auth-input min-h-36 resize-y" name="message" required />
       </label>
+      {profileStatus === "error" && (
+        <p className="text-sm text-muted" role="status">
+          Saved details could not be loaded. You can still enter your details manually.
+        </p>
+      )}
       {error && <p className="text-sm text-[#e89b87]">{error}</p>}
       <button
         className="auth-button transition-[background-color,transform] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none motion-reduce:transition-colors"

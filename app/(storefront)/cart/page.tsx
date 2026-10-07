@@ -3,8 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { useCart } from "@/components/CartProvider";
+import {
+  useCustomerProfileAutofill,
+  type CustomerProfile,
+} from "@/components/CustomerProfileProvider";
 import { Reveal } from "@/components/Reveal";
 import { QuantitySelector } from "@/components/QuantitySelector";
 import { formatPrice } from "@/lib/currency";
@@ -14,6 +18,20 @@ export default function CartPage() {
   const { items, updateQuantity, removeItem } = useCart();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resolveCustomerFields = useCallback(
+    (profile: CustomerProfile) => ({
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: profile.email,
+      phone: profile.phone,
+    }),
+    [],
+  );
+  const {
+    formRef,
+    onChange,
+    status: profileStatus,
+  } = useCustomerProfileAutofill(resolveCustomerFields);
   const totalCents = items.reduce((total, item) => total + item.priceCents * item.quantity, 0);
 
   async function checkout(event: FormEvent<HTMLFormElement>) {
@@ -119,10 +137,20 @@ export default function CartPage() {
                 Total
               </p>
               <p className="mt-3 text-2xl font-black md:text-3xl">{formatPrice(totalCents)}</p>
-              <form className="mt-6 grid gap-4" onSubmit={checkout}>
+              <form
+                className="mt-6 grid gap-4"
+                onChange={onChange}
+                onSubmit={checkout}
+                ref={formRef}
+              >
                 <p className="text-sm leading-[1.6] text-[#55584e]">
                   OnePay requires your name, email, and phone number to create the payment.
                 </p>
+                {profileStatus === "error" && (
+                  <p className="text-sm text-muted" role="status">
+                    Saved details could not be loaded. You can still enter your details manually.
+                  </p>
+                )}
                 <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
                   First name
                   <input
