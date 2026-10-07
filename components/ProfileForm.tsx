@@ -55,8 +55,11 @@ export function ProfileForm({
   }
 
   return (
-    <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
-      <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
+    <form
+      className="box-border grid w-full max-w-full gap-4 px-4 sm:grid-cols-2 sm:px-0"
+      onSubmit={handleSubmit}
+    >
+      <label className="grid w-full min-w-0 gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
         First name
         <input
           autoComplete="given-name"
@@ -66,7 +69,7 @@ export function ProfileForm({
           defaultValue={firstName}
         />
       </label>
-      <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
+      <label className="grid w-full min-w-0 gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
         Last name
         <input
           autoComplete="family-name"
@@ -76,7 +79,7 @@ export function ProfileForm({
           defaultValue={lastName}
         />
       </label>
-      <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em] sm:col-span-2">
+      <label className="grid w-full min-w-0 gap-2 text-[.7rem] font-bold uppercase tracking-[.12em] sm:col-span-2">
         Address
         <textarea
           className="auth-input min-h-28 resize-y"
@@ -85,7 +88,7 @@ export function ProfileForm({
           defaultValue={address}
         />
       </label>
-      <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
+      <label className="grid w-full min-w-0 gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
         Phone
         <input
           autoComplete="tel"

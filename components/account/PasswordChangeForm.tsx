@@ -39,8 +39,8 @@ export function PasswordChangeForm() {
   }
 
   return (
-    <form className="mt-4 grid max-w-xl gap-4" onSubmit={submit}>
-      <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+    <form className="mt-4 box-border grid w-full max-w-xl gap-4 px-4 sm:px-0" onSubmit={submit}>
+      <label className="grid w-full min-w-0 gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
         Current password
         <input
           autoComplete="current-password"
@@ -50,7 +50,7 @@ export function PasswordChangeForm() {
           type="password"
         />
       </label>
-      <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+      <label className="grid w-full min-w-0 gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
         New password
         <input
           autoComplete="new-password"

@@ -107,6 +107,8 @@ a {
 
 .auth-input {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 2.75rem;
   border: 1px solid rgba(241, 240, 232, 0.45);
   border-radius: 0;
@@ -216,11 +218,11 @@ a {
   transform: scaleX(1);
 }
 
-.account-nav-scroll {
+.scrollbar-none {
   scrollbar-width: none;
 }
 
-.account-nav-scroll::-webkit-scrollbar {
+.scrollbar-none::-webkit-scrollbar {
   display: none;
 }
 

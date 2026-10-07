@@ -11,11 +11,16 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
   return (
     <main className="min-h-[60vh] bg-paper px-4 py-8 text-ink sm:px-6 md:px-[5vw] md:py-14">
       <div className="site-container mx-auto max-w-7xl">
-        <div className="mb-7 flex items-center justify-between gap-4 border-b border-ink/15 pb-5">
-          <div>
-            <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
-              Calypto customer portal
-            </p>
+        <div className="mb-7 flex flex-col gap-3 border-b border-ink/15 pb-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
+                Calypto customer portal
+              </p>
+              <div className="sm:hidden">
+                <SignOutButton />
+              </div>
+            </div>
             <Link
               className="mt-2 inline-flex min-h-11 items-center text-sm font-bold uppercase tracking-[.08em] underline decoration-olive-bright underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-olive"
               href="/shop"
@@ -23,7 +28,9 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
               Continue shopping
             </Link>
           </div>
-          <SignOutButton />
+          <div className="hidden sm:block">
+            <SignOutButton />
+          </div>
         </div>
         <div className="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-12">
           <aside className="grid content-start gap-4">

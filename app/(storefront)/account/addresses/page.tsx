@@ -24,7 +24,7 @@ export default async function AccountAddressesPage() {
   return (
     <section aria-labelledby="account-addresses-title">
       <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">Your account</p>
-      <h1 className="mb-7 mt-3 text-4xl font-black uppercase tracking-[-.06em]" id="account-addresses-title">
+      <h1 className="mb-7 mt-3 break-words text-2xl font-black uppercase tracking-[-.06em] sm:text-4xl lg:text-5xl" id="account-addresses-title">
         Address book
       </h1>
       <AddressManager initialAddresses={addresses} />

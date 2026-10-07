@@ -46,7 +46,7 @@ export default async function AccountOverviewPage() {
         <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
           Your account
         </p>
-        <h1 className="mt-3 text-4xl font-black uppercase leading-none tracking-[-.06em] sm:text-5xl">
+        <h1 className="mt-3 break-words text-2xl font-black uppercase leading-tight tracking-[-.06em] sm:text-4xl lg:text-5xl">
           Welcome back, <span className="text-olive-bright">{greeting}.</span>
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-[#55584e]">
