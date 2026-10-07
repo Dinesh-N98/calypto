@@ -100,7 +100,11 @@ export function ProfileForm({
         <button className="auth-button" type="submit" disabled={isSaving}>
           {isSaving ? "Saving..." : "Save profile"}
         </button>
-        {message && <p className="text-sm text-muted">{message}</p>}
+        {message && (
+          <p className="text-sm text-muted" role="status" aria-live="polite">
+            {message}
+          </p>
+        )}
       </div>
     </form>
   );

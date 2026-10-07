@@ -1,111 +1,169 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { redirect } from "next/navigation";
+import { ArrowRight, MapPin, PackageCheck, Settings2 } from "lucide-react";
 import { auth } from "@/auth";
-import { Reveal } from "@/components/Reveal";
-import { ProfileForm } from "@/components/ProfileForm";
-import { SignOutButton } from "@/components/SignOutButton";
 import { prisma } from "@/lib/prisma";
 
-export default async function AccountPage() {
+export default async function AccountOverviewPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/sign-in");
+  const userId = session?.user?.id;
+  if (!userId) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      name: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      address: true,
-      phone: true,
-    },
-  });
-  if (!user) redirect("/sign-in");
+  const [user, orders] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, name: true },
+    }),
+    prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        id: true,
+        providerReference: true,
+        status: true,
+        fulfillmentStatus: true,
+        trackingUrl: true,
+        createdAt: true,
+        totalCents: true,
+        currency: true,
+      },
+    }),
+  ]);
 
-  const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { items: true } } },
+  const activeOrder = orders.find((order) => {
+    const fulfillment = order.fulfillmentStatus?.toLowerCase();
+    return (
+      order.status === "pending" ||
+      (order.status === "paid" && fulfillment !== "delivered" && fulfillment !== "cancelled")
+    );
   });
+  const greeting = user?.firstName || user?.name?.split(" ")[0] || "Angler";
 
   return (
-    <main className="bg-paper px-[7vw] py-12 text-ink md:px-[10vw] md:py-20">
-      <Reveal as="section" className="mx-auto max-w-5xl">
-        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-[#65771b]">Account</p>
-        <h1 className="my-4 text-[clamp(2.65rem,9vw,3.8rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-5 md:text-[clamp(3.5rem,6vw,6rem)]">
-          {user.name || "Your"}
-          <br />
-          <em className="text-[#829b22] not-italic">profile.</em>
+    <div className="grid gap-8">
+      <header className="border-b border-ink/15 pb-7">
+        <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">
+          Your account
+        </p>
+        <h1 className="mt-3 text-4xl font-black uppercase leading-none tracking-[-.06em] sm:text-5xl">
+          Welcome back, <span className="text-[#829b22]">{greeting}.</span>
         </h1>
-        <div className="grid gap-8 border-t border-[rgba(13,14,12,.18)] pt-6 md:grid-cols-[1fr_1.2fr] md:gap-12 md:pt-8">
-          <section>
-            <p className="mb-5 text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">
-              Saved info
+        <p className="mt-3 max-w-xl text-sm leading-6 text-[#55584e]">
+          Your orders, saved delivery addresses, and account details are all in one place.
+        </p>
+      </header>
+
+      {activeOrder ? (
+        <section
+          aria-label="Active order"
+          className="flex flex-col justify-between gap-5 bg-ink p-5 text-paper sm:flex-row sm:items-center sm:p-7"
+        >
+          <div>
+            <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
+              Order update
             </p>
-            <p className="text-xl font-bold">{user.name || "Calypto angler"}</p>
-            <p className="mt-2 text-muted">{user.email}</p>
-            <div className="mt-8">
-              <ProfileForm
-                firstName={user.firstName || ""}
-                lastName={user.lastName || ""}
-                address={user.address || ""}
-                phone={user.phone || ""}
-              />
-            </div>
-          </section>
-          <section className="border-t border-[rgba(13,14,12,.18)] pt-6 md:border-l md:border-t-0 md:pl-10 md:pt-0">
-            <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">
-              Order history
+            <h2 className="mt-2 text-2xl font-black uppercase tracking-[-.04em]">
+              {activeOrder.fulfillmentStatus || activeOrder.status}
+            </h2>
+            <p className="mt-1 text-sm text-paper/70">
+              {activeOrder.providerReference} ·{" "}
+              {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
+                activeOrder.createdAt,
+              )}
             </p>
-            {orders.length === 0 ? (
-              <>
-                <h2 className="mt-5 text-2xl font-black uppercase tracking-[-.04em] md:text-3xl">
-                  No orders yet.
-                </h2>
-                <p className="mt-4 max-w-md leading-[1.6] text-[#55584e]">
-                  Order history will appear here once you&apos;ve placed an order.
-                </p>
-              </>
-            ) : (
-              <div className="mt-5 grid gap-4">
-                {orders.map((order) => (
-                  <article className="border-b border-[rgba(13,14,12,.14)] pb-4" key={order.id}>
-                    <div className="flex items-baseline justify-between gap-4">
-                      <h2 className="font-bold uppercase">
-                        {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
-                          order.createdAt,
-                        )}
-                      </h2>
-                      <strong>
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: order.currency,
-                        }).format(order.totalCents / 100)}
-                      </strong>
-                    </div>
-                    <p className="mt-2 text-sm text-[#55584e]">
-                      {order._count.items} {order._count.items === 1 ? "item" : "items"} ·{" "}
-                      {order.status}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            )}
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link
-                className="button-primary inline-flex items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
-                href="/shop"
-              >
-                Browse the lineup{" "}
-                <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
-              </Link>
-              <SignOutButton />
-            </div>
-          </section>
+          </div>
+          <Link
+            className="inline-flex min-h-11 items-center justify-center gap-2 border border-paper/40 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:bg-paper hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+            href="/account/orders"
+          >
+            View order <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        </section>
+      ) : (
+        <section className="border border-ink/15 bg-white/60 p-5 sm:p-7">
+          <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">
+            Order update
+          </p>
+          <h2 className="mt-2 text-xl font-black uppercase">You’re all caught up.</h2>
+          <p className="mt-2 text-sm text-[#55584e]">New order activity will appear here.</p>
+        </section>
+      )}
+
+      <section aria-labelledby="recent-orders-title">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-black uppercase tracking-[-.03em]" id="recent-orders-title">
+            Recent orders
+          </h2>
+          <Link
+            className="text-[.65rem] font-bold uppercase tracking-[.08em] text-[#65771b] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
+            href="/account/orders"
+          >
+            All orders
+          </Link>
         </div>
-      </Reveal>
-    </main>
+        {orders.length === 0 ? (
+          <div className="border-t border-ink/15 py-6">
+            <p className="text-sm text-[#55584e]">Your order history will appear here.</p>
+            <Link className="mt-4 inline-flex text-sm font-bold underline underline-offset-4" href="/shop">
+              Browse the shop
+            </Link>
+          </div>
+        ) : (
+          <ul className="divide-y divide-ink/15 border-y border-ink/15">
+            {orders.slice(0, 3).map((order) => (
+              <li className="flex flex-wrap items-center justify-between gap-3 py-4" key={order.id}>
+                <div>
+                  <p className="font-bold">{order.providerReference}</p>
+                  <p className="mt-1 text-xs text-[#55584e]">
+                    {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
+                      order.createdAt,
+                    )}{" "}
+                    · {order.fulfillmentStatus || order.status}
+                  </p>
+                </div>
+                <strong className="text-sm">
+                  {new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: order.currency,
+                  }).format(order.totalCents / 100)}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-label="Quick actions" className="grid gap-3 sm:grid-cols-3">
+        <QuickAction href="/account/orders" icon={<PackageCheck aria-hidden="true" />} title="Orders" />
+        <QuickAction href="/account/addresses" icon={<MapPin aria-hidden="true" />} title="Addresses" />
+        <QuickAction
+          href="/account/settings"
+          icon={<Settings2 aria-hidden="true" />}
+          title="Profile & security"
+        />
+      </section>
+    </div>
+  );
+}
+
+function QuickAction({
+  href,
+  icon,
+  title,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <Link
+      className="flex min-h-20 items-center justify-between gap-3 border border-ink/15 bg-white/60 p-4 text-sm font-bold uppercase tracking-[.04em] hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#65771b]"
+      href={href}
+    >
+      <span className="flex items-center gap-3">
+        {icon} {title}
+      </span>
+      <ArrowRight aria-hidden="true" className="h-4 w-4" />
+    </Link>
   );
 }

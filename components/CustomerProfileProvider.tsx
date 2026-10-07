@@ -20,6 +20,17 @@ export type CustomerProfile = {
   email: string;
   phone: string | null;
   address: string | null;
+  addresses: CustomerAddress[];
+};
+
+export type CustomerAddress = {
+  id: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
 };
 
 export type CustomerProfileUpdate = Partial<
@@ -54,7 +65,20 @@ function isCustomerProfile(value: unknown): value is CustomerProfile {
     (profile.name === null || typeof profile.name === "string") &&
     typeof profile.email === "string" &&
     (profile.phone === null || typeof profile.phone === "string") &&
-    (profile.address === null || typeof profile.address === "string")
+    (profile.address === null || typeof profile.address === "string") &&
+    Array.isArray(profile.addresses) &&
+    profile.addresses.every(
+      (address) =>
+        !!address &&
+        typeof address === "object" &&
+        typeof address.id === "string" &&
+        typeof address.line1 === "string" &&
+        (address.line2 === null || typeof address.line2 === "string") &&
+        typeof address.city === "string" &&
+        typeof address.postalCode === "string" &&
+        typeof address.country === "string" &&
+        typeof address.isDefault === "boolean",
+    )
   );
 }
 
