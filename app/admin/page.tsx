@@ -15,7 +15,7 @@ export default function AdminPage() {
           Manage the products and categories available in the Calypto storefront.
         </p>
       </section>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
           href="/admin/products"
@@ -32,6 +32,15 @@ export default function AdminPage() {
           <h2 className="text-base font-bold">Categories</h2>
           <p className="mt-2 text-sm leading-6 text-[#65695f]">
             Create and delete categories used to organize products.
+          </p>
+        </Link>
+        <Link
+          className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
+          href="/admin/orders"
+        >
+          <h2 className="text-base font-bold">Orders</h2>
+          <p className="mt-2 text-sm leading-6 text-[#65695f]">
+            Review customer orders and add shipment tracking details.
           </p>
         </Link>
       </div>

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Box, LayoutDashboard, ShoppingCart, Store, Tags, UsersRound, X } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
 type AdminSidebarProps = {
   isOpen: boolean;
@@ -15,20 +14,12 @@ const navigationItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Products", href: "/admin/products", icon: Box },
   { label: "Categories", href: "/admin/categories", icon: Tags },
-  { label: "Orders", href: "/admin#orders", icon: ShoppingCart },
+  { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { label: "Customers", href: "/admin#customers", icon: UsersRound },
 ];
 
 export function AdminSidebar({ isOpen, onNavigate, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
-  const [activeHash, setActiveHash] = useState("");
-
-  useEffect(() => {
-    const updateHash = () => setActiveHash(window.location.hash);
-    updateHash();
-    window.addEventListener("hashchange", updateHash);
-    return () => window.removeEventListener("hashchange", updateHash);
-  }, []);
 
   return (
     <>
@@ -66,9 +57,7 @@ export function AdminSidebar({ isOpen, onNavigate, onClose }: AdminSidebarProps)
             const isActive =
               href === "/admin"
                 ? pathname === "/admin"
-                : href.startsWith("/admin#")
-                  ? pathname === "/admin" && activeHash === href.slice("/admin".length)
-                  : pathname === href || pathname.startsWith(`${href}/`);
+                : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
                 aria-current={isActive ? "page" : undefined}

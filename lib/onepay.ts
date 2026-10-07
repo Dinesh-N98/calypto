@@ -150,6 +150,8 @@ export async function refreshOnePayOrderStatus(order: {
   });
 
   if (isPaid) {
+    // Compare-and-set makes concurrent or retried callbacks idempotent and updates only status,
+    // preserving user, address, and fulfillment/tracking fields.
     await prisma.order.updateMany({
       where: { id: order.id, paymentProvider: "ONEPAY", status: "pending" },
       data: { status: "paid" },

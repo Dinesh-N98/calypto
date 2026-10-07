@@ -76,6 +76,7 @@ model Address {
   line1      String
   line2      String?
   city       String
+  state      String?
   postalCode String
   country    String
   isDefault  Boolean  @default(false)
@@ -100,6 +101,7 @@ model Order {
   currency              String
   status                String          @default("pending")
   fulfillmentStatus     String?
+  carrier               String?
   trackingNumber        String?
   trackingUrl           String?
   items                 OrderItem[]

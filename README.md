@@ -10,10 +10,14 @@ Configure the callback in the OnePay portal's APP section as `https://YOUR_PUBLI
 
 The documented checkout request provides one `transaction_redirect_url`, not separate success and cancellation URLs. It returns customers to the order-status page, which displays only the status confirmed by the server.
 
+When an admin marks an order shipped, the app schedules a shipping confirmation email through Resend. Configure `RESEND_API_KEY` and `EMAIL_FROM` in `.env.local` and each deployment environment. Verify the sender domain with Resend before using the configured from address; email delivery failures are logged and do not fail fulfillment updates.
+
 Configure the following in `.env.local` for development and in each deployment environment (Preview and Production). `.env.example` contains placeholders only:
 
 ```env
 APP_BASE_URL="https://YOUR_PUBLIC_DOMAIN"
+RESEND_API_KEY="..."
+EMAIL_FROM="Calypto Orders <orders@YOUR_VERIFIED_DOMAIN>"
 ONEPAY_APP_ID="..."
 ONEPAY_APP_TOKEN="..."
 ONEPAY_HASH_SALT="..."

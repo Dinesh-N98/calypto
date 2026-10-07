@@ -15,6 +15,14 @@ type CheckoutCustomer = {
   email: string;
   phone: string;
 };
+type CheckoutAddress = {
+  streetAddress: string;
+  aptSuite: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+};
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -55,6 +63,47 @@ function parseCustomer(value: unknown): CheckoutCustomer | null {
   return { firstName, lastName, email, phone };
 }
 
+function parseAddress(value: unknown): CheckoutAddress | null {
+  if (!isObject(value)) return null;
+  const limits = {
+    streetAddress: 200,
+    aptSuite: 200,
+    city: 100,
+    state: 100,
+    postalCode: 30,
+    country: 100,
+  } as const;
+  const address: CheckoutAddress = {
+    streetAddress: "",
+    aptSuite: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "",
+  };
+
+  const fields: (keyof CheckoutAddress)[] = [
+    "streetAddress",
+    "aptSuite",
+    "city",
+    "state",
+    "postalCode",
+    "country",
+  ];
+  for (const field of fields) {
+    const rawValue = value[field];
+    if (field === "aptSuite" && (rawValue === null || rawValue === undefined)) {
+      address.aptSuite = "";
+      continue;
+    }
+    if (typeof rawValue !== "string") return null;
+    const trimmed = rawValue.trim();
+    if (trimmed.length > limits[field] || (field !== "aptSuite" && !trimmed)) return null;
+    address[field] = trimmed;
+  }
+  return address;
+}
+
 function getAppBaseUrl(): string | null {
   const value = process.env.APP_BASE_URL;
   if (!value) return null;
@@ -82,6 +131,7 @@ export async function POST(request: Request) {
   const payload = isObject(body) ? body : null;
   const rawItems = payload?.items;
   const customer = parseCustomer(payload?.customer);
+  const address = parseAddress(payload?.address);
   if (!Array.isArray(rawItems) || rawItems.length === 0 || !rawItems.every(isValidCartItem)) {
     return Response.json({ error: "Your cart is empty or invalid." }, { status: 400 });
   }
@@ -92,6 +142,9 @@ export async function POST(request: Request) {
       },
       { status: 400 },
     );
+  }
+  if (!address || typeof payload?.saveAddress !== "boolean") {
+    return Response.json({ error: "Enter a valid delivery address." }, { status: 400 });
   }
 
   const config = getAppBaseUrl();
@@ -142,20 +195,39 @@ export async function POST(request: Request) {
 
   const session = await auth();
   const reference = `CAL-${randomUUID().replaceAll("-", "").toUpperCase()}`;
-  const order = await prisma.order.create({
-    data: {
-      paymentProvider: "ONEPAY",
-      providerReference: reference,
-      currency: ONEPAY_CURRENCY,
-      userId: session?.user?.id ?? null,
-      email: customer.email,
-      customerFirstName: customer.firstName,
-      customerLastName: customer.lastName,
-      customerPhone: customer.phone,
-      totalCents,
-      status: "pending",
-      items: { create: orderItems },
-    },
+  const userId = session?.user?.id ?? null;
+  const order = await prisma.$transaction(async (transaction) => {
+    if (userId && payload.saveAddress === true) {
+      const savedAddressCount = await transaction.address.count({ where: { userId } });
+      await transaction.address.create({
+        data: {
+          userId,
+          line1: address.streetAddress,
+          line2: address.aptSuite || null,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode,
+          country: address.country,
+          isDefault: savedAddressCount === 0,
+        },
+      });
+    }
+
+    return transaction.order.create({
+      data: {
+        paymentProvider: "ONEPAY",
+        providerReference: reference,
+        currency: ONEPAY_CURRENCY,
+        userId,
+        email: customer.email,
+        customerFirstName: customer.firstName,
+        customerLastName: customer.lastName,
+        customerPhone: customer.phone,
+        totalCents,
+        status: "pending",
+        items: { create: orderItems },
+      },
+    });
   });
 
   try {
