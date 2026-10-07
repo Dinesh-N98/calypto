@@ -13,11 +13,11 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
       <div className="site-container mx-auto max-w-7xl">
         <div className="mb-7 flex items-center justify-between gap-4 border-b border-ink/15 pb-5">
           <div>
-            <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">
+            <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
               Calypto customer portal
             </p>
             <Link
-              className="mt-2 inline-block text-sm font-bold uppercase tracking-[.08em] underline decoration-[#829b22] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#65771b]"
+              className="mt-2 inline-flex min-h-11 items-center text-sm font-bold uppercase tracking-[.08em] underline decoration-olive-bright underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-olive"
               href="/shop"
             >
               Continue shopping

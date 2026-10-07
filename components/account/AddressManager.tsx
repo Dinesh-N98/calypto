@@ -122,7 +122,10 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2">
             {addresses.map((address) => (
-              <li className="border border-ink/15 bg-white/60 p-4" key={address.id}>
+              <li
+                className="border border-ink/10 bg-white/70 p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-ink/25 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none"
+                key={address.id}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <address className="not-italic text-sm leading-6">
                     <strong className="block">
@@ -136,7 +139,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
                     {address.country}
                   </address>
                   {address.isDefault && (
-                    <span className="border border-[#65771b] px-2 py-1 text-[.55rem] font-bold uppercase tracking-[.08em] text-[#526316]">
+                    <span className="inline-flex min-h-7 items-center border border-olive bg-lime/15 px-2.5 py-1 text-[.55rem] font-bold uppercase tracking-[.08em] text-ink">
                       Default
                     </span>
                   )}
@@ -144,7 +147,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
                 <div className="mt-4 flex flex-wrap gap-3">
                   {!address.isDefault && (
                     <button
-                      className="min-h-10 text-xs font-bold underline underline-offset-4 focus-visible:outline-2"
+                      className="inline-flex min-h-11 items-center px-2 text-xs font-bold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
                       disabled={isSaving}
                       onClick={() => {
                         const next = addresses.map((entry) => ({
@@ -159,7 +162,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
                     </button>
                   )}
                   <button
-                    className="min-h-10 text-xs font-bold underline underline-offset-4 focus-visible:outline-2"
+                    className="inline-flex min-h-11 items-center px-2 text-xs font-bold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
                     disabled={isSaving}
                     onClick={() => beginEdit(address)}
                     type="button"
@@ -167,7 +170,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
                     Edit
                   </button>
                   <button
-                    className="min-h-10 text-xs font-bold text-red-800 underline underline-offset-4 focus-visible:outline-2"
+                    className="inline-flex min-h-11 items-center px-2 text-xs font-bold text-red-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
                     disabled={isSaving}
                     onClick={() => deleteAddress(address)}
                     type="button"
@@ -227,7 +230,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
           />
           <div className="flex items-end gap-3">
             <button
-              className="min-h-11 bg-ink px-4 text-[.65rem] font-bold uppercase tracking-[.08em] text-paper disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#65771b]"
+              className="min-h-11 bg-ink px-4 text-[.65rem] font-bold uppercase tracking-[.08em] text-paper transition-colors hover:bg-olive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive disabled:opacity-60 motion-reduce:transition-none"
               disabled={isSaving}
               type="submit"
             >
@@ -247,11 +250,9 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
             )}
           </div>
         </form>
-        {message && (
-          <p className="mt-4 text-sm text-[#55584e]" role="status" aria-live="polite">
-            {message}
-          </p>
-        )}
+        <p className="mt-4 min-h-5 text-sm text-[#55584e]" role="status" aria-live="polite" aria-atomic="true">
+          {message}
+        </p>
       </section>
     </div>
   );

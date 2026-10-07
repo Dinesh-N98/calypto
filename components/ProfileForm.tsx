@@ -55,7 +55,7 @@ export function ProfileForm({
   }
 
   return (
-    <form className="grid gap-5" onSubmit={handleSubmit}>
+    <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
       <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
         First name
         <input
@@ -76,7 +76,7 @@ export function ProfileForm({
           defaultValue={lastName}
         />
       </label>
-      <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
+      <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em] sm:col-span-2">
         Address
         <textarea
           className="auth-input min-h-28 resize-y"
@@ -96,15 +96,13 @@ export function ProfileForm({
           defaultValue={phone}
         />
       </label>
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
         <button className="auth-button" type="submit" disabled={isSaving}>
           {isSaving ? "Saving..." : "Save profile"}
         </button>
-        {message && (
-          <p className="text-sm text-muted" role="status" aria-live="polite">
-            {message}
-          </p>
-        )}
+        <p className="min-h-5 text-sm text-muted" role="status" aria-live="polite" aria-atomic="true">
+          {message}
+        </p>
       </div>
     </form>
   );

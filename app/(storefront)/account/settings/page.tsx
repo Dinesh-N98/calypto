@@ -24,7 +24,7 @@ export default async function AccountSettingsPage() {
 
   return (
     <section aria-labelledby="account-settings-title">
-      <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">Your account</p>
+      <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">Your account</p>
       <h1 className="mt-3 text-4xl font-black uppercase tracking-[-.06em]" id="account-settings-title">
         Profile & security
       </h1>

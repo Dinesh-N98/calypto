@@ -23,7 +23,7 @@ export default async function AccountAddressesPage() {
 
   return (
     <section aria-labelledby="account-addresses-title">
-      <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">Your account</p>
+      <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">Your account</p>
       <h1 className="mb-7 mt-3 text-4xl font-black uppercase tracking-[-.06em]" id="account-addresses-title">
         Address book
       </h1>

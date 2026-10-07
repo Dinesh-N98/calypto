@@ -42,11 +42,11 @@ export default async function AccountOverviewPage() {
   return (
     <div className="grid gap-8">
       <header className="border-b border-ink/15 pb-7">
-        <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">
+        <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
           Your account
         </p>
         <h1 className="mt-3 text-4xl font-black uppercase leading-none tracking-[-.06em] sm:text-5xl">
-          Welcome back, <span className="text-[#829b22]">{greeting}.</span>
+          Welcome back, <span className="text-olive-bright">{greeting}.</span>
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-[#55584e]">
           Your orders, saved delivery addresses, and account details are all in one place.
@@ -56,7 +56,7 @@ export default async function AccountOverviewPage() {
       {activeOrder ? (
         <section
           aria-label="Active order"
-          className="flex flex-col justify-between gap-5 bg-ink p-5 text-paper sm:flex-row sm:items-center sm:p-7"
+          className="flex flex-col justify-between gap-5 border border-ink bg-ink p-5 text-paper shadow-md sm:flex-row sm:items-center sm:p-7"
         >
           <div>
             <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
@@ -81,7 +81,7 @@ export default async function AccountOverviewPage() {
         </section>
       ) : (
         <section className="border border-ink/15 bg-white/60 p-5 sm:p-7">
-          <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-[#65771b]">
+          <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
             Order update
           </p>
           <h2 className="mt-2 text-xl font-black uppercase">You’re all caught up.</h2>
@@ -95,7 +95,7 @@ export default async function AccountOverviewPage() {
             Recent orders
           </h2>
           <Link
-            className="text-[.65rem] font-bold uppercase tracking-[.08em] text-[#65771b] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
+            className="inline-flex min-h-11 items-center text-[.65rem] font-bold uppercase tracking-[.08em] text-olive underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-olive"
             href="/account/orders"
           >
             All orders
@@ -104,7 +104,7 @@ export default async function AccountOverviewPage() {
         {orders.length === 0 ? (
           <div className="border-t border-ink/15 py-6">
             <p className="text-sm text-[#55584e]">Your order history will appear here.</p>
-            <Link className="mt-4 inline-flex text-sm font-bold underline underline-offset-4" href="/shop">
+            <Link className="mt-4 inline-flex min-h-11 items-center text-sm font-bold underline underline-offset-4" href="/shop">
               Browse the shop
             </Link>
           </div>
@@ -157,7 +157,7 @@ function QuickAction({
 }) {
   return (
     <Link
-      className="flex min-h-20 items-center justify-between gap-3 border border-ink/15 bg-white/60 p-4 text-sm font-bold uppercase tracking-[.04em] hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#65771b]"
+      className="flex min-h-20 items-center justify-between gap-3 border border-ink/10 bg-white/70 p-4 text-sm font-bold uppercase tracking-[.04em] shadow-sm transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-ink/25 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive motion-reduce:transform-none motion-reduce:transition-none"
       href={href}
     >
       <span className="flex items-center gap-3">

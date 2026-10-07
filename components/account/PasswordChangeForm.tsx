@@ -62,17 +62,15 @@ export function PasswordChangeForm() {
         />
       </label>
       <button
-        className="min-h-11 w-fit bg-ink px-4 text-[.65rem] font-bold uppercase tracking-[.08em] text-paper disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#65771b]"
+        className="min-h-11 w-fit bg-ink px-4 text-[.65rem] font-bold uppercase tracking-[.08em] text-paper transition-colors hover:bg-olive disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive motion-reduce:transition-none"
         disabled={isSaving}
         type="submit"
       >
         {isSaving ? "Updating..." : "Update password"}
       </button>
-      {message && (
-        <p className="text-sm text-[#55584e]" role="status" aria-live="polite">
-          {message}
-        </p>
-      )}
+      <p className="min-h-5 text-sm text-[#55584e]" role="status" aria-live="polite" aria-atomic="true">
+        {message}
+      </p>
     </form>
   );
 }
