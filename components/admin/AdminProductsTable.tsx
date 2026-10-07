@@ -13,7 +13,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createProduct, deleteProduct, updateProduct } from "@/app/admin/catalog-actions";
 import { useToast } from "@/components/ToastProvider";
 import { formatPrice } from "@/lib/currency";
@@ -33,38 +33,105 @@ type ActionResult = { ok: true; message: string } | { ok: false; error: string }
 type DrawerMode = { type: "create" } | { type: "edit"; product: ProductRecord };
 
 const PAGE_SIZES = [10, 20] as const;
+const MAX_PRODUCT_IMAGE_SIZE = 10 * 1024 * 1024;
+
+function slugifyProductName(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 function ProductFormFields({
   categories,
   product,
+  imageUrl,
+  onImageUrlChange,
 }: {
   categories: CategoryOption[];
   product?: ProductRecord;
+  imageUrl: string;
+  onImageUrlChange: (imageUrl: string) => void;
 }) {
+  const [name, setName] = useState(product?.name ?? "");
+  const [slug, setSlug] = useState(product?.slug ?? "");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState(product?.imageUrl ?? "");
+  const [imageError, setImageError] = useState("");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
+
+  useEffect(
+    () => () => {
+      if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+    },
+    [],
+  );
+
+  function selectImage(file: File | undefined) {
+    if (!file) return;
+    if (
+      file.type &&
+      !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)
+    ) {
+      setImageError("Choose a JPG, PNG, WEBP, or GIF image.");
+      return;
+    }
+    if (file.size > MAX_PRODUCT_IMAGE_SIZE) {
+      setImageError("Images must be 10 MB or smaller.");
+      return;
+    }
+
+    setImageError("");
+    onImageUrlChange("");
+    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+    previewObjectUrlRef.current = URL.createObjectURL(file);
+    setPreviewUrl(previewObjectUrlRef.current);
+    setSelectedImage(file);
+    if (imageInputRef.current) {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      imageInputRef.current.files = transfer.files;
+    }
+  }
+
   return (
     <>
       {product && <input name="id" type="hidden" value={product.id} />}
-      <div className="grid gap-4">
-        <label className="text-xs font-bold text-[#55594f]">
+      <input name="imageUrl" type="hidden" value={imageUrl} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
           Product name
           <input
             autoFocus
             className="admin-catalog-input"
-            defaultValue={product?.name}
+            onChange={(event) => {
+              const value = event.target.value;
+              setName(value);
+              if (!slugManuallyEdited) setSlug(slugifyProductName(value));
+            }}
             maxLength={160}
             name="name"
             required
+            value={name}
           />
         </label>
-        <label className="text-xs font-bold text-[#55594f]">
+        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
           URL slug
           <input
             className="admin-catalog-input"
-            defaultValue={product?.slug}
+            onChange={(event) => {
+              setSlugManuallyEdited(true);
+              setSlug(event.target.value);
+            }}
             maxLength={120}
             name="slug"
             pattern="[a-z0-9]+(-[a-z0-9]+)*"
             required
+            value={slug}
           />
         </label>
         <label className="text-xs font-bold text-[#55594f]">
@@ -99,18 +166,77 @@ function ProductFormFields({
             ))}
           </select>
         </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Image path
+        <div className="text-xs font-bold text-[#55594f] md:col-span-2">
+          <span>Product image</span>
           <input
-            className="admin-catalog-input"
-            defaultValue={product?.imageUrl}
-            maxLength={500}
-            name="imageUrl"
-            placeholder="/products/worm/worm-01.jpg"
-            required
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            id="product-image-file"
+            name="imageFile"
+            onChange={(event) => selectImage(event.target.files?.[0])}
+            ref={imageInputRef}
+            required={!imageUrl && !selectedImage}
+            type="file"
           />
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
+          <label
+            className="mt-1 flex min-h-32 cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-black/20 bg-[#fafaf8] p-4 text-center text-sm font-medium text-[#55594f] transition hover:border-[#718126] hover:bg-[#f4f5f1]"
+            htmlFor="product-image-file"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              selectImage(event.dataTransfer.files[0]);
+            }}
+          >
+            {previewUrl ? (
+              <span className="relative block h-28 w-full max-w-56 overflow-hidden rounded">
+                <Image
+                  alt="Product image preview"
+                  className="object-contain"
+                  fill
+                  src={previewUrl}
+                  unoptimized
+                />
+              </span>
+            ) : (
+              <span>
+                Drop an image here or <span className="font-bold underline">browse files</span>
+                <span className="mt-1 block text-xs font-normal text-[#73786b]">
+                  JPG, PNG, WEBP, or GIF · up to 10 MB
+                </span>
+              </span>
+            )}
+          </label>
+          {(selectedImage || imageUrl) && (
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate text-xs font-normal text-[#73786b]">
+                {selectedImage?.name ?? imageUrl}
+              </span>
+              <button
+                className="shrink-0 text-xs font-bold text-[#55594f] underline hover:text-[#161812]"
+                onClick={() => {
+                  setSelectedImage(null);
+                  onImageUrlChange("");
+                  setImageError("");
+                  if (previewObjectUrlRef.current) {
+                    URL.revokeObjectURL(previewObjectUrlRef.current);
+                    previewObjectUrlRef.current = null;
+                  }
+                  setPreviewUrl("");
+                  if (imageInputRef.current) imageInputRef.current.value = "";
+                }}
+                type="button"
+              >
+                Remove image
+              </button>
+            </div>
+          )}
+          {imageError && (
+            <p aria-live="polite" className="mt-2 text-xs font-normal text-red-800">
+              {imageError}
+            </p>
+          )}
+        </div>
+        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
           Description
           <textarea
             className="admin-catalog-input min-h-28 py-3"
@@ -140,21 +266,71 @@ function ProductDrawer({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const product = mode.type === "edit" ? mode.product : undefined;
+  const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     const formData = new FormData(form);
+    let uploadedImageUrl: string | undefined;
 
     startTransition(async () => {
       try {
+        const imageFile = formData.get("imageFile");
+        if (imageFile instanceof File && imageFile.size > 0) {
+          const uploadData = new FormData();
+          uploadData.set("file", imageFile);
+          const uploadResponse = await fetch("/api/admin/product-images", {
+            method: "POST",
+            body: uploadData,
+          });
+          const uploadResult: unknown = await uploadResponse.json();
+
+          if (
+            !uploadResponse.ok ||
+            typeof uploadResult !== "object" ||
+            uploadResult === null ||
+            !("imageUrl" in uploadResult) ||
+            typeof uploadResult.imageUrl !== "string"
+          ) {
+            const message =
+              typeof uploadResult === "object" &&
+              uploadResult !== null &&
+              "error" in uploadResult &&
+              typeof uploadResult.error === "string"
+                ? uploadResult.error
+                : "The image could not be uploaded. Please try again.";
+            setError(message);
+            return;
+          }
+
+          uploadedImageUrl = uploadResult.imageUrl;
+          setImageUrl(uploadedImageUrl);
+          formData.set("imageUrl", uploadedImageUrl);
+          const imageUrlInput = form.elements.namedItem("imageUrl");
+          const imageFileInput = form.elements.namedItem("imageFile");
+          if (imageUrlInput instanceof HTMLInputElement) imageUrlInput.value = uploadedImageUrl;
+          if (imageFileInput instanceof HTMLInputElement) imageFileInput.value = "";
+        }
+        formData.delete("imageFile");
+
         const result =
           mode.type === "edit" ? await updateProduct(formData) : await createProduct(formData);
         if (result.ok) onComplete(result);
-        else setError(result.error);
+        else {
+          if (uploadedImageUrl) {
+            setError(`${result.error} The uploaded image is still stored and can be reused.`);
+          } else {
+            setError(result.error);
+          }
+        }
       } catch {
-        setError("The product could not be saved. Please try again.");
+        setError(
+          uploadedImageUrl
+            ? "The product could not be saved. The uploaded image is still stored and can be reused."
+            : "The product could not be saved. Please try again.",
+        );
       }
     });
   }
@@ -201,7 +377,12 @@ function ProductDrawer({
                 {error}
               </p>
             )}
-            <ProductFormFields categories={categories} product={product} />
+            <ProductFormFields
+              categories={categories}
+              imageUrl={imageUrl}
+              onImageUrlChange={setImageUrl}
+              product={product}
+            />
           </div>
           <footer className="flex justify-end gap-3 border-t border-black/10 px-6 py-4">
             <button
