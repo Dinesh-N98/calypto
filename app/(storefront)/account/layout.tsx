@@ -9,12 +9,12 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
   if (!session?.user?.id) redirect("/sign-in?callbackUrl=%2Faccount");
 
   return (
-    <main className="box-border min-h-[60vh] w-full max-w-full overflow-x-hidden bg-paper px-4 py-8 text-ink sm:px-6 md:px-[5vw] md:py-14">
+    <main className="box-border min-h-[60vh] w-full max-w-full overflow-x-hidden bg-background px-4 py-8 text-foreground sm:px-6 md:px-[5vw] md:py-14">
       <div className="site-container mx-auto w-full max-w-full">
-        <div className="mb-7 flex flex-col gap-3 border-b border-ink/15 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-7 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-olive">
+              <p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-primary">
                 Calypto customer portal
               </p>
               <div className="sm:hidden">
@@ -22,7 +22,7 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
               </div>
             </div>
             <Link
-              className="mt-2 inline-flex min-h-11 items-center text-sm font-bold uppercase tracking-[.08em] underline decoration-olive-bright underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-olive"
+              className="mt-2 inline-flex min-h-11 items-center text-sm font-bold uppercase tracking-[.08em] text-foreground underline decoration-primary underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
               href="/shop"
             >
               Continue shopping

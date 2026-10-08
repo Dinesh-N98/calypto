@@ -20,7 +20,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = typeof credentials?.email === "string" ? credentials.email.toLowerCase().trim() : "";
+        const email =
+          typeof credentials?.email === "string" ? credentials.email.toLowerCase().trim() : "";
         const password = typeof credentials?.password === "string" ? credentials.password : "";
 
         if (!email || !password) return null;
@@ -53,8 +54,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         where: { id: userId },
         select: { role: true },
       });
-      if (currentUser) token.role = currentUser.role;
-      else delete token.role;
+      if (currentUser) {
+        token.role = currentUser.role;
+      } else {
+        delete token.id;
+        delete token.role;
+      }
 
       return token;
     },

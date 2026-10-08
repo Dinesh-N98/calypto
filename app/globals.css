@@ -71,8 +71,42 @@
   }
 }
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+}
+
 :root {
   --site-content-max-width: 90rem;
+  color-scheme: light;
+  --background: #f1f0e8;
+  --foreground: #0d0e0c;
+  --card: #ffffff;
+  --border: #d7d6ca;
+  --primary: #65771b;
+  --primary-foreground: #ffffff;
+  --muted-foreground: #55584e;
+  --destructive: #b42318;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --background: #10120d;
+    --foreground: #f1f0e8;
+    --card: #191c16;
+    --border: #3a3e33;
+    --primary: #a3bd32;
+    --primary-foreground: #10120d;
+    --muted-foreground: #b8baae;
+    --destructive: #f87171;
+  }
 }
 
 .site-container {
@@ -117,7 +151,9 @@ a {
   color: var(--color-paper);
   font-size: 1rem;
   outline: none;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .auth-input:focus {
