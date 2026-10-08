@@ -109,20 +109,26 @@ export default async function Home() {
               ))}
             </div>
             <div
-              className="hero-cta-group animate-hero-rise mt-5 flex flex-wrap gap-3 motion-reduce:animate-none md:mt-7"
+              className="hero-cta-group animate-hero-rise mt-5 flex w-full flex-col gap-3 motion-reduce:animate-none md:mt-7 md:w-auto md:flex-row md:gap-4"
               style={{ animationDelay: "840ms" }}
             >
               <Link
-                className="hero-cta hero-cta-shop group inline-flex items-center justify-center gap-3 bg-lime px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] text-ink transition-[transform,background-color,color] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none"
+                className="hero-cta hero-cta-shop group inline-flex w-full items-center justify-center gap-3 whitespace-nowrap rounded-lg bg-[#829B22] px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-colors duration-200 ease-in-out hover:bg-[#a3e635] hover:text-black md:w-auto"
                 href="/shop"
               >
-                Shop now
+                <span className="text-white transition-colors duration-200 group-hover:text-black">
+                  Shop now
+                </span>
                 <span className="cta-arrow transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-                  <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-white transition-colors duration-200 group-hover:text-black"
+                    strokeWidth={2}
+                  />
                 </span>
               </Link>
               <a
-                className="hero-cta hero-cta-wholesale group inline-flex items-center justify-center gap-3 border border-[rgba(241,240,232,.18)] px-[1.3rem] py-4 text-[.7rem] font-extrabold uppercase tracking-[.1em] transition-colors duration-300 hover:text-lime"
+                className="hero-cta hero-cta-wholesale group inline-flex w-full items-center justify-center gap-3 whitespace-nowrap rounded-lg border border-white/20 bg-white/10 px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-white backdrop-blur-md transition-colors duration-200 ease-in-out hover:bg-white/20 md:w-auto"
                 href="/wholesale"
               >
                 Wholesale inquiry
