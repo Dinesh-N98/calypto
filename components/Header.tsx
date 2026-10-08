@@ -8,7 +8,6 @@ const links = [
   ["Home", "/"],
   ["Shop", "/shop"],
   ["About Us", "/about"],
-  ["Wholesale", "/wholesale"],
   ["Contact", "/contact"],
 ];
 export function Header() {
