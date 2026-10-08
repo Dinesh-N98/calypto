@@ -53,7 +53,7 @@ export default async function Home() {
   }
   return (
     <main>
-      <section className="relative min-h-[calc(100svh-64px)] overflow-hidden px-[7vw] pb-14 pt-[5vh] md:min-h-[calc(100vh-84px)] md:px-[10vw] md:pb-[8vh] md:pt-[12vh]">
+      <section className="relative min-h-0 overflow-hidden px-4 py-8 md:min-h-[calc(100vh-84px)] md:px-[10vw] md:pb-[8vh] md:pt-[12vh]">
         <Image
           src={heroImage}
           alt="Angler casting at sunrise"
@@ -133,7 +133,7 @@ export default async function Home() {
             </div>
           </div>
         </div>
-        <div className="site-container absolute bottom-8 left-[7vw] right-[7vw] flex justify-between text-[.6rem] uppercase tracking-[.14em] text-muted md:left-[10vw] md:right-[10vw]">
+        <div className="site-container relative mt-10 flex justify-between text-[.6rem] uppercase tracking-[.14em] text-muted md:absolute md:bottom-8 md:left-[10vw] md:right-[10vw] md:mt-0">
           <span>Scroll to explore</span>
           <span>01 / 04</span>
         </div>
