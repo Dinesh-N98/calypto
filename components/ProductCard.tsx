@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
+import { WishlistButton } from "@/components/WishlistButton";
 import { useToast } from "@/components/ToastProvider";
 import { formatPrice } from "@/lib/currency";
 import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
@@ -11,7 +12,7 @@ import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 export function ProductCard({
   product,
 }: {
-  product: { slug: string; name: string; priceCents: number; imageUrl: string };
+  product: { id?: string; slug: string; name: string; priceCents: number; imageUrl: string };
 }) {
   const { addItem } = useCart();
   const { showToast } = useToast();
@@ -24,7 +25,7 @@ export function ProductCard({
   };
 
   return (
-    <article className="group overflow-hidden bg-[#e4e4d9] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(0,0,0,0.25)] motion-reduce:transform-none motion-reduce:transition-none">
+    <article className="group relative overflow-hidden bg-[#e4e4d9] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(0,0,0,0.25)] motion-reduce:transform-none motion-reduce:transition-none">
       <Link className="block" href={`/shop/${product.slug}`}>
         <div className="relative aspect-square overflow-hidden">
           <Image
@@ -45,6 +46,12 @@ export function ProductCard({
           <b className="text-xs font-bold text-ink">{formatPrice(product.priceCents)}</b>
         </div>
       </Link>
+      {product.id && (
+        <WishlistButton
+          className="absolute right-2 top-2 z-10 bg-paper/90 text-ink shadow-sm hover:bg-paper"
+          productId={product.id}
+        />
+      )}
       <div className="px-2 pb-2">
         <button
           className="inline-flex min-h-11 w-full items-center justify-center gap-1 bg-lime px-2 py-2 text-[.6rem] font-extrabold uppercase tracking-[.05em] text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 active:scale-95 motion-reduce:transform-none motion-reduce:transition-colors"

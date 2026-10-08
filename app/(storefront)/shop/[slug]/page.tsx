@@ -85,6 +85,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <ProductPurchase
             prominent
             product={{
+              id: product.id,
               slug: product.slug,
               name: product.name,
               priceCents: product.priceCents,

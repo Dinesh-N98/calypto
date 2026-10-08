@@ -34,9 +34,17 @@ export type CustomerAddress = {
   isDefault: boolean;
 };
 
+export type CustomerAddressFields = {
+  line1: string;
+  line2: string;
+  city: string;
+  postalCode: string;
+  country: string;
+};
+
 export type CustomerProfileUpdate = Partial<
   Pick<CustomerProfile, "firstName" | "lastName" | "phone" | "address">
->;
+> & { defaultAddress?: CustomerAddressFields };
 
 type ProfileStatus = "loading" | "ready" | "unauthenticated" | "error";
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, MapPin, PackageCheck, Settings2 } from "lucide-react";
+import { ArrowRight, Heart, PackageCheck, Settings2 } from "lucide-react";
 import { auth } from "@/auth";
 import { OrderStatus } from "@/components/account/OrderStatus";
 import { prisma } from "@/lib/prisma";
@@ -105,7 +105,10 @@ export default async function AccountOverviewPage() {
         {orders.length === 0 ? (
           <div className="box-border w-full max-w-full border-t border-ink/15 py-6">
             <p className="text-sm text-[#55584e]">Your order history will appear here.</p>
-            <Link className="mt-4 inline-flex min-h-11 items-center text-sm font-bold underline underline-offset-4" href="/shop">
+            <Link
+              className="mt-4 inline-flex min-h-11 items-center text-sm font-bold underline underline-offset-4"
+              href="/shop"
+            >
               Browse the shop
             </Link>
           </div>
@@ -136,9 +139,20 @@ export default async function AccountOverviewPage() {
         )}
       </section>
 
-      <section aria-label="Quick actions" className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
-        <QuickAction href="/account/orders" icon={<PackageCheck aria-hidden="true" />} title="Orders" />
-        <QuickAction href="/account/addresses" icon={<MapPin aria-hidden="true" />} title="Addresses" />
+      <section
+        aria-label="Quick actions"
+        className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3"
+      >
+        <QuickAction
+          href="/account/orders"
+          icon={<PackageCheck aria-hidden="true" />}
+          title="Orders"
+        />
+        <QuickAction
+          href="/account/wishlist"
+          icon={<Heart aria-hidden="true" />}
+          title="Wishlist"
+        />
         <QuickAction
           href="/account/settings"
           icon={<Settings2 aria-hidden="true" />}

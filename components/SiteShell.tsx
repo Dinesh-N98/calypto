@@ -6,6 +6,7 @@ import { CartProvider } from "@/components/CartProvider";
 import { CookieBanner } from "@/components/CookieBanner";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { WishlistProvider } from "@/components/WishlistProvider";
 
 const AOSInitializer = dynamic(
   () => import("@/components/AOSInitializer").then((module) => module.AOSInitializer),
@@ -32,16 +33,18 @@ export function SiteShell({
 
   return (
     <CartProvider>
-      <Header />
-      {children}
-      <Footer categories={categories} />
-      <CookieBanner />
-      {loadDeferredComponents && (
-        <>
-          <AOSInitializer />
-          <NewsletterPopup />
-        </>
-      )}
+      <WishlistProvider>
+        <Header />
+        {children}
+        <Footer categories={categories} />
+        <CookieBanner />
+        {loadDeferredComponents && (
+          <>
+            <AOSInitializer />
+            <NewsletterPopup />
+          </>
+        )}
+      </WishlistProvider>
     </CartProvider>
   );
 }

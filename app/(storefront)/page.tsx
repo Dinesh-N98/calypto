@@ -33,15 +33,20 @@ const fallbackProducts = [
   },
 ];
 export default async function Home() {
-  let products: { slug: string; name: string; priceCents: number; imageUrl: string }[] =
-    fallbackProducts;
+  let products: {
+    id?: string;
+    slug: string;
+    name: string;
+    priceCents: number;
+    imageUrl: string;
+  }[] = fallbackProducts;
   try {
     products =
       (await prisma.product.findMany({
         take: 3,
         where: { slug: { in: ["worm-01", "swimbait-01", "jig-01"] } },
         orderBy: { createdAt: "asc" },
-        select: { slug: true, name: true, priceCents: true, imageUrl: true },
+        select: { id: true, slug: true, name: true, priceCents: true, imageUrl: true },
       })) || fallbackProducts;
   } catch (err) {
     console.error("Failed to load products from DB, using fallback:", err);

@@ -9,7 +9,7 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
   if (!session?.user?.id) redirect("/sign-in?callbackUrl=%2Faccount");
 
   return (
-    <main className="box-border min-h-[60vh] w-full max-w-full overflow-x-hidden bg-background px-4 py-8 text-foreground sm:px-6 md:px-[5vw] md:py-14">
+    <main className="box-border min-h-[60vh] w-full max-w-full overflow-x-clip bg-background px-4 py-8 text-foreground sm:px-6 md:px-[5vw] md:py-14">
       <div className="site-container mx-auto w-full max-w-full">
         <div className="mb-7 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">

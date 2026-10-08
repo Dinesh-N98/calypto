@@ -6,8 +6,7 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/account", label: "Overview" },
   { href: "/account/orders", label: "Orders" },
-  { href: "/account/addresses", label: "Addresses" },
-  { href: "/account/settings", label: "Profile & security" },
+  { href: "/account/wishlist", label: "Wishlist" },
 ];
 
 export function AccountNavigation() {
@@ -15,9 +14,9 @@ export function AccountNavigation() {
   return (
     <nav
       aria-label="Account navigation"
-      className="sticky top-16 z-40 -mx-4 flex w-full max-w-full items-center border-b border-border bg-background/95 px-4 py-2 text-foreground backdrop-blur-sm sm:-mx-6 sm:px-6 md:top-24 md:mx-0 md:self-start md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
+      className="sticky top-0 z-40 flex w-full min-w-0 items-center border-b border-border bg-background/95 px-4 py-2 text-foreground backdrop-blur-sm md:self-start md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
     >
-      <ul className="scrollbar-none flex w-full max-w-full snap-x snap-mandatory scroll-smooth items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 pr-4 motion-reduce:scroll-auto md:grid md:overflow-visible md:pb-0 md:pr-0">
+      <ul className="scrollbar-none flex w-full min-w-0 snap-x snap-mandatory scroll-smooth items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 pr-4 motion-reduce:scroll-auto md:grid md:grid-cols-1 md:overflow-visible md:pb-0 md:pr-0">
         {links.map(({ href, label }) => {
           const isCurrent = pathname === href;
           return (

@@ -43,6 +43,7 @@ async function ProductGrid({ categoryId, sort }: { categoryId?: string; sort: So
           ? { priceCents: "desc" }
           : { createdAt: "desc" },
     select: {
+      id: true,
       slug: true,
       name: true,
       priceCents: true,

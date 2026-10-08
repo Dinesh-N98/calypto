@@ -17,6 +17,13 @@ type ProfileUpdate = {
   lastName?: string | null;
   phone?: string | null;
   address?: string | null;
+  defaultAddress?: {
+    line1: string;
+    line2: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
 };
 
 type AddressInput = {
@@ -43,7 +50,11 @@ function parseProfileUpdate(value: unknown): ProfileUpdate | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 
   const body = value as Record<string, unknown>;
-  if (Object.keys(body).some((key) => !allowedProfileFields.includes(key))) return null;
+  if (
+    Object.keys(body).some((key) => key !== "defaultAddress" && !allowedProfileFields.includes(key))
+  ) {
+    return null;
+  }
 
   const update: ProfileUpdate = {};
   for (const field of profileFields) {
@@ -55,13 +66,47 @@ function parseProfileUpdate(value: unknown): ProfileUpdate | null {
     update[field] = trimmed || null;
   }
 
+  if ("defaultAddress" in body) {
+    const address = body.defaultAddress;
+    if (!address || typeof address !== "object" || Array.isArray(address)) return null;
+    const fields = ["line1", "line2", "city", "postalCode", "country"] as const;
+    const limits = { line1: 200, line2: 200, city: 100, postalCode: 30, country: 100 };
+    if (Object.keys(address).some((key) => !fields.some((field) => field === key))) {
+      return null;
+    }
+    const parsedAddress: NonNullable<ProfileUpdate["defaultAddress"]> = {
+      line1: "",
+      line2: "",
+      city: "",
+      postalCode: "",
+      country: "",
+    };
+    for (const field of fields) {
+      const fieldValue = (address as Record<string, unknown>)[field];
+      if (typeof fieldValue !== "string") return null;
+      const trimmed = fieldValue.trim();
+      if (trimmed.length > limits[field] || (field !== "line2" && !trimmed)) return null;
+      parsedAddress[field] = trimmed;
+    }
+    update.defaultAddress = parsedAddress;
+  }
+
   return Object.keys(update).length > 0 ? update : null;
 }
 
 function parseAddressAction(value: unknown): AddressInput | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
-  const allowedFields = ["action", "id", "line1", "line2", "city", "postalCode", "country", "isDefault"];
+  const allowedFields = [
+    "action",
+    "id",
+    "line1",
+    "line2",
+    "city",
+    "postalCode",
+    "country",
+    "isDefault",
+  ];
   if (Object.keys(input).some((key) => !allowedFields.includes(key))) return null;
   const action = input.action;
   if (action !== "create" && action !== "update" && action !== "delete" && action !== "default") {
@@ -130,7 +175,10 @@ export async function PATCH(request: Request) {
   if (body && typeof body === "object" && !Array.isArray(body) && "addresses" in body) {
     const action = parseAddressAction((body as Record<string, unknown>).addresses);
     if (!action) {
-      return NextResponse.json({ error: "Address fields are invalid or missing." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Address fields are invalid or missing." },
+        { status: 400 },
+      );
     }
 
     try {
@@ -246,20 +294,64 @@ export async function PATCH(request: Request) {
       });
       if (!current) return null;
 
+      const { defaultAddress, ...profileFieldsToUpdate } = update;
       const firstName = update.firstName === undefined ? current.firstName : update.firstName;
       const lastName = update.lastName === undefined ? current.lastName : update.lastName;
       const data = {
-        ...update,
+        ...profileFieldsToUpdate,
         ...(("firstName" in update || "lastName" in update) && {
           name: [firstName, lastName].filter(Boolean).join(" ") || null,
         }),
       };
 
-      return transaction.user.update({
+      const updatedProfile = await transaction.user.update({
         where: { id: session.user.id },
         data,
         select: profileSelect,
       });
+
+      if (defaultAddress) {
+        const currentDefault = await transaction.address.findFirst({
+          where: { userId: session.user.id, isDefault: true },
+          orderBy: { createdAt: "desc" },
+          select: { id: true },
+        });
+        const addressData = {
+          line1: defaultAddress.line1,
+          line2: defaultAddress.line2 || null,
+          city: defaultAddress.city,
+          postalCode: defaultAddress.postalCode,
+          country: defaultAddress.country,
+          isDefault: true,
+        };
+
+        if (currentDefault) {
+          await transaction.address.update({
+            where: { id: currentDefault.id },
+            data: addressData,
+          });
+          await transaction.address.updateMany({
+            where: { userId: session.user.id, isDefault: true, id: { not: currentDefault.id } },
+            data: { isDefault: false },
+          });
+        } else {
+          const createdAddress = await transaction.address.create({
+            data: { ...addressData, state: null, userId: session.user.id },
+            select: { id: true },
+          });
+          await transaction.address.updateMany({
+            where: { userId: session.user.id, isDefault: true, id: { not: createdAddress.id } },
+            data: { isDefault: false },
+          });
+        }
+
+        return transaction.user.findUnique({
+          where: { id: session.user.id },
+          select: profileSelect,
+        });
+      }
+
+      return updatedProfile;
     });
 
     if (!profile) {

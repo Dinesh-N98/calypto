@@ -20,6 +20,17 @@ export default async function AccountSettingsPage() {
       phone: true,
       hashedPassword: true,
       accounts: { select: { provider: true } },
+      addresses: {
+        orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+        take: 1,
+        select: {
+          line1: true,
+          line2: true,
+          city: true,
+          postalCode: true,
+          country: true,
+        },
+      },
     },
   });
   if (!user) return null;
@@ -83,7 +94,13 @@ export default async function AccountSettingsPage() {
         <ProfileForm
           firstName={user.firstName || ""}
           lastName={user.lastName || ""}
-          address={user.address || ""}
+          defaultAddress={{
+            line1: user.addresses[0]?.line1 || user.address || "",
+            line2: user.addresses[0]?.line2 || "",
+            city: user.addresses[0]?.city || "",
+            postalCode: user.addresses[0]?.postalCode || "",
+            country: user.addresses[0]?.country || "",
+          }}
           phone={user.phone || ""}
         />
       </section>
