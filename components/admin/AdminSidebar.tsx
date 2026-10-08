@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Box, LayoutDashboard, ShoppingCart, Store, Tags, UsersRound, X } from "lucide-react";
+import {
+  Box,
+  LayoutDashboard,
+  Percent,
+  ShoppingCart,
+  Store,
+  Tags,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 
 type AdminSidebarProps = {
@@ -14,6 +23,7 @@ const navigationItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Products", href: "/admin/products", icon: Box },
   { label: "Categories", href: "/admin/categories", icon: Tags },
+  { label: "Promotions", href: "/admin/promotions", icon: Percent },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { label: "Customers", href: "/admin#customers", icon: UsersRound },
 ];

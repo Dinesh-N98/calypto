@@ -36,6 +36,15 @@ export default function AdminPage() {
         </Link>
         <Link
           className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
+          href="/admin/promotions"
+        >
+          <h2 className="text-base font-bold">Promotions</h2>
+          <p className="mt-2 text-sm leading-6 text-[#65695f]">
+            Schedule storefront offers, manage discount details, and toggle their visibility.
+          </p>
+        </Link>
+        <Link
+          className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
           href="/admin/orders"
         >
           <h2 className="text-base font-bold">Orders</h2>

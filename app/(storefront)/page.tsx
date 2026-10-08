@@ -8,6 +8,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { IconFeature } from "@/components/IconFeature";
 import { Reveal } from "@/components/Reveal";
 import { RevealStagger } from "@/components/RevealStagger";
+import { PromotionSection } from "@/components/PromotionSection";
 
 const fallbackProducts = [
   {
@@ -51,6 +52,18 @@ export default async function Home() {
   } catch (err) {
     console.error("Failed to load products from DB, using fallback:", err);
   }
+  const now = new Date();
+  const promotions = await prisma.promotion.findMany({
+    where: {
+      isActive: true,
+      AND: [
+        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+      ],
+    },
+    orderBy: [{ startDate: "asc" }, { createdAt: "desc" }],
+  });
+
   return (
     <main>
       <section className="relative min-h-0 overflow-hidden px-4 py-8 md:min-h-[calc(100vh-84px)] md:px-[10vw] md:pb-[8vh] md:pt-[12vh]">
@@ -144,6 +157,7 @@ export default async function Home() {
           <span>01 / 04</span>
         </div>
       </section>
+      <PromotionSection promotions={promotions} />
       <section className="bg-[#12140f] px-[7vw] py-14 md:px-[10vw] md:py-28">
         <Reveal className="site-container mb-8 flex flex-col items-start gap-3 md:mb-12 md:flex-row md:items-end md:justify-between">
           <div>

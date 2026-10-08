@@ -41,6 +41,22 @@ model Category {
   products  Product[]
 }
 
+model Promotion {
+  id              String    @id @default(cuid())
+  title           String
+  description     String
+  imageUrl        String
+  discountPercent Int?
+  discountCode    String?
+  isActive        Boolean   @default(true)
+  startDate       DateTime? @db.Timestamp(3)
+  endDate         DateTime? @db.Timestamp(3)
+  createdAt       DateTime  @default(now()) @db.Timestamp(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamp(3)
+
+  @@index([isActive, startDate, endDate])
+}
+
 model Lead {
   id        String   @id @default(cuid())
   type      String

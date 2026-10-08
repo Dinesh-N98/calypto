@@ -44,6 +44,19 @@ npx prisma generate
 
 The catalog migration converts existing distinct product category names into category records and attaches products to those records before removing the old string field. Back up production data and test the migration against a Neon development branch before applying it to production. Once migrated, `npm run db:seed` recreates the sample product catalog and its four starter categories; it deletes existing products, so do not run it against a catalog whose data should be preserved.
 
+## Promotion management
+
+Administrators can create, edit, delete, and activate promotions at `/admin/promotions`. Active promotions within their optional start/end dates appear on the storefront homepage. Image URLs can be site-relative paths or HTTPS URLs. Promotion dates are entered as calendar dates and interpreted in UTC; the selected end date remains active through that date.
+
+`discountPercent` and `discountCode` are promotional display data only. They are not validated or applied by checkout; checkout integration must be implemented separately before advertising these as redeemable discounts.
+
+Apply the promotion migration and regenerate Prisma before deploying:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
 ## Getting Started
 
 First, run the development server:
