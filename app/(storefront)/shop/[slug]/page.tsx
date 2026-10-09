@@ -1,10 +1,6 @@
-import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
-import { Reveal } from "@/components/Reveal";
-import { ProductPurchase } from "@/components/ProductPurchase";
-import { formatPrice } from "@/lib/currency";
+import { ProductDetailExperience } from "@/components/ProductDetailExperience";
 import { prisma } from "@/lib/prisma";
 
 export async function generateMetadata({
@@ -15,17 +11,17 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
-    include: { category: { select: { name: true } } },
+    include: {
+      category: { select: { name: true } },
+      images: { orderBy: { order: "asc" }, take: 1 },
+    },
   });
 
   if (!product) notFound();
 
   const title = `${product.name} - ${product.category.name}`;
   const description = `${product.description} Explore ${product.category.name} soft baits from calypto.`;
-  const image = {
-    url: product.imageUrl,
-    alt: product.name,
-  };
+  const imageUrl = product.images[0]?.url ?? product.imageUrl;
 
   return {
     title,
@@ -34,13 +30,13 @@ export async function generateMetadata({
       type: "website",
       title,
       description,
-      images: [image],
+      images: [{ url: imageUrl, alt: product.name }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [image.url],
+      images: [imageUrl],
     },
   };
 }
@@ -49,50 +45,60 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
-    include: { category: { select: { name: true } } },
+    include: {
+      category: { select: { name: true } },
+      images: { orderBy: { order: "asc" }, select: { id: true, url: true, altText: true } },
+      variants: {
+        orderBy: [{ color: "asc" }, { size: "asc" }],
+        select: {
+          id: true,
+          sku: true,
+          priceCents: true,
+          discountPriceCents: true,
+          stock: true,
+          size: true,
+          color: true,
+          imageUrl: true,
+        },
+      },
+      tieredDiscounts: {
+        orderBy: { minQuantity: "asc" },
+        select: { minQuantity: true, discountPercentage: true },
+      },
+    },
   });
 
   if (!product) notFound();
 
+  const reviews = await prisma.review.aggregate({
+    where: { productId: product.id },
+    _avg: { rating: true },
+    _count: { rating: true },
+  });
+
   return (
-    <main className="bg-paper px-[7vw] py-12 text-ink md:px-[10vw] md:py-20">
-      <div className="site-container grid gap-8 md:grid-cols-2 md:items-center md:gap-14">
-        <Reveal className="relative aspect-[1/1.1] overflow-hidden bg-[#e4e4d9]">
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            loading="lazy"
-            placeholder="blur"
-            blurDataURL={productImageBlurDataURL}
-            sizes="(max-width: 767px) 86vw, 40vw"
-            className="object-contain"
-          />
-        </Reveal>
-        <Reveal className="max-w-xl" delay={100}>
-          <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-[#697b26]">
-            {product.category.name}
-          </p>
-          <h1 className="my-4 text-[clamp(2.35rem,8vw,3.2rem)] font-black uppercase leading-[.94] tracking-[-.06em] text-ink md:my-5 md:text-[clamp(3rem,5vw,5rem)]">
-            {product.name}
-          </h1>
-          <p className="text-xl font-bold text-ink md:text-2xl">
-            {formatPrice(product.priceCents)}
-          </p>
-          <p className="my-6 max-w-lg text-[.9rem] leading-[1.6] text-[#697064] md:my-8 md:text-base md:leading-[1.7]">
-            {product.description}
-          </p>
-          <ProductPurchase
-            prominent
-            product={{
-              id: product.id,
-              slug: product.slug,
-              name: product.name,
-              priceCents: product.priceCents,
-              imageUrl: product.imageUrl,
-            }}
-          />
-        </Reveal>
+    <main className="bg-paper px-[6vw] py-8 text-ink md:px-[8vw] md:py-12">
+      <div className="site-container">
+        <ProductDetailExperience
+          averageRating={reviews._avg.rating ?? 0}
+          categoryName={product.category.name}
+          images={product.images}
+          product={{
+            id: product.id,
+            slug: product.slug,
+            name: product.name,
+            description: product.description,
+            brand: product.brand,
+            imageUrl: product.imageUrl,
+            priceCents: product.priceCents,
+            salePriceCents: product.salePriceCents,
+            originalPriceCents: product.originalPriceCents,
+            saleEndsAt: product.saleEndsAt,
+          }}
+          reviewCount={reviews._count.rating}
+          tieredDiscounts={product.tieredDiscounts}
+          variants={product.variants}
+        />
       </div>
     </main>
   );

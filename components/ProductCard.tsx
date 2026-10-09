@@ -12,15 +12,40 @@ import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 export function ProductCard({
   product,
 }: {
-  product: { id?: string; slug: string; name: string; priceCents: number; imageUrl: string };
+  product: {
+    id?: string;
+    slug: string;
+    name: string;
+    priceCents: number;
+    imageUrl: string;
+    variants?: {
+      id: string;
+      sku: string;
+      priceCents: number;
+      stock: number;
+      size: string | null;
+      color: string | null;
+      imageUrl: string | null;
+    }[];
+  };
 }) {
   const { addItem } = useCart();
   const { showToast } = useToast();
+  const availableVariant = product.variants?.find((variant) => variant.stock > 0);
 
   const handleAdd = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    addItem(product);
+    if (!availableVariant) return;
+    addItem({
+      slug: product.slug,
+      variantId: availableVariant.id,
+      sku: availableVariant.sku,
+      variantLabel: [availableVariant.color, availableVariant.size].filter(Boolean).join(" / "),
+      name: product.name,
+      priceCents: availableVariant.priceCents,
+      imageUrl: availableVariant.imageUrl ?? product.imageUrl,
+    });
     showToast(`${product.name} added to cart`);
   };
 
@@ -53,13 +78,22 @@ export function ProductCard({
         />
       )}
       <div className="px-2 pb-2">
-        <button
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1 bg-lime px-2 py-2 text-[.6rem] font-extrabold uppercase tracking-[.05em] text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 active:scale-95 motion-reduce:transform-none motion-reduce:transition-colors"
-          type="button"
-          onClick={handleAdd}
-        >
-          Add to Cart <Plus aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
-        </button>
+        {availableVariant ? (
+          <button
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1 bg-lime px-2 py-2 text-[.6rem] font-extrabold uppercase tracking-[.05em] text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 active:scale-95 motion-reduce:transform-none motion-reduce:transition-colors"
+            type="button"
+            onClick={handleAdd}
+          >
+            Add to Cart <Plus aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
+          </button>
+        ) : (
+          <Link
+            className="inline-flex min-h-11 w-full items-center justify-center bg-lime px-2 py-2 text-[.6rem] font-extrabold uppercase tracking-[.05em] text-ink"
+            href={`/shop/${product.slug}`}
+          >
+            {product.variants ? "Out of Stock" : "View Options"}
+          </Link>
+        )}
       </div>
     </article>
   );

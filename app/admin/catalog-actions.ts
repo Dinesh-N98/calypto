@@ -26,6 +26,121 @@ function parsePriceCents(value: string): number | null {
   return Number.isSafeInteger(cents) && cents > 0 && cents <= 2_147_483_647 ? cents : null;
 }
 
+function parseOptionalPriceCents(value: string): number | null | undefined {
+  if (!value) return null;
+  return parsePriceCents(value) ?? undefined;
+}
+
+function parseVariants(value: string, baseImageUrl: string) {
+  try {
+    const raw: unknown = JSON.parse(value);
+    if (!Array.isArray(raw) || raw.length === 0 || raw.length > 100) return null;
+    const variants = raw.map((entry) => {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return null;
+      const item = entry as Record<string, unknown>;
+      if (
+        (item.size !== undefined && typeof item.size !== "string") ||
+        (item.color !== undefined && typeof item.color !== "string") ||
+        (item.discountPrice !== undefined && typeof item.discountPrice !== "string") ||
+        (item.imageUrl !== undefined && typeof item.imageUrl !== "string")
+      ) {
+        return null;
+      }
+      const sku = typeof item.sku === "string" ? item.sku.trim() : "";
+      const size = typeof item.size === "string" ? item.size.trim() : "";
+      const color = typeof item.color === "string" ? item.color.trim() : "";
+      const priceCents = typeof item.price === "string" ? parsePriceCents(item.price) : null;
+      const discountPriceInput =
+        typeof item.discountPrice === "string" ? item.discountPrice.trim() : "";
+      const discountPriceCents = discountPriceInput
+        ? parsePriceCents(discountPriceInput)
+        : null;
+      const stock = typeof item.stock === "number" ? item.stock : Number(item.stock);
+      const imageUrl = typeof item.imageUrl === "string" ? item.imageUrl.trim() : "";
+      if (
+        !sku ||
+        sku.length > 80 ||
+        !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(sku) ||
+        !priceCents ||
+        (discountPriceInput &&
+          (discountPriceCents === null || discountPriceCents >= priceCents)) ||
+        !Number.isSafeInteger(stock) ||
+        stock < 0 ||
+        size.length > 100 ||
+        color.length > 100 ||
+        (imageUrl && !isValidImagePath(imageUrl))
+      ) {
+        return null;
+      }
+      return {
+        sku,
+        size: size || null,
+        color: color || null,
+        priceCents,
+        discountPriceCents,
+        stock,
+        imageUrl: imageUrl || baseImageUrl,
+      };
+    });
+    if (variants.some((variant) => variant === null)) return null;
+    const parsedVariants = variants.filter((variant) => variant !== null);
+    return new Set(parsedVariants.map((variant) => variant.sku.toLowerCase())).size ===
+      parsedVariants.length
+      ? parsedVariants
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseImageUrls(value: string, fallback: string) {
+  try {
+    const raw: unknown = value ? JSON.parse(value) : [];
+    if (!Array.isArray(raw) || raw.length > 20) return null;
+    const urls = raw.filter((item): item is string => typeof item === "string").map((url) => url.trim());
+    if (urls.length !== raw.length || urls.some((url) => !isValidImagePath(url))) return null;
+    const result = [...new Set([fallback, ...urls])];
+    return result.length <= 20 ? result : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseTieredDiscounts(value: string) {
+  try {
+    const raw: unknown = value ? JSON.parse(value) : [];
+    if (!Array.isArray(raw) || raw.length > 20) return null;
+    const tiers = raw.map((entry) => {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return null;
+      const item = entry as Record<string, unknown>;
+      const minQuantity = Number(item.minQuantity);
+      const discountPercentage = Number(item.discountPercentage);
+      if (
+        !Number.isSafeInteger(minQuantity) ||
+        minQuantity < 2 ||
+        !Number.isInteger(discountPercentage) ||
+        discountPercentage < 1 ||
+        discountPercentage > 99
+      ) {
+        return null;
+      }
+      return { minQuantity, discountPercentage };
+    });
+    if (tiers.some((tier) => tier === null)) return null;
+    const parsedTiers = tiers.filter((tier) => tier !== null);
+    if (new Set(parsedTiers.map((tier) => tier.minQuantity)).size !== parsedTiers.length) return null;
+    parsedTiers.sort((a, b) => a.minQuantity - b.minQuantity);
+    return parsedTiers.every(
+      (tier, index) =>
+        index === 0 || tier.discountPercentage > parsedTiers[index - 1].discountPercentage,
+    )
+      ? parsedTiers
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function isValidSlug(value: string): boolean {
   return value.length <= 120 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
@@ -139,6 +254,16 @@ function readProduct(formData: FormData) {
   const priceCents = parsePriceCents(getText(formData, "price"));
   const imageUrl = getText(formData, "imageUrl");
   const categoryId = getText(formData, "categoryId");
+  const brand = getText(formData, "brand");
+  const salePriceInput = getText(formData, "salePrice");
+  const salePriceCents = parseOptionalPriceCents(salePriceInput);
+  const originalPriceInput = getText(formData, "originalPrice");
+  const originalPriceCents = parseOptionalPriceCents(originalPriceInput);
+  const saleEndsAtInput = getText(formData, "saleEndsAt");
+  const saleEndsAt = saleEndsAtInput ? new Date(saleEndsAtInput) : null;
+  const variants = parseVariants(getText(formData, "variants"), imageUrl);
+  const images = parseImageUrls(getText(formData, "imageUrls"), imageUrl);
+  const tieredDiscounts = parseTieredDiscounts(getText(formData, "tieredDiscounts"));
 
   if (!name || name.length > 160)
     return { error: "Product name is required (max 160 characters)." } as const;
@@ -153,9 +278,51 @@ function readProduct(formData: FormData) {
       error: "Image must be a path under the site root, such as /products/worm/worm-01.jpg.",
     } as const;
   if (!categoryId) return { error: "Choose a category." } as const;
+  if (brand.length > 100) return { error: "Brand must be 100 characters or fewer." } as const;
+  if (salePriceCents === undefined || originalPriceCents === undefined) {
+    return { error: "Enter valid promotional and original prices." } as const;
+  }
+  const referencePriceCents = salePriceCents ?? priceCents;
+  const hasVariantPromotions = variants?.some((variant) => variant.discountPriceCents !== null);
+  if (
+    (salePriceCents !== null && !saleEndsAt) ||
+    (saleEndsAt && !salePriceCents && !hasVariantPromotions) ||
+    (saleEndsAt && Number.isNaN(saleEndsAt.getTime())) ||
+    (salePriceCents !== null && salePriceCents >= priceCents) ||
+    (originalPriceCents !== null && originalPriceCents <= referencePriceCents)
+  ) {
+    return { error: "Promotional pricing needs a lower sale price and a valid end date." } as const;
+  }
+  if (!variants) {
+    return {
+      error: "Add at least one valid variant. Each variant needs a unique SKU, price, and stock.",
+    } as const;
+  }
+  if (!images) {
+    return { error: "Product gallery contains an invalid or excessive image list." } as const;
+  }
+  if (!tieredDiscounts) {
+    return {
+      error: "Tier discounts must have unique quantities (2+) and percentages from 1 to 99.",
+    } as const;
+  }
 
   return {
-    data: { name, slug, description, priceCents, imageUrl, categoryId },
+    data: {
+      name,
+      slug,
+      description,
+      brand: brand || null,
+      priceCents,
+      salePriceCents,
+      originalPriceCents,
+      saleEndsAt,
+      imageUrl,
+      categoryId,
+      variants,
+      images: images.map((url, order) => ({ url, order, altText: name })),
+      tieredDiscounts,
+    },
   } as const;
 }
 
@@ -167,10 +334,18 @@ export async function createProduct(
   if (product.error) return { ok: false, error: product.error };
 
   try {
-    await prisma.product.create({ data: product.data });
+    const { variants, images, tieredDiscounts, ...data } = product.data;
+    await prisma.product.create({
+      data: {
+        ...data,
+        variants: { create: variants },
+        images: { create: images },
+        tieredDiscounts: { create: tieredDiscounts },
+      },
+    });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { ok: false, error: "A product with this slug already exists." };
+      return { ok: false, error: "A product slug or variant SKU already exists." };
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
       return { ok: false, error: "Choose an existing category." };
@@ -193,10 +368,42 @@ export async function updateProduct(
   if (product.error) return { ok: false, error: product.error };
 
   try {
-    await prisma.product.update({ where: { id }, data: product.data });
+    const { variants, images, tieredDiscounts, ...data } = product.data;
+    await prisma.$transaction(async (transaction) => {
+      const currentVariants = await transaction.productVariant.findMany({
+        where: { productId: id },
+        select: { id: true, sku: true },
+      });
+      const currentBySku = new Map(
+        currentVariants.map((variant) => [variant.sku.toLowerCase(), variant.id]),
+      );
+      const requestedSkus = variants.map((variant) => variant.sku);
+      await transaction.productVariant.deleteMany({
+        where: { productId: id, sku: { notIn: requestedSkus } },
+      });
+      await transaction.product.update({
+        where: { id },
+        data: {
+          ...data,
+          images: { deleteMany: {}, create: images },
+          tieredDiscounts: { deleteMany: {}, create: tieredDiscounts },
+        },
+      });
+      for (const variant of variants) {
+        const existingId = currentBySku.get(variant.sku.toLowerCase());
+        if (existingId) {
+          await transaction.productVariant.update({
+            where: { id: existingId },
+            data: variant,
+          });
+        } else {
+          await transaction.productVariant.create({ data: { ...variant, productId: id } });
+        }
+      }
+    });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { ok: false, error: "A product with this slug already exists." };
+      return { ok: false, error: "A product slug or variant SKU already exists." };
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return { ok: false, error: "That product no longer exists." };

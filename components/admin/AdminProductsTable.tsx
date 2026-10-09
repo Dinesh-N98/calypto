@@ -24,8 +24,23 @@ type ProductRecord = {
   name: string;
   slug: string;
   description: string;
+  brand: string | null;
   priceCents: number;
+  salePriceCents: number | null;
+  originalPriceCents: number | null;
+  saleEndsAt: Date | null;
   imageUrl: string;
+  images: { url: string }[];
+  variants: {
+    sku: string;
+    size: string | null;
+    color: string | null;
+    priceCents: number;
+    discountPriceCents: number | null;
+    stock: number;
+    imageUrl: string | null;
+  }[];
+  tieredDiscounts: { minQuantity: number; discountPercentage: number }[];
   categoryId: string;
   categoryName: string;
 };
@@ -49,11 +64,15 @@ function ProductFormFields({
   product,
   imageUrl,
   onImageUrlChange,
+  galleryUrls,
+  onGalleryUrlsChange,
 }: {
   categories: CategoryOption[];
   product?: ProductRecord;
   imageUrl: string;
   onImageUrlChange: (imageUrl: string) => void;
+  galleryUrls: string[];
+  onGalleryUrlsChange: (urls: string[]) => void;
 }) {
   const [name, setName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
@@ -61,7 +80,9 @@ function ProductFormFields({
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState(product?.imageUrl ?? "");
   const [imageError, setImageError] = useState("");
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
 
   useEffect(
@@ -102,6 +123,7 @@ function ProductFormFields({
     <>
       {product && <input name="id" type="hidden" value={product.id} />}
       <input name="imageUrl" type="hidden" value={imageUrl} />
+      <input name="imageUrls" type="hidden" value={JSON.stringify(galleryUrls)} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="text-xs font-bold text-[#55594f] md:col-span-2">
           Product name
@@ -134,6 +156,16 @@ function ProductFormFields({
             value={slug}
           />
         </label>
+        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
+          Brand
+          <input
+            className="admin-catalog-input"
+            defaultValue={product?.brand ?? ""}
+            maxLength={100}
+            name="brand"
+            placeholder="Brand name"
+          />
+        </label>
         <label className="text-xs font-bold text-[#55594f]">
           Price (USD)
           <input
@@ -147,6 +179,55 @@ function ProductFormFields({
             step="0.01"
             type="number"
           />
+        </label>
+        <label className="text-xs font-bold text-[#55594f]">
+          Sale price (USD)
+          <input
+            className="admin-catalog-input"
+            defaultValue={
+              product?.salePriceCents ? (product.salePriceCents / 100).toFixed(2) : ""
+            }
+            min="0.01"
+            name="salePrice"
+            placeholder="Optional"
+            step="0.01"
+            type="number"
+          />
+        </label>
+        <label className="text-xs font-bold text-[#55594f]">
+          Original price (USD)
+          <input
+            className="admin-catalog-input"
+            defaultValue={
+              product?.originalPriceCents ? (product.originalPriceCents / 100).toFixed(2) : ""
+            }
+            min="0.01"
+            name="originalPrice"
+            placeholder="Optional"
+            step="0.01"
+            type="number"
+          />
+        </label>
+        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
+          Sale ends at
+          <input
+            className="admin-catalog-input"
+            defaultValue={
+              product?.saleEndsAt
+                ? new Date(
+                    product.saleEndsAt.getTime() -
+                      product.saleEndsAt.getTimezoneOffset() * 60_000,
+                  )
+                    .toISOString()
+                    .slice(0, 16)
+                : ""
+            }
+            name="saleEndsAt"
+            type="datetime-local"
+          />
+          <span className="mt-1 block text-[11px] font-normal">
+            Required when a sale price is set.
+          </span>
         </label>
         <label className="text-xs font-bold text-[#55594f]">
           Category
@@ -230,6 +311,58 @@ function ProductFormFields({
               </button>
             </div>
           )}
+            <div className="text-xs font-bold text-[#55594f] md:col-span-2">
+              <label htmlFor="product-gallery-files">Additional gallery images</label>
+              <input
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="admin-catalog-input mt-1"
+                id="product-gallery-files"
+                multiple
+                name="galleryImages"
+                onChange={(event) => {
+                  const files = [...(event.target.files ?? [])];
+                  const invalid = files.find(
+                    (file) =>
+                      file.size > MAX_PRODUCT_IMAGE_SIZE ||
+                      (file.type &&
+                        !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)),
+                  );
+                  if (invalid) {
+                    setImageError("Gallery images must be JPG, PNG, WEBP, or GIF files up to 10 MB.");
+                    event.target.value = "";
+                    setGalleryFiles([]);
+                    return;
+                  }
+                  setImageError("");
+                  setGalleryFiles(files);
+                }}
+                ref={galleryInputRef}
+                type="file"
+              />
+              <span className="mt-1 block text-[11px] font-normal">
+                {galleryFiles.length
+                  ? `${galleryFiles.length} image${galleryFiles.length === 1 ? "" : "s"} selected`
+                  : `${galleryUrls.length} saved image${galleryUrls.length === 1 ? "" : "s"}`}
+              </span>
+              {galleryUrls.length > 0 && (
+                <ul className="mt-2 grid gap-1">
+                  {galleryUrls.map((url) => (
+                    <li className="flex items-center justify-between gap-2 font-normal" key={url}>
+                      <span className="min-w-0 truncate">{url}</span>
+                      <button
+                        className="shrink-0 underline"
+                        onClick={() =>
+                          onGalleryUrlsChange(galleryUrls.filter((galleryUrl) => galleryUrl !== url))
+                        }
+                        type="button"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           {imageError && (
             <p aria-live="polite" className="mt-2 text-xs font-normal text-red-800">
               {imageError}
@@ -246,6 +379,48 @@ function ProductFormFields({
             required
             rows={5}
           />
+        </label>
+        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
+          Variants (JSON)
+          <textarea
+            className="admin-catalog-input min-h-36 py-3 font-mono text-xs"
+            defaultValue={JSON.stringify(
+              product?.variants.map((variant) => ({
+                sku: variant.sku,
+                size: variant.size ?? "",
+                color: variant.color ?? "",
+                price: (variant.priceCents / 100).toFixed(2),
+                discountPrice: variant.discountPriceCents
+                  ? (variant.discountPriceCents / 100).toFixed(2)
+                  : "",
+                stock: variant.stock,
+                imageUrl: variant.imageUrl ?? "",
+              })) ?? [
+                { sku: "", size: "", color: "", price: "", discountPrice: "", stock: 0, imageUrl: "" },
+              ],
+              null,
+              2,
+            )}
+            name="variants"
+            required
+            spellCheck={false}
+          />
+          <span className="mt-1 block text-[11px] font-normal">
+            Each row requires a unique SKU, price, and non-negative stock. Optional size, color,
+            discountPrice, and imageUrl fields are supported.
+          </span>
+        </label>
+        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
+          Quantity discounts (JSON)
+          <textarea
+            className="admin-catalog-input min-h-20 py-3 font-mono text-xs"
+            defaultValue={JSON.stringify(product?.tieredDiscounts ?? [], null, 2)}
+            name="tieredDiscounts"
+            spellCheck={false}
+          />
+          <span className="mt-1 block text-[11px] font-normal">
+            Example: [{"{"}&quot;minQuantity&quot;:2,&quot;discountPercentage&quot;:10{"}"}]
+          </span>
         </label>
       </div>
     </>
@@ -267,68 +442,93 @@ function ProductDrawer({
   const [error, setError] = useState("");
   const product = mode.type === "edit" ? mode.product : undefined;
   const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
+  const [galleryUrls, setGalleryUrls] = useState(product?.images.map((image) => image.url) ?? []);
+
+  async function uploadImage(file: File): Promise<string> {
+    const uploadData = new FormData();
+    uploadData.set("file", file);
+    const response = await fetch("/api/admin/product-images", {
+      method: "POST",
+      body: uploadData,
+    });
+    const result: unknown = await response.json();
+    if (
+      response.ok &&
+      typeof result === "object" &&
+      result !== null &&
+      "imageUrl" in result &&
+      typeof result.imageUrl === "string"
+    ) {
+      return result.imageUrl;
+    }
+    const message =
+      typeof result === "object" &&
+      result !== null &&
+      "error" in result &&
+      typeof result.error === "string"
+        ? result.error
+        : "The image could not be uploaded. Please try again.";
+    throw new Error(message);
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     const formData = new FormData(form);
-    let uploadedImageUrl: string | undefined;
+    const uploadedImageUrls: string[] = [];
+    const uploadedGalleryImageUrls: string[] = [];
 
     startTransition(async () => {
       try {
         const imageFile = formData.get("imageFile");
         if (imageFile instanceof File && imageFile.size > 0) {
-          const uploadData = new FormData();
-          uploadData.set("file", imageFile);
-          const uploadResponse = await fetch("/api/admin/product-images", {
-            method: "POST",
-            body: uploadData,
-          });
-          const uploadResult: unknown = await uploadResponse.json();
-
-          if (
-            !uploadResponse.ok ||
-            typeof uploadResult !== "object" ||
-            uploadResult === null ||
-            !("imageUrl" in uploadResult) ||
-            typeof uploadResult.imageUrl !== "string"
-          ) {
-            const message =
-              typeof uploadResult === "object" &&
-              uploadResult !== null &&
-              "error" in uploadResult &&
-              typeof uploadResult.error === "string"
-                ? uploadResult.error
-                : "The image could not be uploaded. Please try again.";
-            setError(message);
-            return;
-          }
-
-          uploadedImageUrl = uploadResult.imageUrl;
+          const uploadedImageUrl = await uploadImage(imageFile);
+          uploadedImageUrls.push(uploadedImageUrl);
           setImageUrl(uploadedImageUrl);
           formData.set("imageUrl", uploadedImageUrl);
-          const imageUrlInput = form.elements.namedItem("imageUrl");
-          const imageFileInput = form.elements.namedItem("imageFile");
-          if (imageUrlInput instanceof HTMLInputElement) imageUrlInput.value = uploadedImageUrl;
-          if (imageFileInput instanceof HTMLInputElement) imageFileInput.value = "";
         }
+        const galleryFiles = formData
+          .getAll("galleryImages")
+          .filter((file): file is File => file instanceof File && file.size > 0);
+        for (const file of galleryFiles) {
+          const uploadedImageUrl = await uploadImage(file);
+          uploadedImageUrls.push(uploadedImageUrl);
+          uploadedGalleryImageUrls.push(uploadedImageUrl);
+        }
+        const galleryInput = form.elements.namedItem("galleryImages");
+        if (galleryInput instanceof HTMLInputElement) galleryInput.value = "";
+        const currentGallery: unknown = JSON.parse(String(formData.get("imageUrls") ?? "[]"));
+        const savedGallery = Array.isArray(currentGallery)
+          ? currentGallery.filter((url): url is string => typeof url === "string")
+          : [];
+        const nextGallery = [...new Set([...uploadedImageUrls, ...savedGallery])];
+        setGalleryUrls(nextGallery);
+        formData.set("imageUrls", JSON.stringify(nextGallery));
         formData.delete("imageFile");
+        formData.delete("galleryImages");
 
         const result =
           mode.type === "edit" ? await updateProduct(formData) : await createProduct(formData);
         if (result.ok) onComplete(result);
         else {
-          if (uploadedImageUrl) {
-            setError(`${result.error} The uploaded image is still stored and can be reused.`);
+          if (uploadedImageUrls.length > 0) {
+            setError(`${result.error} The uploaded images are still stored and can be reused.`);
           } else {
             setError(result.error);
           }
         }
       } catch {
+        if (uploadedGalleryImageUrls.length > 0) {
+          setGalleryUrls((current) => [...new Set([...current, ...uploadedGalleryImageUrls])]);
+        }
+        const imageInput = form.elements.namedItem("imageFile");
+        if (imageInput instanceof HTMLInputElement) imageInput.value = "";
+        const galleryInput = form.elements.namedItem("galleryImages");
+        if (galleryInput instanceof HTMLInputElement) galleryInput.value = "";
         setError(
-          uploadedImageUrl
-            ? "The product could not be saved. The uploaded image is still stored and can be reused."
+          uploadedImageUrls.length > 0
+            ? "The product could not be saved. Uploaded images are still stored and can be reused."
             : "The product could not be saved. Please try again.",
         );
       }
@@ -380,7 +580,9 @@ function ProductDrawer({
             <ProductFormFields
               categories={categories}
               imageUrl={imageUrl}
+              galleryUrls={galleryUrls}
               onImageUrlChange={setImageUrl}
+              onGalleryUrlsChange={setGalleryUrls}
               product={product}
             />
           </div>

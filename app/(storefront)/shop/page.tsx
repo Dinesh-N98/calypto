@@ -48,6 +48,18 @@ async function ProductGrid({ categoryId, sort }: { categoryId?: string; sort: So
       name: true,
       priceCents: true,
       imageUrl: true,
+      variants: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          sku: true,
+          priceCents: true,
+          stock: true,
+          size: true,
+          color: true,
+          imageUrl: true,
+        },
+      },
     },
   });
 

@@ -19,18 +19,77 @@ enum PaymentProvider {
 }
 
 model Product {
-  id            String         @id @default(cuid())
-  slug          String         @unique
-  name          String
-  description   String
-  priceCents    Int
-  categoryId    String
-  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  imageUrl      String
-  createdAt     DateTime       @default(now())
-  wishlistItems WishlistItem[]
+  id                 String           @id @default(cuid())
+  slug               String           @unique
+  name               String
+  description        String
+  brand              String?
+  priceCents         Int
+  salePriceCents     Int?
+  originalPriceCents Int?
+  saleEndsAt         DateTime?
+  categoryId         String
+  category           Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  imageUrl           String
+  createdAt          DateTime         @default(now())
+  wishlistItems      WishlistItem[]
+  variants           ProductVariant[]
+  images             ProductImage[]
+  reviews            Review[]
+  tieredDiscounts    TieredDiscount[]
 
   @@index([categoryId])
+  @@index([saleEndsAt])
+}
+
+model ProductVariant {
+  id                 String   @id @default(cuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sku                String   @unique
+  priceCents         Int
+  discountPriceCents Int?
+  stock              Int      @default(0)
+  size               String?
+  color              String?
+  imageUrl           String?
+  createdAt          DateTime @default(now())
+
+  @@index([productId, stock])
+  @@index([productId, size, color])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  url       String
+  order     Int      @default(0)
+  altText   String?
+  createdAt DateTime @default(now())
+
+  @@unique([productId, order])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([productId, createdAt])
+}
+
+model TieredDiscount {
+  id                 String  @id @default(cuid())
+  productId          String
+  product            Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  minQuantity        Int
+  discountPercentage Int
+
+  @@unique([productId, minQuantity])
 }
 
 model Category {
@@ -139,10 +198,12 @@ model Order {
 }
 
 model OrderItem {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   orderId     String
-  order       Order  @relation(fields: [orderId], references: [id])
+  order       Order   @relation(fields: [orderId], references: [id])
   productSlug String
+  variantId   String?
+  sku         String?
   name        String
   priceCents  Int
   quantity    Int

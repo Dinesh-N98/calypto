@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateUnitPriceCents } from "@/lib/product-pricing";
 import {
   assertOnePayConfigured,
   createOnePayCheckout,
@@ -8,7 +9,7 @@ import {
   ONEPAY_CURRENCY,
 } from "@/lib/onepay";
 
-type CartItemPayload = { slug: string; quantity: number };
+type CartItemPayload = { variantId: string; quantity: number };
 type CheckoutCustomer = {
   firstName: string;
   lastName: string;
@@ -32,8 +33,9 @@ function isValidCartItem(item: unknown): item is CartItemPayload {
   if (!isObject(item)) return false;
   const cartItem = item;
   return (
-    typeof cartItem.slug === "string" &&
-    cartItem.slug.length > 0 &&
+    typeof cartItem.variantId === "string" &&
+    cartItem.variantId.length > 0 &&
+    cartItem.variantId.length <= 140 &&
     typeof cartItem.quantity === "number" &&
     Number.isSafeInteger(cartItem.quantity) &&
     cartItem.quantity > 0
@@ -132,7 +134,12 @@ export async function POST(request: Request) {
   const rawItems = payload?.items;
   const customer = parseCustomer(payload?.customer);
   const address = parseAddress(payload?.address);
-  if (!Array.isArray(rawItems) || rawItems.length === 0 || !rawItems.every(isValidCartItem)) {
+  if (
+    !Array.isArray(rawItems) ||
+    rawItems.length === 0 ||
+    rawItems.length > 100 ||
+    !rawItems.every(isValidCartItem)
+  ) {
     return Response.json({ error: "Your cart is empty or invalid." }, { status: 400 });
   }
   if (!customer) {
@@ -159,30 +166,96 @@ export async function POST(request: Request) {
 
   const quantities = new Map<string, number>();
   for (const item of rawItems) {
-    const quantity = (quantities.get(item.slug) ?? 0) + item.quantity;
+    const quantity = (quantities.get(item.variantId) ?? 0) + item.quantity;
     if (!Number.isSafeInteger(quantity) || quantity > 2_147_483_647) {
       return Response.json({ error: "One or more item quantities are invalid." }, { status: 400 });
     }
-    quantities.set(item.slug, quantity);
+    quantities.set(item.variantId, quantity);
   }
 
-  const products = await prisma.product.findMany({
-    where: { slug: { in: [...quantities.keys()] } },
-    select: { slug: true, name: true, priceCents: true },
+  const requestedIds = [...quantities.keys()].filter((id) => !id.startsWith("legacy:"));
+  const legacySlugs = [...quantities.keys()]
+    .filter((id) => id.startsWith("legacy:"))
+    .map((id) => id.slice("legacy:".length));
+  const variants = await prisma.productVariant.findMany({
+    where: {
+      OR: [
+        ...(requestedIds.length > 0 ? [{ id: { in: requestedIds } }] : []),
+        ...(legacySlugs.length > 0
+          ? [{ product: { slug: { in: legacySlugs } } }]
+          : []),
+      ],
+    },
+    select: {
+      id: true,
+      sku: true,
+      priceCents: true,
+      discountPriceCents: true,
+      stock: true,
+      size: true,
+      color: true,
+      imageUrl: true,
+      product: {
+        select: {
+          slug: true,
+          name: true,
+          imageUrl: true,
+          salePriceCents: true,
+          saleEndsAt: true,
+          tieredDiscounts: { select: { minQuantity: true, discountPercentage: true } },
+        },
+      },
+    },
   });
-  if (products.length !== quantities.size) {
+  const variantsById = new Map(variants.map((variant) => [variant.id, variant]));
+  const variantsBySlug = new Map<string, typeof variants>();
+  for (const variant of variants) {
+    const productVariants = variantsBySlug.get(variant.product.slug) ?? [];
+    productVariants.push(variant);
+    variantsBySlug.set(variant.product.slug, productVariants);
+  }
+  const resolvedItems = [...quantities.entries()].map(([requestedId, quantity]) => {
+    if (!requestedId.startsWith("legacy:")) {
+      const variant = variantsById.get(requestedId);
+      return variant ? { variant, quantity } : null;
+    }
+    const matchingVariants = variantsBySlug.get(requestedId.slice("legacy:".length)) ?? [];
+    return matchingVariants.length === 1
+      ? { variant: matchingVariants[0], quantity }
+      : null;
+  });
+  if (resolvedItems.some((item) => item === null)) {
     return Response.json(
-      { error: "One or more products are no longer available." },
+      { error: "One or more selected variants are no longer available." },
       { status: 400 },
     );
   }
 
-  const orderItems = products.map((product) => ({
-    productSlug: product.slug,
-    name: product.name,
-    priceCents: product.priceCents,
-    quantity: quantities.get(product.slug) ?? 0,
-  }));
+  const quantityByProduct = new Map<string, number>();
+  for (const item of resolvedItems) {
+    if (!item) continue;
+    const productSlug = item.variant.product.slug;
+    quantityByProduct.set(productSlug, (quantityByProduct.get(productSlug) ?? 0) + item.quantity);
+  }
+  const orderItems = resolvedItems.filter((item) => item !== null).map(({ variant, quantity }) => {
+    const variantLabel = [variant.color, variant.size].filter(Boolean).join(" / ");
+    return {
+      variantId: variant.id,
+      sku: variant.sku,
+      productSlug: variant.product.slug,
+      name: variantLabel ? `${variant.product.name} — ${variantLabel}` : variant.product.name,
+      imageUrl: variant.imageUrl ?? variant.product.imageUrl,
+      priceCents: calculateUnitPriceCents({
+        basePriceCents: variant.priceCents,
+        variantDiscountPriceCents: variant.discountPriceCents,
+        salePriceCents: variant.product.salePriceCents,
+        saleEndsAt: variant.product.saleEndsAt,
+        quantity: quantityByProduct.get(variant.product.slug) ?? quantity,
+        tieredDiscounts: variant.product.tieredDiscounts,
+      }),
+      quantity,
+    };
+  });
   const totalCents = orderItems.reduce((total, item) => total + item.priceCents * item.quantity, 0);
   if (
     totalCents <= 0 ||
@@ -196,39 +269,67 @@ export async function POST(request: Request) {
   const session = await auth();
   const reference = `CAL-${randomUUID().replaceAll("-", "").toUpperCase()}`;
   const userId = session?.user?.id ?? null;
-  const order = await prisma.$transaction(async (transaction) => {
-    if (userId && payload.saveAddress === true) {
-      const savedAddressCount = await transaction.address.count({ where: { userId } });
-      await transaction.address.create({
+  let order: { id: string };
+  try {
+    order = await prisma.$transaction(async (transaction) => {
+      for (const item of orderItems) {
+        const reserved = await transaction.productVariant.updateMany({
+          where: { id: item.variantId, stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } },
+        });
+        if (reserved.count !== 1) throw new Error("INSUFFICIENT_VARIANT_STOCK");
+      }
+
+      if (userId && payload.saveAddress === true) {
+        const savedAddressCount = await transaction.address.count({ where: { userId } });
+        await transaction.address.create({
+          data: {
+            userId,
+            line1: address.streetAddress,
+            line2: address.aptSuite || null,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+            country: address.country,
+            isDefault: savedAddressCount === 0,
+          },
+        });
+      }
+
+      return transaction.order.create({
         data: {
+          paymentProvider: "ONEPAY",
+          providerReference: reference,
+          currency: ONEPAY_CURRENCY,
           userId,
-          line1: address.streetAddress,
-          line2: address.aptSuite || null,
-          city: address.city,
-          state: address.state,
-          postalCode: address.postalCode,
-          country: address.country,
-          isDefault: savedAddressCount === 0,
+          email: customer.email,
+          customerFirstName: customer.firstName,
+          customerLastName: customer.lastName,
+          customerPhone: customer.phone,
+          totalCents,
+          status: "pending",
+          items: {
+            create: orderItems.map((item) => ({
+              variantId: item.variantId,
+              sku: item.sku,
+              productSlug: item.productSlug,
+              name: item.name,
+              priceCents: item.priceCents,
+              quantity: item.quantity,
+            })),
+          },
         },
       });
-    }
-
-    return transaction.order.create({
-      data: {
-        paymentProvider: "ONEPAY",
-        providerReference: reference,
-        currency: ONEPAY_CURRENCY,
-        userId,
-        email: customer.email,
-        customerFirstName: customer.firstName,
-        customerLastName: customer.lastName,
-        customerPhone: customer.phone,
-        totalCents,
-        status: "pending",
-        items: { create: orderItems },
-      },
     });
-  });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_VARIANT_STOCK") {
+      return Response.json(
+        { error: "One or more variants no longer have enough stock. Update your cart and try again." },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
 
   try {
     const checkout = await createOnePayCheckout({
@@ -251,9 +352,17 @@ export async function POST(request: Request) {
     return Response.json({ url: redirectUrl.toString() });
   } catch (error) {
     if (error instanceof OnePayApiError && error.status >= 400 && error.status < 500) {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: "failed" },
+      await prisma.$transaction(async (transaction) => {
+        await transaction.order.update({
+          where: { id: order.id },
+          data: { status: "failed" },
+        });
+        for (const item of orderItems) {
+          await transaction.productVariant.updateMany({
+            where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
       });
     }
     console.error("Unable to start OnePay checkout.", error);

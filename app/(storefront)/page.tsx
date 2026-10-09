@@ -40,6 +40,15 @@ export default async function Home() {
     name: string;
     priceCents: number;
     imageUrl: string;
+    variants?: {
+      id: string;
+      sku: string;
+      priceCents: number;
+      stock: number;
+      size: string | null;
+      color: string | null;
+      imageUrl: string | null;
+    }[];
   }[] = fallbackProducts;
   try {
     products =
@@ -47,7 +56,25 @@ export default async function Home() {
         take: 3,
         where: { slug: { in: ["worm-01", "swimbait-01", "jig-01"] } },
         orderBy: { createdAt: "asc" },
-        select: { id: true, slug: true, name: true, priceCents: true, imageUrl: true },
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          priceCents: true,
+          imageUrl: true,
+          variants: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              sku: true,
+              priceCents: true,
+              stock: true,
+              size: true,
+              color: true,
+              imageUrl: true,
+            },
+          },
+        },
       })) || fallbackProducts;
   } catch (err) {
     console.error("Failed to load products from DB, using fallback:", err);

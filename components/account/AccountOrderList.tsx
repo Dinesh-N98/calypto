@@ -20,7 +20,16 @@ export type AccountOrder = {
 };
 
 type ReorderResponse = {
-  items: { slug: string; name: string; priceCents: number; imageUrl: string; quantity: number }[];
+  items: {
+    slug: string;
+    name: string;
+    variantId: string;
+    sku: string;
+    variantLabel: string;
+    priceCents: number;
+    imageUrl: string;
+    quantity: number;
+  }[];
   unavailable: string[];
 };
 

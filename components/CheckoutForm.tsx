@@ -18,7 +18,7 @@ export type CheckoutAddress = {
   isDefault: boolean;
 };
 
-type CheckoutItem = { slug: string; quantity: number };
+type CheckoutItem = { variantId: string; quantity: number };
 type AddressFields = Omit<CheckoutAddress, "id" | "isDefault">;
 
 const emptyAddress: AddressFields = {
