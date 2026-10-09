@@ -19,24 +19,25 @@ enum PaymentProvider {
 }
 
 model Product {
-  id                 String           @id @default(cuid())
-  slug               String           @unique
-  name               String
-  description        String
-  brand              String?
-  priceCents         Int
-  salePriceCents     Int?
-  originalPriceCents Int?
-  saleEndsAt         DateTime?
-  categoryId         String
-  category           Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  imageUrl           String
-  createdAt          DateTime         @default(now())
-  wishlistItems      WishlistItem[]
-  variants           ProductVariant[]
-  images             ProductImage[]
-  reviews            Review[]
-  tieredDiscounts    TieredDiscount[]
+  id                     String           @id @default(cuid())
+  slug                   String           @unique
+  name                   String
+  description            String
+  brand                  String?
+  priceCents             Int
+  salePriceCents         Int?
+  originalPriceCents     Int?
+  saleEndsAt             DateTime?
+  tieredDiscountsEnabled Boolean?
+  categoryId             String
+  category               Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  imageUrl               String
+  createdAt              DateTime         @default(now())
+  wishlistItems          WishlistItem[]
+  variants               ProductVariant[]
+  images                 ProductImage[]
+  reviews                Review[]
+  tieredDiscounts        TieredDiscount[]
 
   @@index([categoryId])
   @@index([saleEndsAt])
@@ -93,11 +94,12 @@ model TieredDiscount {
 }
 
 model Category {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String    @unique
-  createdAt DateTime  @default(now())
-  products  Product[]
+  id                     String    @id @default(cuid())
+  name                   String
+  slug                   String    @unique
+  tieredDiscountsEnabled Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  products               Product[]
 }
 
 model Promotion {

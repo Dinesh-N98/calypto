@@ -10,6 +10,7 @@ export function calculateUnitPriceCents({
   saleEndsAt,
   quantity,
   tieredDiscounts,
+  tieredDiscountsEnabled,
   now = new Date(),
 }: {
   basePriceCents: number;
@@ -18,6 +19,7 @@ export function calculateUnitPriceCents({
   saleEndsAt: Date | null;
   quantity: number;
   tieredDiscounts: TierPriceRule[];
+  tieredDiscountsEnabled: boolean;
   now?: Date;
 }): number {
   const saleHasNotExpired = saleEndsAt === null || saleEndsAt.getTime() > now.getTime();
@@ -30,7 +32,7 @@ export function calculateUnitPriceCents({
     activePrices.push(salePriceCents);
   }
   const promotionalPrice = Math.min(...activePrices);
-  const appliedTier = tieredDiscounts
+  const appliedTier = (tieredDiscountsEnabled ? tieredDiscounts : [])
     .filter((tier) => tier.minQuantity <= quantity)
     .reduce<TierPriceRule | null>(
       (best, tier) =>

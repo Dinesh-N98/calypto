@@ -1,6 +1,7 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
@@ -31,14 +32,31 @@ function parseOptionalPriceCents(value: string): number | null | undefined {
   return parsePriceCents(value) ?? undefined;
 }
 
-function parseVariants(value: string, baseImageUrl: string) {
+function parseVariants(
+  value: string,
+  baseImageUrl: string,
+  basePriceCents: number,
+  defaultStock: number,
+) {
   try {
-    const raw: unknown = JSON.parse(value);
-    if (!Array.isArray(raw) || raw.length === 0 || raw.length > 100) return null;
+    const raw: unknown = JSON.parse(value || "[]");
+    if (!Array.isArray(raw) || raw.length > 100) return null;
+    if (raw.length === 0) {
+      return [{
+        sku: `AUTO-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`,
+        size: null,
+        color: null,
+        priceCents: basePriceCents,
+        discountPriceCents: null,
+        stock: defaultStock,
+        imageUrl: baseImageUrl,
+      }];
+    }
     const variants = raw.map((entry) => {
       if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return null;
       const item = entry as Record<string, unknown>;
       if (
+        (item.sku !== undefined && typeof item.sku !== "string") ||
         (item.size !== undefined && typeof item.size !== "string") ||
         (item.color !== undefined && typeof item.color !== "string") ||
         (item.discountPrice !== undefined && typeof item.discountPrice !== "string") ||
@@ -46,7 +64,9 @@ function parseVariants(value: string, baseImageUrl: string) {
       ) {
         return null;
       }
-      const sku = typeof item.sku === "string" ? item.sku.trim() : "";
+      const skuInput = typeof item.sku === "string" ? item.sku.trim() : "";
+      const sku = skuInput ||
+        `AUTO-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`;
       const size = typeof item.size === "string" ? item.size.trim() : "";
       const color = typeof item.color === "string" ? item.color.trim() : "";
       const priceCents = typeof item.price === "string" ? parsePriceCents(item.price) : null;
@@ -79,15 +99,22 @@ function parseVariants(value: string, baseImageUrl: string) {
         priceCents,
         discountPriceCents,
         stock,
-        imageUrl: imageUrl || baseImageUrl,
+        imageUrl: imageUrl || null,
       };
     });
     if (variants.some((variant) => variant === null)) return null;
     const parsedVariants = variants.filter((variant) => variant !== null);
-    return new Set(parsedVariants.map((variant) => variant.sku.toLowerCase())).size ===
-      parsedVariants.length
-      ? parsedVariants
-      : null;
+    const uniqueSkus =
+      new Set(parsedVariants.map((variant) => variant.sku.toLowerCase())).size ===
+      parsedVariants.length;
+    const uniqueOptions =
+      new Set(parsedVariants.map((variant) => `${variant.color ?? ""}\u0000${variant.size ?? ""}`))
+        .size === parsedVariants.length;
+    const hasOnlyOneHiddenDefault =
+      parsedVariants.some((variant) => variant.color === null && variant.size === null)
+        ? parsedVariants.length === 1
+        : true;
+    return uniqueSkus && uniqueOptions && hasOnlyOneHiddenDefault ? parsedVariants : null;
   } catch {
     return null;
   }
@@ -164,6 +191,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 function readCategory(formData: FormData) {
   const name = getText(formData, "name");
   const slug = slugify(getText(formData, "slug") || name);
+  const tieredDiscountsEnabled = formData.get("tieredDiscountsEnabled") === "on";
 
   if (!name || name.length > 100) {
     return { error: "Category name is required (max 100 characters)." } as const;
@@ -172,7 +200,7 @@ function readCategory(formData: FormData) {
     return { error: "Use a URL-safe slug with lowercase letters, numbers, and hyphens." } as const;
   }
 
-  return { data: { name, slug } } as const;
+  return { data: { name, slug, tieredDiscountsEnabled } } as const;
 }
 
 export async function createCategory(
@@ -252,16 +280,25 @@ function readProduct(formData: FormData) {
   const slug = getText(formData, "slug");
   const description = getText(formData, "description");
   const priceCents = parsePriceCents(getText(formData, "price"));
+  const defaultStockInput = getText(formData, "defaultStock");
+  const defaultStock = defaultStockInput ? Number(defaultStockInput) : 0;
   const imageUrl = getText(formData, "imageUrl");
   const categoryId = getText(formData, "categoryId");
   const brand = getText(formData, "brand");
   const salePriceInput = getText(formData, "salePrice");
-  const salePriceCents = parseOptionalPriceCents(salePriceInput);
+  const salePriceInputCents = parseOptionalPriceCents(salePriceInput);
+  const discountAmountInput = getText(formData, "discountAmount");
+  const discountAmountCents = parseOptionalPriceCents(discountAmountInput);
   const originalPriceInput = getText(formData, "originalPrice");
   const originalPriceCents = parseOptionalPriceCents(originalPriceInput);
   const saleEndsAtInput = getText(formData, "saleEndsAt");
   const saleEndsAt = saleEndsAtInput ? new Date(saleEndsAtInput) : null;
-  const variants = parseVariants(getText(formData, "variants"), imageUrl);
+  const variants = parseVariants(
+    getText(formData, "variants"),
+    imageUrl,
+    priceCents ?? 0,
+    defaultStock,
+  );
   const images = parseImageUrls(getText(formData, "imageUrls"), imageUrl);
   const tieredDiscounts = parseTieredDiscounts(getText(formData, "tieredDiscounts"));
 
@@ -279,8 +316,28 @@ function readProduct(formData: FormData) {
     } as const;
   if (!categoryId) return { error: "Choose a category." } as const;
   if (brand.length > 100) return { error: "Brand must be 100 characters or fewer." } as const;
-  if (salePriceCents === undefined || originalPriceCents === undefined) {
+  if (
+    salePriceInputCents === undefined ||
+    discountAmountCents === undefined ||
+    originalPriceCents === undefined
+  ) {
     return { error: "Enter valid promotional and original prices." } as const;
+  }
+  if (salePriceInput && discountAmountInput) {
+    return { error: "Enter either a sale price or a discount amount, not both." } as const;
+  }
+  if (discountAmountInput && originalPriceCents === null) {
+    return { error: "Enter an original price to calculate the discount amount." } as const;
+  }
+  const salePriceCents =
+    discountAmountCents !== null && originalPriceCents !== null
+      ? originalPriceCents - discountAmountCents
+      : salePriceInputCents;
+  if (
+    discountAmountCents !== null &&
+    (discountAmountCents >= (originalPriceCents ?? 0) || (originalPriceCents ?? 0) - discountAmountCents <= 0)
+  ) {
+    return { error: "Discount amount must be less than the original price." } as const;
   }
   const referencePriceCents = salePriceCents ?? priceCents;
   const hasVariantPromotions = variants?.some((variant) => variant.discountPriceCents !== null);
@@ -295,8 +352,11 @@ function readProduct(formData: FormData) {
   }
   if (!variants) {
     return {
-      error: "Add at least one valid variant. Each variant needs a unique SKU, price, and stock.",
+      error: "Variants must have unique SKU and color/size combinations, valid prices, and non-negative stock.",
     } as const;
+  }
+  if (!Number.isSafeInteger(defaultStock) || defaultStock < 0 || defaultStock > 2_147_483_647) {
+    return { error: "Default stock must be a non-negative whole number." } as const;
   }
   if (!images) {
     return { error: "Product gallery contains an invalid or excessive image list." } as const;
@@ -305,6 +365,18 @@ function readProduct(formData: FormData) {
     return {
       error: "Tier discounts must have unique quantities (2+) and percentages from 1 to 99.",
     } as const;
+  }
+  const tieredDiscountsEnabledInput = getText(formData, "tieredDiscountsEnabled");
+  const tieredDiscountsEnabled =
+    tieredDiscountsEnabledInput === "" ? null
+      : tieredDiscountsEnabledInput === "true" ? true
+        : tieredDiscountsEnabledInput === "false" ? false
+          : undefined;
+  if (tieredDiscountsEnabled === undefined) {
+    return { error: "Choose whether quantity discounts are inherited, enabled, or disabled." } as const;
+  }
+  if (tieredDiscounts.length > 0 && tieredDiscountsEnabled === false) {
+    return { error: "Remove quantity discount rules or enable quantity discounts for this product." } as const;
   }
 
   return {
@@ -317,6 +389,7 @@ function readProduct(formData: FormData) {
       salePriceCents,
       originalPriceCents,
       saleEndsAt,
+      tieredDiscountsEnabled,
       imageUrl,
       categoryId,
       variants,

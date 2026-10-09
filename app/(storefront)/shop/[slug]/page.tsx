@@ -12,7 +12,9 @@ export async function generateMetadata({
   const product = await prisma.product.findUnique({
     where: { slug },
     include: {
-      category: { select: { name: true } },
+      category: {
+        select: { name: true, tieredDiscountsEnabled: true },
+      },
       images: { orderBy: { order: "asc" }, take: 1 },
     },
   });
@@ -46,7 +48,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const product = await prisma.product.findUnique({
     where: { slug },
     include: {
-      category: { select: { name: true } },
+      category: {
+        select: { name: true, tieredDiscountsEnabled: true },
+      },
       images: { orderBy: { order: "asc" }, select: { id: true, url: true, altText: true } },
       variants: {
         orderBy: [{ color: "asc" }, { size: "asc" }],
@@ -94,6 +98,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             salePriceCents: product.salePriceCents,
             originalPriceCents: product.originalPriceCents,
             saleEndsAt: product.saleEndsAt,
+            tieredDiscountsEnabled:
+              product.tieredDiscountsEnabled ?? product.category.tieredDiscountsEnabled,
           }}
           reviewCount={reviews._count.rating}
           tieredDiscounts={product.tieredDiscounts}

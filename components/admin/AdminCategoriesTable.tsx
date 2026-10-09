@@ -15,6 +15,7 @@ type CategoryRecord = {
   id: string;
   name: string;
   slug: string;
+  tieredDiscountsEnabled: boolean;
   productCount: number;
 };
 type ActionResult = { ok: true; message: string } | { ok: false; error: string };
@@ -126,6 +127,20 @@ function CategoryDrawer({
                 required
                 value={name}
               />
+            </label>
+            <label className="flex items-start gap-3 rounded-md border border-black/10 p-3 text-sm">
+              <input
+                className="mt-1 h-4 w-4 accent-[#718126]"
+                defaultChecked={category?.tieredDiscountsEnabled ?? false}
+                name="tieredDiscountsEnabled"
+                type="checkbox"
+              />
+              <span>
+                <strong className="block text-xs">Enable quantity discounts by default</strong>
+                <span className="mt-1 block text-xs font-normal text-[#73786b]">
+                  Products in this category inherit this unless their product setting overrides it.
+                </span>
+              </span>
             </label>
             <label className="block text-xs font-bold text-[#55594f]">
               URL slug

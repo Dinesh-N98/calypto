@@ -7,12 +7,14 @@ export default async function AdminProductsPage() {
   const [categories, products] = await Promise.all([
     prisma.category.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, tieredDiscountsEnabled: true },
     }),
     prisma.product.findMany({
       orderBy: { createdAt: "desc" },
       include: {
-        category: { select: { id: true, name: true } },
+        category: {
+          select: { id: true, name: true, tieredDiscountsEnabled: true },
+        },
         images: { orderBy: { order: "asc" }, select: { url: true } },
         variants: {
           orderBy: { createdAt: "asc" },
@@ -51,6 +53,8 @@ export default async function AdminProductsPage() {
         images: product.images,
         variants: product.variants,
         tieredDiscounts: product.tieredDiscounts,
+        tieredDiscountsEnabled: product.tieredDiscountsEnabled,
+        categoryTieredDiscountsEnabled: product.category.tieredDiscountsEnabled,
         categoryId: product.categoryId,
         categoryName: product.category.name,
       }))}

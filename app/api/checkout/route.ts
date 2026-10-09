@@ -202,6 +202,8 @@ export async function POST(request: Request) {
           imageUrl: true,
           salePriceCents: true,
           saleEndsAt: true,
+          tieredDiscountsEnabled: true,
+          category: { select: { tieredDiscountsEnabled: true } },
           tieredDiscounts: { select: { minQuantity: true, discountPercentage: true } },
         },
       },
@@ -252,6 +254,9 @@ export async function POST(request: Request) {
         saleEndsAt: variant.product.saleEndsAt,
         quantity: quantityByProduct.get(variant.product.slug) ?? quantity,
         tieredDiscounts: variant.product.tieredDiscounts,
+        tieredDiscountsEnabled:
+          variant.product.tieredDiscountsEnabled ??
+          variant.product.category.tieredDiscountsEnabled,
       }),
       quantity,
     };

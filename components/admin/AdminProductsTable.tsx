@@ -18,7 +18,11 @@ import { createProduct, deleteProduct, updateProduct } from "@/app/admin/catalog
 import { useToast } from "@/components/ToastProvider";
 import { formatPrice } from "@/lib/currency";
 
-type CategoryOption = { id: string; name: string };
+type CategoryOption = {
+  id: string;
+  name: string;
+  tieredDiscountsEnabled: boolean;
+};
 type ProductRecord = {
   id: string;
   name: string;
@@ -29,6 +33,8 @@ type ProductRecord = {
   salePriceCents: number | null;
   originalPriceCents: number | null;
   saleEndsAt: Date | null;
+  tieredDiscountsEnabled: boolean | null;
+  categoryTieredDiscountsEnabled: boolean;
   imageUrl: string;
   images: { url: string }[];
   variants: {
@@ -76,6 +82,17 @@ function ProductFormFields({
 }) {
   const [name, setName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(product?.categoryId ?? "");
+  const [priceInput, setPriceInput] = useState(
+    product ? (product.priceCents / 100).toFixed(2) : "",
+  );
+  const [salePriceInput, setSalePriceInput] = useState(
+    product?.salePriceCents ? (product.salePriceCents / 100).toFixed(2) : "",
+  );
+  const [originalPriceInput, setOriginalPriceInput] = useState(
+    product?.originalPriceCents ? (product.originalPriceCents / 100).toFixed(2) : "",
+  );
+  const [discountAmountInput, setDiscountAmountInput] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState(product?.imageUrl ?? "");
@@ -84,6 +101,15 @@ function ProductFormFields({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
+  const discountBase = Number(originalPriceInput || priceInput);
+  const discountSalePrice = discountAmountInput
+    ? discountBase - Number(discountAmountInput)
+    : Number(salePriceInput);
+  const discountPercent =
+    discountBase > 0 && discountSalePrice > 0 && discountSalePrice < discountBase
+      ? Math.round(((discountBase - discountSalePrice) / discountBase) * 100)
+      : null;
+  const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
 
   useEffect(
     () => () => {
@@ -170,7 +196,7 @@ function ProductFormFields({
           Price (USD)
           <input
             className="admin-catalog-input"
-            defaultValue={product ? (product.priceCents / 100).toFixed(2) : ""}
+            onChange={(event) => setPriceInput(event.target.value)}
             inputMode="decimal"
             min="0.01"
             name="price"
@@ -178,36 +204,60 @@ function ProductFormFields({
             required
             step="0.01"
             type="number"
+            value={priceInput}
           />
         </label>
         <label className="text-xs font-bold text-[#55594f]">
           Sale price (USD)
           <input
             className="admin-catalog-input"
-            defaultValue={
-              product?.salePriceCents ? (product.salePriceCents / 100).toFixed(2) : ""
-            }
+            onChange={(event) => {
+              setSalePriceInput(event.target.value);
+              if (event.target.value) setDiscountAmountInput("");
+            }}
             min="0.01"
             name="salePrice"
             placeholder="Optional"
             step="0.01"
             type="number"
+            value={salePriceInput}
+          />
+        </label>
+        <label className="text-xs font-bold text-[#55594f]">
+          Discount amount (USD)
+          <input
+            className="admin-catalog-input"
+            min="0.01"
+            name="discountAmount"
+            onChange={(event) => {
+              setDiscountAmountInput(event.target.value);
+              if (event.target.value) setSalePriceInput("");
+            }}
+            placeholder="Optional"
+            step="0.01"
+            type="number"
+            value={discountAmountInput}
           />
         </label>
         <label className="text-xs font-bold text-[#55594f]">
           Original price (USD)
           <input
             className="admin-catalog-input"
-            defaultValue={
-              product?.originalPriceCents ? (product.originalPriceCents / 100).toFixed(2) : ""
-            }
+            onChange={(event) => setOriginalPriceInput(event.target.value)}
             min="0.01"
             name="originalPrice"
             placeholder="Optional"
             step="0.01"
             type="number"
+            value={originalPriceInput}
           />
         </label>
+        <p className="text-xs font-normal text-[#73786b] md:col-span-2">
+          Enter either a sale price or discount amount.{" "}
+          {discountPercent === null
+            ? "Enter a valid original price and lower sale/discount value to preview savings."
+            : `Sale price: $${discountSalePrice.toFixed(2)} · ${discountPercent}% off`}
+        </p>
         <label className="text-xs font-bold text-[#55594f] md:col-span-2">
           Sale ends at
           <input
@@ -233,9 +283,10 @@ function ProductFormFields({
           Category
           <select
             className="admin-catalog-input"
-            defaultValue={product?.categoryId ?? ""}
             name="categoryId"
+            onChange={(event) => setSelectedCategoryId(event.target.value)}
             required
+            value={selectedCategoryId}
           >
             <option disabled value="">
               Select a category
@@ -246,6 +297,31 @@ function ProductFormFields({
               </option>
             ))}
           </select>
+        </label>
+        <label className="text-xs font-bold text-[#55594f]">
+          Quantity discount setting
+          <select
+            className="admin-catalog-input"
+            defaultValue={
+              product?.tieredDiscountsEnabled === null ||
+              product?.tieredDiscountsEnabled === undefined
+                ? ""
+                : String(product.tieredDiscountsEnabled)
+            }
+            name="tieredDiscountsEnabled"
+          >
+            <option value="">Inherit category default</option>
+            <option value="true">Enabled</option>
+            <option value="false">Disabled</option>
+          </select>
+          <span className="mt-1 block text-[11px] font-normal">
+            Category setting:{" "}
+            {(selectedCategory?.tieredDiscountsEnabled ??
+              product?.categoryTieredDiscountsEnabled ??
+              false)
+              ? "enabled"
+              : "disabled"}.
+          </span>
         </label>
         <div className="text-xs font-bold text-[#55594f] md:col-span-2">
           <span>Product image</span>
@@ -395,19 +471,38 @@ function ProductFormFields({
                   : "",
                 stock: variant.stock,
                 imageUrl: variant.imageUrl ?? "",
-              })) ?? [
-                { sku: "", size: "", color: "", price: "", discountPrice: "", stock: 0, imageUrl: "" },
-              ],
+              })) ?? [],
               null,
               2,
             )}
             name="variants"
-            required
             spellCheck={false}
+            placeholder="[]"
           />
           <span className="mt-1 block text-[11px] font-normal">
-            Each row requires a unique SKU, price, and non-negative stock. Optional size, color,
-            discountPrice, and imageUrl fields are supported.
+            Leave empty to create a hidden default variant using the product price and default
+            stock. Otherwise each row needs a price and non-negative stock; SKU is optional and
+            generated automatically. Size, color, discountPrice, and imageUrl are optional.
+          </span>
+        </label>
+        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
+          Default variant stock
+          <input
+            className="admin-catalog-input"
+            defaultValue={
+              product?.variants.length === 1 &&
+              !product.variants[0].size &&
+              !product.variants[0].color
+                ? product.variants[0].stock
+                : 0
+            }
+            min="0"
+            name="defaultStock"
+            step="1"
+            type="number"
+          />
+          <span className="mt-1 block text-[11px] font-normal">
+            Used when the variant list is empty. Stock remains zero until you enter inventory.
           </span>
         </label>
         <label className="text-xs font-bold text-[#55594f] md:col-span-2">

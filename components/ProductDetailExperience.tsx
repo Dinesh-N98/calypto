@@ -35,6 +35,7 @@ type ProductDetailExperienceProps = {
     salePriceCents: number | null;
     originalPriceCents: number | null;
     saleEndsAt: Date | null;
+    tieredDiscountsEnabled: boolean;
   };
   images: { id: string; url: string; altText: string | null }[];
   variants: Variant[];
@@ -44,7 +45,7 @@ type ProductDetailExperienceProps = {
   categoryName: string;
 };
 
-function colorValue(color: string): string {
+function colorValue(color: string): string | null {
   const namedColors: Record<string, string> = {
     black: "#171717",
     blue: "#2563eb",
@@ -58,7 +59,7 @@ function colorValue(color: string): string {
   };
   const normalized = color.trim().toLowerCase();
   if (/^#[\da-f]{3}(?:[\da-f]{3})?$/i.test(normalized)) return normalized;
-  return namedColors[normalized] ?? "#9ca3af";
+  return namedColors[normalized] ?? null;
 }
 
 function formatCountdown(milliseconds: number): string {
@@ -111,6 +112,7 @@ export function ProductDetailExperience({
         saleEndsAt: product.saleEndsAt,
         quantity,
         tieredDiscounts,
+        tieredDiscountsEnabled: product.tieredDiscountsEnabled,
       })
     : product.priceCents;
   const saleUnitPrice = selectedVariant
@@ -121,6 +123,7 @@ export function ProductDetailExperience({
         saleEndsAt: product.saleEndsAt,
         quantity: 1,
         tieredDiscounts: [],
+        tieredDiscountsEnabled: false,
       })
     : product.priceCents;
   const referencePrice = Math.max(
@@ -342,23 +345,40 @@ export function ProductDetailExperience({
             </legend>
             <div className="flex flex-wrap gap-2">
               {colors.map((color) => {
-                const disabled = !variants.some((variant) => variant.color === color && variant.stock > 0);
+                const matchingColorVariants = variants.filter((variant) => variant.color === color);
+                const representative = matchingColorVariants.find((variant) => variant.imageUrl) ??
+                  matchingColorVariants[0];
+                const disabled = !matchingColorVariants.some((variant) => variant.stock > 0);
+                const swatch = colorValue(color);
                 return (
                   <button
                     aria-label={color}
                     aria-pressed={selectedColor === color}
-                    className={`relative grid h-11 min-w-11 place-items-center rounded-full border-2 px-2 ${selectedColor === color ? "border-[#718126]" : "border-ink/15"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-md border-2 px-2.5 text-xs font-bold ${selectedColor === color ? "border-[#718126] bg-[#edf2d9]" : "border-ink/15 bg-white"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
                     disabled={disabled}
                     key={color}
                     onClick={() => chooseColor(color)}
                     title={color}
                     type="button"
                   >
-                    <span
-                      aria-hidden="true"
-                      className="h-6 w-6 rounded-full border border-black/20"
-                      style={{ backgroundColor: colorValue(color) }}
-                    />
+                    {representative?.imageUrl ? (
+                      <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded border border-black/10 bg-[#f0f0e8]">
+                        <Image
+                          alt=""
+                          className="object-contain"
+                          fill
+                          sizes="32px"
+                          src={representative.imageUrl}
+                        />
+                      </span>
+                    ) : swatch ? (
+                      <span
+                        aria-hidden="true"
+                        className="h-6 w-6 shrink-0 rounded-full border border-black/20"
+                        style={{ backgroundColor: swatch }}
+                      />
+                    ) : null}
+                    <span>{color}</span>
                   </button>
                 );
               })}
@@ -397,7 +417,7 @@ export function ProductDetailExperience({
           </fieldset>
         )}
 
-        {tieredDiscounts.length > 0 && (
+        {product.tieredDiscountsEnabled && tieredDiscounts.length > 0 && (
           <div className="mt-6 rounded-md border border-[#dbe4b5] bg-[#f7f9ed] p-4">
             <p className="text-xs font-extrabold uppercase tracking-[.1em]">Buy more, save more</p>
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">

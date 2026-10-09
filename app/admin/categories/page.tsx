@@ -15,6 +15,7 @@ export default async function AdminCategoriesPage() {
         id: category.id,
         name: category.name,
         slug: category.slug,
+        tieredDiscountsEnabled: category.tieredDiscountsEnabled,
         productCount: category._count.products,
       }))}
     />
