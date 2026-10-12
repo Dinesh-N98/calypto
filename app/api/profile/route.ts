@@ -32,6 +32,7 @@ type AddressInput = {
   line1?: string;
   line2?: string;
   city?: string;
+  state?: string;
   postalCode?: string;
   country?: string;
   isDefault?: boolean;
@@ -103,6 +104,7 @@ function parseAddressAction(value: unknown): AddressInput | null {
     "line1",
     "line2",
     "city",
+    "state",
     "postalCode",
     "country",
     "isDefault",
@@ -119,15 +121,16 @@ function parseAddressAction(value: unknown): AddressInput | null {
     return { action, ...(typeof id === "string" && { id }) };
   }
 
-  const limits = { line1: 200, line2: 200, city: 100, postalCode: 30, country: 100 };
-  const fields = ["line1", "line2", "city", "postalCode", "country"] as const;
+  const limits = { line1: 200, line2: 200, city: 100, state: 100, postalCode: 30, country: 100 };
+  const fields = ["line1", "line2", "city", "state", "postalCode", "country"] as const;
   const result: AddressInput = { action, ...(typeof id === "string" && { id }) };
   for (const field of fields) {
     const fieldValue = input[field];
-    if (fieldValue === undefined && action === "update") continue;
+    if (fieldValue === undefined && (action === "update" || field === "state")) continue;
     if (typeof fieldValue !== "string") return null;
     const trimmed = fieldValue.trim();
-    if (trimmed.length > limits[field] || (field !== "line2" && !trimmed)) return null;
+    if (trimmed.length > limits[field] || (!["line2", "state"].includes(field) && !trimmed))
+      return null;
     result[field] = trimmed;
   }
   if (input.isDefault !== undefined) {
@@ -193,6 +196,7 @@ export async function PATCH(request: Request) {
               line1: action.line1!,
               line2: action.line2 || null,
               city: action.city!,
+              state: action.state || null,
               postalCode: action.postalCode!,
               country: action.country!,
               isDefault: existingCount === 0 || action.isDefault === true,
@@ -240,6 +244,7 @@ export async function PATCH(request: Request) {
                 ...(action.line1 !== undefined && { line1: action.line1 }),
                 ...(action.line2 !== undefined && { line2: action.line2 || null }),
                 ...(action.city !== undefined && { city: action.city }),
+                ...(action.state !== undefined && { state: action.state || null }),
                 ...(action.postalCode !== undefined && { postalCode: action.postalCode }),
                 ...(action.country !== undefined && { country: action.country }),
                 ...(action.isDefault !== undefined && { isDefault: action.isDefault }),

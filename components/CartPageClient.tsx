@@ -9,6 +9,7 @@ import {
   CheckoutForm,
   type CheckoutAddress,
   type CheckoutPaymentProvider,
+  type CheckoutProfile,
 } from "@/components/CheckoutForm";
 import { Reveal } from "@/components/Reveal";
 import { QuantitySelector } from "@/components/QuantitySelector";
@@ -18,12 +19,14 @@ import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 export default function CartPageClient({
   savedAddresses,
   defaultAddress,
+  profile,
   isAuthenticated,
   buyNowVariantId,
   buyNowQuantity,
 }: {
   savedAddresses: CheckoutAddress[];
   defaultAddress: CheckoutAddress | null;
+  profile: CheckoutProfile | null;
   isAuthenticated: boolean;
   buyNowVariantId?: string;
   buyNowQuantity: number;
@@ -164,15 +167,14 @@ export default function CartPageClient({
                     value="PAYPAL"
                   />
                   PayPal
-                  {!paypalClientId && (
-                    <span className="text-xs text-[#65695f]">(unavailable)</span>
-                  )}
+                  {!paypalClientId && <span className="text-xs text-[#65695f]">(unavailable)</span>}
                 </label>
               </fieldset>
               <CheckoutForm
                 defaultAddress={defaultAddress}
                 isAuthenticated={isAuthenticated}
                 items={checkoutItems}
+                profile={profile}
                 paymentProvider={paymentProvider}
                 paypalClientId={paypalClientId}
                 savedAddresses={savedAddresses}

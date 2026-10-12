@@ -6,8 +6,25 @@ import type { CustomerAddress } from "@/components/CustomerProfileProvider";
 
 type AddressFields = Omit<CustomerAddress, "id" | "isDefault">;
 type AddressAction =
-  | { action: "create"; line1: string; line2: string; city: string; postalCode: string; country: string }
-  | { action: "update"; id: string; line1: string; line2: string; city: string; postalCode: string; country: string }
+  | {
+      action: "create";
+      line1: string;
+      line2: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+    }
+  | {
+      action: "update";
+      id: string;
+      line1: string;
+      line2: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+    }
   | { action: "delete"; id: string }
   | { action: "default"; id: string };
 
@@ -15,6 +32,7 @@ const emptyAddress: AddressFields = {
   line1: "",
   line2: "",
   city: "",
+  state: "",
   postalCode: "",
   country: "",
 };
@@ -47,7 +65,10 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
         !Array.isArray(result.addresses)
       ) {
         const error =
-          result && typeof result === "object" && "error" in result && typeof result.error === "string"
+          result &&
+          typeof result === "object" &&
+          "error" in result &&
+          typeof result.error === "string"
             ? result.error
             : "Unable to save your address.";
         throw new Error(error);
@@ -69,6 +90,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
       line1: formValues.line1.trim(),
       line2: formValues.line2?.trim() ?? "",
       city: formValues.city.trim(),
+      state: formValues.state?.trim() ?? "",
       postalCode: formValues.postalCode.trim(),
       country: formValues.country.trim(),
     };
@@ -95,6 +117,7 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
       line1: address.line1,
       line2: address.line2 ?? "",
       city: address.city,
+      state: address.state ?? "",
       postalCode: address.postalCode,
       country: address.country,
     });
@@ -103,9 +126,10 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
 
   function deleteAddress(address: CustomerAddress) {
     const remaining = addresses.filter((entry) => entry.id !== address.id);
-    const next = address.isDefault && remaining.length > 0
-      ? remaining.map((entry, index) => ({ ...entry, isDefault: index === 0 }))
-      : remaining;
+    const next =
+      address.isDefault && remaining.length > 0
+        ? remaining.map((entry, index) => ({ ...entry, isDefault: index === 0 }))
+        : remaining;
     void saveAction({ action: "delete", id: address.id }, next);
   }
 
@@ -132,9 +156,17 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
                       {address.isDefault ? "Default address" : "Saved address"}
                     </strong>
                     {address.line1}
-                    {address.line2 && <><br />{address.line2}</>}
+                    {address.line2 && (
+                      <>
+                        <br />
+                        {address.line2}
+                      </>
+                    )}
                     <br />
-                    {address.city}, {address.postalCode}
+                    {address.city}
+                    {address.state ? `, ${address.state}` : ""}
+                    <br />
+                    {address.postalCode}
                     <br />
                     {address.country}
                   </address>
@@ -213,6 +245,13 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
             value={formValues.city}
           />
           <AddressField
+            autoComplete="address-level1"
+            label="State / province (optional)"
+            maxLength={100}
+            onChange={(state) => setFormValues((value) => ({ ...value, state }))}
+            value={formValues.state ?? ""}
+          />
+          <AddressField
             autoComplete="postal-code"
             label="Postal code"
             maxLength={30}
@@ -250,7 +289,12 @@ export function AddressManager({ initialAddresses }: { initialAddresses: Custome
             )}
           </div>
         </form>
-        <p className="mt-4 min-h-5 text-sm text-[#55584e]" role="status" aria-live="polite" aria-atomic="true">
+        <p
+          className="mt-4 min-h-5 text-sm text-[#55584e]"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {message}
         </p>
       </section>

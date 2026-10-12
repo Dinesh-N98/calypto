@@ -15,6 +15,7 @@ export default async function AccountAddressesPage() {
       line1: true,
       line2: true,
       city: true,
+      state: true,
       postalCode: true,
       country: true,
       isDefault: true,
