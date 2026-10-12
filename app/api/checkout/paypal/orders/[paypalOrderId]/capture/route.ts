@@ -7,7 +7,11 @@ import {
   PayPalApiError,
   toPayPalAmount,
 } from "@/lib/paypal";
-import { applyRateLimit, rateLimitResponse } from "@/lib/request-security";
+import {
+  applyRateLimit,
+  rateLimitResponse,
+  withRateLimitHeaders,
+} from "@/lib/request-security";
 
 type CompletedCapture = {
   orderId: string;
@@ -58,10 +62,11 @@ export async function POST(
   }
   const limit = await applyRateLimit(request, "paypal-capture", 30, 5 * 60);
   if (!limit.allowed) return rateLimitResponse(limit);
+  const respond = (response: Response) => withRateLimitHeaders(response, limit);
 
   const { paypalOrderId } = await params;
   if (!paypalOrderId || paypalOrderId.length > 64) {
-    return Response.json({ error: "PayPal order ID is invalid." }, { status: 400 });
+    return respond(Response.json({ error: "PayPal order ID is invalid." }, { status: 400 }));
   }
 
   const attempt = await prisma.paymentAttempt.findUnique({
@@ -69,25 +74,25 @@ export async function POST(
     include: { order: true },
   });
   if (!attempt || attempt.provider !== "PAYPAL") {
-    return Response.json({ error: "PayPal checkout attempt not found." }, { status: 404 });
+    return respond(Response.json({ error: "PayPal checkout attempt not found." }, { status: 404 }));
   }
 
   const session = await auth();
   if (attempt.order.userId && attempt.order.userId !== session?.user?.id) {
-    return Response.json({ error: "You cannot capture this order." }, { status: 403 });
+    return respond(Response.json({ error: "You cannot capture this order." }, { status: 403 }));
   }
   if (attempt.status === "paid" && attempt.providerCaptureId) {
-    return Response.json({
+    return respond(Response.json({
       status: "paid",
       orderReference: attempt.order.providerReference,
       captureId: attempt.providerCaptureId,
-    });
+    }));
   }
   if (attempt.status === "capturing") {
-    return Response.json(
+    return respond(Response.json(
       { status: "pending", orderReference: attempt.order.providerReference },
       { status: 202, headers: { "Cache-Control": "no-store", "Retry-After": "5" } },
-    );
+    ));
   }
   if (
     !["pending", "approved"].includes(attempt.status) ||
@@ -95,7 +100,7 @@ export async function POST(
     !attempt.expiresAt ||
     attempt.expiresAt <= new Date()
   ) {
-    return Response.json({ error: "This PayPal payment is no longer pending." }, { status: 409 });
+    return respond(Response.json({ error: "This PayPal payment is no longer pending." }, { status: 409 }));
   }
 
   try {
@@ -114,19 +119,19 @@ export async function POST(
         select: { status: true, providerCaptureId: true },
       });
       if (current?.status === "paid" && current.providerCaptureId) {
-        return Response.json({
+        return respond(Response.json({
           status: "paid",
           orderReference: attempt.order.providerReference,
           captureId: current.providerCaptureId,
-        });
+        }));
       }
       if (current?.status === "capturing" || current?.status === "reconciling") {
-        return Response.json(
+        return respond(Response.json(
           { status: "pending", orderReference: attempt.order.providerReference },
           { status: 202, headers: { "Cache-Control": "no-store", "Retry-After": "5" } },
-        );
+        ));
       }
-      return Response.json({ error: "This PayPal payment is no longer pending." }, { status: 409 });
+      return respond(Response.json({ error: "This PayPal payment is no longer pending." }, { status: 409 }));
     }
 
     const result = await capturePayPalOrder(paypalOrderId, attempt.captureRequestId);
@@ -153,11 +158,11 @@ export async function POST(
     });
     if (!paid) throw new Error("Order state changed before PayPal capture could be recorded.");
 
-    return Response.json({
+    return respond(Response.json({
       status: "paid",
       orderReference: attempt.order.providerReference,
       captureId: completed.capture.id,
-    });
+    }));
   } catch (error) {
     if (error instanceof PayPalApiError && error.status === 422) {
       // PayPal may already have completed an earlier capture. Reconcile before reporting failure.
@@ -165,19 +170,19 @@ export async function POST(
         const currentOrder = await getPayPalOrder(paypalOrderId);
         const completed = getCompletedCapture(currentOrder);
         if (completed) {
-          return Response.json(
+          return respond(Response.json(
             { error: "PayPal reports a completed capture; payment reconciliation is required." },
             { status: 409 },
-          );
+          ));
         }
       } catch (reconciliationError) {
         console.error("Unable to reconcile repeated PayPal capture.", reconciliationError);
       }
     }
     console.error("Unable to capture PayPal order.", error);
-    return Response.json(
+    return respond(Response.json(
       { error: "Unable to confirm PayPal payment. Your order will remain pending while it is verified." },
       { status: error instanceof PayPalApiError ? 502 : 409 },
-    );
+    ));
   }
 }

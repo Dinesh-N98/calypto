@@ -220,7 +220,7 @@ export async function reconcileExpiredPayPalAttempts() {
         continue;
       }
 
-      if (["CREATED", "SAVED", "VOIDED"].includes(paypalOrder.status)) {
+      if (["CREATED", "SAVED", "VOIDED", "EXPIRED"].includes(paypalOrder.status)) {
         const cancelled = await finishPayPalAttemptWithoutPayment({
           attemptId: attempt.id,
           orderId: attempt.orderId,
@@ -253,13 +253,17 @@ export async function reconcileExpiredPayPalAttempts() {
             summary.paid += 1;
             continue;
           }
+          const terminalStatus =
+            currentOrder.status === "EXPIRED" || currentOrder.status === "VOIDED"
+              ? "cancelled"
+              : "failed";
           const failed = await finishPayPalAttemptWithoutPayment({
             attemptId: attempt.id,
             orderId: attempt.orderId,
-            attemptStatus: "failed",
-            orderStatus: "failed",
+            attemptStatus: terminalStatus,
+            orderStatus: terminalStatus,
           });
-          if (failed) summary.failed += 1;
+          if (failed) summary[terminalStatus === "cancelled" ? "cancelled" : "failed"] += 1;
         }
         continue;
       }
@@ -271,6 +275,16 @@ export async function reconcileExpiredPayPalAttempts() {
       );
       summary.deferred += 1;
     } catch (error) {
+      if (isTerminalCaptureError(error)) {
+        const failed = await finishPayPalAttemptWithoutPayment({
+          attemptId: attempt.id,
+          orderId: attempt.orderId,
+          attemptStatus: "failed",
+          orderStatus: "failed",
+        });
+        if (failed) summary.failed += 1;
+        continue;
+      }
       summary.errors += 1;
       console.error(JSON.stringify({
         event: "paypal_payment_attempt_reconciliation_failed",

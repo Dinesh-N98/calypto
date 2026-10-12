@@ -14,8 +14,14 @@ export class RequestBodyError extends Error {
 }
 
 type RateLimitResult =
-  | { allowed: true; limit: number; remaining: number }
-  | { allowed: false; limit: number; remaining: 0; retryAfterSeconds: number };
+  | { allowed: true; limit: number; remaining: number; resetAt: number }
+  | {
+      allowed: false;
+      limit: number;
+      remaining: 0;
+      resetAt: number;
+      retryAfterSeconds: number;
+    };
 
 function getClientAddress(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
@@ -61,31 +67,44 @@ export async function applyRateLimit(
   `);
   const bucket = rows[0];
   if (!bucket) throw new Error("Rate limiter did not return a bucket.");
+  const resetAt = Math.ceil(bucket.resetAt.getTime() / 1000);
   if (bucket.count <= limit) {
-    return { allowed: true, limit, remaining: limit - bucket.count };
+    return { allowed: true, limit, remaining: limit - bucket.count, resetAt };
   }
   return {
     allowed: false,
     limit,
     remaining: 0,
+    resetAt,
     retryAfterSeconds: Math.max(1, Math.ceil((bucket.resetAt.getTime() - Date.now()) / 1000)),
   };
+}
+
+export function withRateLimitHeaders(response: Response, result: RateLimitResult): Response {
+  const headers = new Headers(response.headers);
+  headers.set("X-RateLimit-Limit", String(result.limit));
+  headers.set("X-RateLimit-Remaining", String(result.remaining));
+  headers.set("X-RateLimit-Reset", String(result.resetAt));
+  if (!result.allowed) {
+    headers.set("Retry-After", String(result.retryAfterSeconds));
+    headers.set("Cache-Control", "no-store");
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 export function rateLimitResponse(
   result: Extract<RateLimitResult, { allowed: false }>,
 ): Response {
-  return Response.json(
-    { error: "Too many requests. Please wait before trying again." },
-    {
-      status: 429,
-      headers: {
-        "Cache-Control": "no-store",
-        "Retry-After": String(result.retryAfterSeconds),
-        "X-RateLimit-Limit": String(result.limit),
-        "X-RateLimit-Remaining": String(result.remaining),
-      },
-    },
+  return withRateLimitHeaders(
+    Response.json(
+      { error: "Too many requests. Please wait before trying again." },
+      { status: 429 },
+    ),
+    result,
   );
 }
 

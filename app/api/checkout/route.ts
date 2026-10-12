@@ -12,6 +12,7 @@ import {
   rateLimitResponse,
   readJsonBody,
   RequestBodyError,
+  withRateLimitHeaders,
 } from "@/lib/request-security";
 import {
   assertOnePayConfigured,
@@ -47,28 +48,29 @@ export async function POST(request: Request) {
   }
   const limit = await applyRateLimit(request, "onepay-checkout", 12, 10 * 60);
   if (!limit.allowed) return rateLimitResponse(limit);
+  const respond = (response: Response) => withRateLimitHeaders(response, limit);
 
   let payload: CheckoutPayload;
   try {
     payload = parseCheckoutPayload(await readJsonBody(request, 16 * 1024));
   } catch (error) {
     if (error instanceof RequestBodyError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return respond(Response.json({ error: error.message }, { status: error.status }));
     }
     if (error instanceof CheckoutInputError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return respond(Response.json({ error: error.message }, { status: error.status }));
     }
     throw error;
   }
 
   const appBaseUrl = getAppBaseUrl();
   if (!appBaseUrl) {
-    return Response.json({ error: "APP_BASE_URL must be a public HTTPS origin." }, { status: 500 });
+    return respond(Response.json({ error: "APP_BASE_URL must be a public HTTPS origin." }, { status: 500 }));
   }
   try {
     assertOnePayConfigured();
   } catch {
-    return Response.json({ error: "OnePay credentials are not configured." }, { status: 500 });
+    return respond(Response.json({ error: "OnePay credentials are not configured." }, { status: 500 }));
   }
 
   let order: Awaited<ReturnType<typeof createPendingCheckoutOrder>>;
@@ -76,13 +78,13 @@ export async function POST(request: Request) {
     order = await createPendingCheckoutOrder({ payload, provider: "ONEPAY" });
   } catch (error) {
     if (error instanceof InsufficientStockError) {
-      return Response.json(
+      return respond(Response.json(
         { error: "One or more variants no longer have enough stock. Update your cart and try again." },
         { status: 409 },
-      );
+      ));
     }
     if (error instanceof CheckoutInputError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return respond(Response.json({ error: error.message }, { status: error.status }));
     }
     throw error;
   }
@@ -105,13 +107,13 @@ export async function POST(request: Request) {
     if (redirectUrl.protocol !== "https:") {
       throw new Error("OnePay returned a non-HTTPS checkout URL.");
     }
-    return Response.json({ url: redirectUrl.toString() });
+    return respond(Response.json({ url: redirectUrl.toString() }));
   } catch (error) {
     if (error instanceof OnePayApiError && error.status >= 400 && error.status < 500) {
       await releaseOrderInventory(order.id, "pending", "failed");
     }
     console.error("Unable to start OnePay checkout.", error);
-    return Response.json(
+    return respond(Response.json(
       {
         error:
           error instanceof OnePayApiError && error.status >= 400 && error.status < 500
@@ -119,6 +121,6 @@ export async function POST(request: Request) {
             : `Checkout could not be confirmed. Keep reference ${order.providerReference} and contact support if you were charged.`,
       },
       { status: 502 },
-    );
+    ));
   }
 }

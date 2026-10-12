@@ -18,6 +18,7 @@ import {
   rateLimitResponse,
   readJsonBody,
   RequestBodyError,
+  withRateLimitHeaders,
 } from "@/lib/request-security";
 import {
   getPayPalCapture as fetchPayPalCapture,
@@ -203,13 +204,14 @@ async function processCaptureEvent(eventType: string, resource: JsonObject) {
 export async function POST(request: Request) {
   const limit = await applyRateLimit(request, "paypal-webhook", 300, 5 * 60);
   if (!limit.allowed) return rateLimitResponse(limit);
+  const respond = (response: Response) => withRateLimitHeaders(response, limit);
 
   let event: unknown;
   try {
     event = await readJsonBody(request, 256 * 1024);
   } catch (error) {
     if (error instanceof RequestBodyError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return respond(Response.json({ error: error.message }, { status: error.status }));
     }
     throw error;
   }
@@ -220,16 +222,16 @@ export async function POST(request: Request) {
     typeof event.event_type !== "string" ||
     event.event_type.length > 128
   ) {
-    return Response.json({ error: "Webhook event is invalid." }, { status: 400 });
+    return respond(Response.json({ error: "Webhook event is invalid." }, { status: 400 }));
   }
 
   try {
     if (!(await verifyPayPalWebhook({ headers: request.headers, webhookEvent: event }))) {
-      return Response.json({ error: "PayPal webhook signature is invalid." }, { status: 400 });
+      return respond(Response.json({ error: "PayPal webhook signature is invalid." }, { status: 400 }));
     }
   } catch (error) {
     console.error("Unable to verify PayPal webhook signature.", error);
-    return Response.json({ error: "Unable to verify PayPal webhook." }, { status: 503 });
+    return respond(Response.json({ error: "Unable to verify PayPal webhook." }, { status: 503 }));
   }
 
   let webhook = await prisma.paymentWebhookEvent.findUnique({
@@ -238,7 +240,7 @@ export async function POST(request: Request) {
     },
   });
   if (webhook?.status === "processed") {
-    return Response.json({ received: true, duplicate: true });
+    return respond(Response.json({ received: true, duplicate: true }));
   }
 
   if (!webhook) {
@@ -266,7 +268,7 @@ export async function POST(request: Request) {
         },
       });
       if (webhook?.status === "processed") {
-        return Response.json({ received: true, duplicate: true });
+        return respond(Response.json({ received: true, duplicate: true }));
       }
       if (!webhook) throw new Error("Unable to load duplicate PayPal webhook event.");
     }
@@ -297,7 +299,7 @@ export async function POST(request: Request) {
       where: { id: webhook.id },
       data: { status: "processed", processedAt: new Date() },
     });
-    return Response.json({ received: true });
+    return respond(Response.json({ received: true }));
   } catch (error) {
     await prisma.paymentWebhookEvent.update({
       where: { id: webhook.id },
@@ -308,6 +310,6 @@ export async function POST(request: Request) {
       eventType: event.event_type,
       error,
     });
-    return Response.json({ error: "Unable to process PayPal webhook." }, { status: 500 });
+    return respond(Response.json({ error: "Unable to process PayPal webhook." }, { status: 500 }));
   }
 }

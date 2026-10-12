@@ -13,6 +13,7 @@ import {
   rateLimitResponse,
   readJsonBody,
   RequestBodyError,
+  withRateLimitHeaders,
 } from "@/lib/request-security";
 import {
   assertPayPalConfigured,
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
 
   const limit = await applyRateLimit(request, "paypal-order-create", 12, 10 * 60);
   if (!limit.allowed) return rateLimitResponse(limit);
+  const respond = (response: Response) => withRateLimitHeaders(response, limit);
 
   const idempotencyKey = request.headers.get("idempotency-key");
   if (
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
       idempotencyKey,
     )
   ) {
-    return Response.json({ error: "A valid checkout idempotency key is required." }, { status: 400 });
+    return respond(Response.json({ error: "A valid checkout idempotency key is required." }, { status: 400 }));
   }
 
   let payload: ReturnType<typeof parseCheckoutPayload>;
@@ -49,26 +51,26 @@ export async function POST(request: Request) {
     payload = parseCheckoutPayload(await readJsonBody(request, 16 * 1024));
   } catch (error) {
     if (error instanceof RequestBodyError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return respond(Response.json({ error: error.message }, { status: error.status }));
     }
     if (error instanceof CheckoutInputError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return respond(Response.json({ error: error.message }, { status: error.status }));
     }
     throw error;
   }
 
   if (!/^[A-Za-z]{2}$/u.test(payload.address.country)) {
-    return Response.json(
+    return respond(Response.json(
       { error: "For PayPal, enter the two-letter ISO country code (for example, LK)." },
       { status: 400 },
-    );
+    ));
   }
 
   try {
     assertPayPalConfigured();
   } catch (error) {
     console.error("PayPal checkout is not configured.", error);
-    return Response.json({ error: "PayPal checkout is not configured." }, { status: 503 });
+    return respond(Response.json({ error: "PayPal checkout is not configured." }, { status: 503 }));
   }
 
   const session = await auth();
@@ -84,10 +86,10 @@ export async function POST(request: Request) {
       !["pending", "approved", "capturing", "paid"].includes(attempt.status) ||
       attempt.requestHash !== requestHash
     ) {
-      return Response.json({ error: "This checkout attempt cannot be reused." }, { status: 409 });
+      return respond(Response.json({ error: "This checkout attempt cannot be reused." }, { status: 409 }));
     }
     if (attempt.providerOrderId) {
-      return Response.json({ id: attempt.providerOrderId });
+      return respond(Response.json({ id: attempt.providerOrderId }));
     }
   } else {
     try {
@@ -105,13 +107,13 @@ export async function POST(request: Request) {
       }
     } catch (error) {
       if (error instanceof InsufficientStockError) {
-        return Response.json(
+        return respond(Response.json(
           { error: "One or more variants no longer have enough stock. Update your cart and try again." },
           { status: 409 },
-        );
+        ));
       }
       if (error instanceof CheckoutInputError) {
-        return Response.json({ error: error.message }, { status: error.status });
+        return respond(Response.json({ error: error.message }, { status: error.status }));
       }
       if (
         error &&
@@ -134,9 +136,9 @@ export async function POST(request: Request) {
     attempt.order.userId !== (session?.user?.id ?? null) ||
     attempt.requestHash !== requestHash
   ) {
-    return Response.json({ error: "Unable to initialize PayPal checkout." }, { status: 500 });
+    return respond(Response.json({ error: "Unable to initialize PayPal checkout." }, { status: 500 }));
   }
-  if (attempt.providerOrderId) return Response.json({ id: attempt.providerOrderId });
+  if (attempt.providerOrderId) return respond(Response.json({ id: attempt.providerOrderId }));
 
   try {
     const paypalOrder = await createPayPalOrder({
@@ -169,7 +171,7 @@ export async function POST(request: Request) {
     if (savedAttempt?.providerOrderId !== paypalOrder.id) {
       throw new Error("PayPal order ID could not be associated with the local attempt.");
     }
-    return Response.json({ id: paypalOrder.id });
+    return respond(Response.json({ id: paypalOrder.id }));
   } catch (error) {
     if (error instanceof PayPalApiError && error.status >= 400 && error.status < 500) {
       await prisma.paymentAttempt.updateMany({
@@ -179,9 +181,9 @@ export async function POST(request: Request) {
       await releaseOrderInventory(attempt.orderId, "pending", "failed");
     }
     console.error("Unable to create PayPal order.", error);
-    return Response.json(
+    return respond(Response.json(
       { error: "Unable to start PayPal checkout. Please try again or choose OnePay." },
       { status: 502 },
-    );
+    ));
   }
 }
