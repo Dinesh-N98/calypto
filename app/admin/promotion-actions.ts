@@ -37,7 +37,9 @@ function readPromotion(formData: FormData) {
   const title = getText(formData, "title");
   const description = getText(formData, "description");
   const imageUrl = getText(formData, "imageUrl");
+  const discountTypeValue = getText(formData, "discountType") || "percentage";
   const discountText = getText(formData, "discountPercent");
+  const discountAmountText = getText(formData, "discountAmount");
   const discountCode = getText(formData, "discountCode");
   const startDate = parseDate(getText(formData, "startDate"));
   const endDate = parseDate(getText(formData, "endDate"), true);
@@ -48,11 +50,22 @@ function readPromotion(formData: FormData) {
     return { error: "Description is required (max 2,000 characters)." } as const;
   if (!isValidImageUrl(imageUrl))
     return { error: "Use a site-relative image path or an HTTPS image URL." } as const;
+  if (discountTypeValue !== "percentage" && discountTypeValue !== "fixed")
+    return { error: "Choose a valid discount type." } as const;
   if (
+    discountTypeValue === "percentage" &&
     discountText &&
     (!/^\d{1,3}$/.test(discountText) || Number(discountText) < 1 || Number(discountText) > 100)
   )
     return { error: "Discount rate must be a whole number from 1 to 100." } as const;
+  if (
+    discountTypeValue === "fixed" &&
+    discountAmountText &&
+    (!/^\d{1,5}(?:\.\d{1,2})?$/.test(discountAmountText) ||
+      Number(discountAmountText) <= 0 ||
+      Number(discountAmountText) > 10000)
+  )
+    return { error: "Discount amount must be greater than $0 and no more than $10,000." } as const;
   if (discountCode.length > 50)
     return { error: "Discount code must be 50 characters or fewer." } as const;
   if (startDate === undefined || endDate === undefined)
@@ -65,7 +78,13 @@ function readPromotion(formData: FormData) {
       title,
       description,
       imageUrl,
-      discountPercent: discountText ? Number(discountText) : null,
+      discountType: discountTypeValue,
+      discountPercent:
+        discountTypeValue === "percentage" && discountText ? Number(discountText) : null,
+      discountAmountCents:
+        discountTypeValue === "fixed" && discountAmountText
+          ? Math.round(Number(discountAmountText) * 100)
+          : null,
       discountCode: discountCode || null,
       isActive: formData.get("isActive") === "on",
       startDate,

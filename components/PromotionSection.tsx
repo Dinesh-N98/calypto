@@ -31,9 +31,11 @@ export function PromotionSection({ promotions }: { promotions: Promotion[] }) {
               <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/45 to-black/10" />
               <div className="max-w-xl">
                 <p className="text-[.65rem] font-bold uppercase tracking-[.14em] text-lime">
-                  {promotion.discountPercent
-                    ? `${promotion.discountPercent}% off`
-                    : "A Calypto special"}
+                  {promotion.discountType === "fixed" && promotion.discountAmountCents
+                    ? `$${(promotion.discountAmountCents / 100).toFixed(2)} off`
+                    : promotion.discountPercent
+                      ? `${promotion.discountPercent}% off`
+                      : "A Calypto special"}
                 </p>
                 <h2 className="mt-2 text-2xl font-black uppercase leading-tight tracking-[-.04em] md:text-3xl">
                   {promotion.title}
