@@ -103,14 +103,14 @@ export function CheckoutResult() {
   const description = !reference
     ? "The payment status cannot be checked without an order reference."
     : status === "paid"
-      ? "OnePay has verified your payment. Your order is confirmed."
+      ? "Your payment has been verified. Your order is confirmed."
       : status === "cancelled"
-        ? "OnePay confirmed that this payment was cancelled."
+        ? "This payment was cancelled."
         : status === "failed"
-          ? "OnePay confirmed that this payment failed."
+          ? "This payment failed."
           : status === "pending"
-            ? "OnePay has not confirmed payment yet. This page will keep checking; your order is not marked paid."
-            : "Your order will only be confirmed after its payment status is verified with OnePay.";
+            ? "Payment has not been confirmed yet. This page will keep checking; your order is not marked paid."
+            : "Your order will only be confirmed after its payment status is verified by the payment provider.";
 
   return (
     <Reveal as="section" className="mx-auto max-w-3xl border-t border-ink pt-8">

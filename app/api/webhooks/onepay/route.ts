@@ -1,8 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import { refreshOnePayOrderStatus } from "@/lib/onepay";
+import {
+  applyRateLimit,
+  rateLimitResponse,
+  readJsonBody,
+  RequestBodyError,
+} from "@/lib/request-security";
 
 export async function POST(request: Request) {
-  const body: unknown = await request.json().catch(() => null);
+  const limit = await applyRateLimit(request, "onepay-webhook", 300, 5 * 60);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+
+  let body: unknown;
+  try {
+    body = await readJsonBody(request, 16 * 1024);
+  } catch (error) {
+    if (error instanceof RequestBodyError) {
+      return Response.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
   const transactionId =
     body && typeof body === "object" && "transaction_id" in body ? body.transaction_id : null;
   if (typeof transactionId !== "string" || !transactionId || transactionId.length > 200) {

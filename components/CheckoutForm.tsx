@@ -1,11 +1,13 @@
 "use client";
 
 import { ArrowUpRight } from "lucide-react";
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import {
   useCustomerProfileAutofill,
   type CustomerProfile,
 } from "@/components/CustomerProfileProvider";
+import { PayPalCheckoutButtons } from "@/components/PayPalCheckoutButtons";
+import type { CheckoutPayload } from "@/lib/checkout/types";
 
 export type CheckoutAddress = {
   id: string;
@@ -20,6 +22,7 @@ export type CheckoutAddress = {
 
 type CheckoutItem = { variantId: string; quantity: number };
 type AddressFields = Omit<CheckoutAddress, "id" | "isDefault">;
+export type CheckoutPaymentProvider = "ONEPAY" | "PAYPAL";
 
 const emptyAddress: AddressFields = {
   line1: "",
@@ -35,11 +38,15 @@ export function CheckoutForm({
   savedAddresses,
   defaultAddress,
   isAuthenticated,
+  paymentProvider,
+  paypalClientId,
 }: {
   items: CheckoutItem[];
   savedAddresses: CheckoutAddress[];
   defaultAddress: CheckoutAddress | null;
   isAuthenticated: boolean;
+  paymentProvider: CheckoutPaymentProvider;
+  paypalClientId: string;
 }) {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +66,45 @@ export function CheckoutForm({
     onChange,
     status: profileStatus,
   } = useCustomerProfileAutofill(resolveCustomerFields);
+  const formElementRef = useRef<HTMLFormElement | null>(null);
+  const setFormRef = useCallback(
+    (element: HTMLFormElement | null) => {
+      formElementRef.current = element;
+      formRef(element);
+    },
+    [formRef],
+  );
+
+  const buildCheckoutPayload = useCallback(
+    (formData: FormData): CheckoutPayload => ({
+      items,
+      customer: {
+        firstName: String(formData.get("firstName") ?? ""),
+        lastName: String(formData.get("lastName") ?? ""),
+        email: String(formData.get("email") ?? ""),
+        phone: String(formData.get("phone") ?? ""),
+      },
+      address: {
+        streetAddress: String(formData.get("streetAddress") ?? ""),
+        aptSuite: String(formData.get("aptSuite") ?? ""),
+        city: String(formData.get("city") ?? ""),
+        state: String(formData.get("state") ?? ""),
+        postalCode: String(formData.get("postalCode") ?? ""),
+        country: String(formData.get("country") ?? ""),
+      },
+      saveAddress:
+        isAuthenticated &&
+        selectedAddressId === "new" &&
+        formData.get("saveAddress") === "on",
+    }),
+    [isAuthenticated, items, selectedAddressId],
+  );
+
+  const getPayPalPayload = useCallback(() => {
+    const form = formElementRef.current;
+    if (!form || !form.reportValidity()) return null;
+    return buildCheckoutPayload(new FormData(form));
+  }, [buildCheckoutPayload]);
 
   function selectAddress(value: string) {
     setSelectedAddressId(value);
@@ -83,6 +129,7 @@ export function CheckoutForm({
 
   async function checkout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (paymentProvider !== "ONEPAY") return;
     setIsCheckingOut(true);
     setError(null);
     try {
@@ -90,25 +137,7 @@ export function CheckoutForm({
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items,
-          customer: {
-            firstName: formData.get("firstName"),
-            lastName: formData.get("lastName"),
-            email: formData.get("email"),
-            phone: formData.get("phone"),
-          },
-          address: {
-            streetAddress: formData.get("streetAddress"),
-            aptSuite: formData.get("aptSuite"),
-            city: formData.get("city"),
-            state: formData.get("state"),
-            postalCode: formData.get("postalCode"),
-            country: formData.get("country"),
-          },
-          saveAddress:
-            isAuthenticated && selectedAddressId === "new" && formData.get("saveAddress") === "on",
-        }),
+        body: JSON.stringify(buildCheckoutPayload(formData)),
       });
       const result = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !result.url) throw new Error(result.error || "Unable to start checkout.");
@@ -122,9 +151,10 @@ export function CheckoutForm({
   }
 
   return (
-    <form className="mt-6 grid gap-4" onChange={onChange} onSubmit={checkout} ref={formRef}>
+    <>
+    <form className="mt-6 grid gap-4" onChange={onChange} onSubmit={checkout} ref={setFormRef}>
       <p className="text-sm leading-[1.6] text-[#55584e]">
-        OnePay requires your name, email, and phone number to create the payment.
+        Enter your contact and delivery details before choosing a payment method.
       </p>
       {profileStatus === "error" && (
         <p className="text-sm text-muted" role="status">
@@ -253,13 +283,15 @@ export function CheckoutForm({
         />
       </label>
       <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
-        Country
+        {paymentProvider === "PAYPAL" ? "Country code (2 letters)" : "Country"}
         <input
-          autoComplete="country-name"
+          autoComplete={paymentProvider === "PAYPAL" ? "off" : "country-name"}
           className="auth-input"
-          maxLength={100}
+          maxLength={paymentProvider === "PAYPAL" ? 2 : 100}
           name="country"
           onChange={(event) => updateAddressField("country", event.currentTarget.value)}
+          pattern={paymentProvider === "PAYPAL" ? "[A-Za-z]{2}" : undefined}
+          placeholder={paymentProvider === "PAYPAL" ? "LK" : undefined}
           required
           value={addressFields.country}
         />
@@ -270,25 +302,42 @@ export function CheckoutForm({
           Save this address to my account for future orders
         </label>
       )}
-      <button
-        className="button-primary inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
-        disabled={isCheckingOut}
-        type="submit"
-      >
-        {isCheckingOut ? (
-          "Opening checkout..."
-        ) : (
-          <>
-            Checkout{" "}
-            <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
-          </>
-        )}
-      </button>
-      {error && (
+      {paymentProvider === "ONEPAY" && (
+        <button
+          className="button-primary inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
+          disabled={isCheckingOut}
+          type="submit"
+        >
+          {isCheckingOut ? (
+            "Opening checkout..."
+          ) : (
+            <>
+              Checkout{" "}
+              <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
+            </>
+          )}
+        </button>
+      )}
+      {error && paymentProvider === "ONEPAY" && (
         <p className="text-sm text-red-700" role="alert">
           {error}
         </p>
       )}
     </form>
+    {paymentProvider === "PAYPAL" && (
+      paypalClientId ? (
+        <div className="mt-5">
+          <PayPalCheckoutButtons
+            clientId={paypalClientId}
+            createPayload={getPayPalPayload}
+          />
+        </div>
+      ) : (
+        <p className="mt-5 text-sm text-red-700" role="alert">
+          PayPal is not configured for this deployment.
+        </p>
+      )
+    )}
+    </>
   );
 }

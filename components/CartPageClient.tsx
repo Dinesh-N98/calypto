@@ -3,9 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useCart } from "@/components/CartProvider";
-import { CheckoutForm, type CheckoutAddress } from "@/components/CheckoutForm";
+import {
+  CheckoutForm,
+  type CheckoutAddress,
+  type CheckoutPaymentProvider,
+} from "@/components/CheckoutForm";
 import { Reveal } from "@/components/Reveal";
 import { QuantitySelector } from "@/components/QuantitySelector";
 import { formatPrice } from "@/lib/currency";
@@ -26,13 +30,23 @@ export default function CartPageClient({
 }) {
   const { items, updateQuantity, removeItem } = useCart();
   const [directPurchaseQuantity, setDirectPurchaseQuantity] = useState(buyNowQuantity);
-  const purchaseItems = buyNowVariantId
-    ? items.flatMap((item) =>
-        item.variantId === buyNowVariantId
-          ? [{ ...item, quantity: directPurchaseQuantity }]
-          : [],
-      )
-    : items;
+  const [paymentProvider, setPaymentProvider] = useState<CheckoutPaymentProvider>("ONEPAY");
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
+  const purchaseItems = useMemo(
+    () =>
+      buyNowVariantId
+        ? items.flatMap((item) =>
+            item.variantId === buyNowVariantId
+              ? [{ ...item, quantity: directPurchaseQuantity }]
+              : [],
+          )
+        : items,
+    [buyNowVariantId, directPurchaseQuantity, items],
+  );
+  const checkoutItems = useMemo(
+    () => purchaseItems.map(({ variantId, quantity }) => ({ variantId, quantity })),
+    [purchaseItems],
+  );
   const totalCents = purchaseItems.reduce(
     (total, item) => total + item.priceCents * item.quantity,
     0,
@@ -122,10 +136,45 @@ export default function CartPageClient({
                 Total
               </p>
               <p className="mt-3 text-2xl font-black md:text-3xl">{formatPrice(totalCents)}</p>
+              <fieldset className="mt-6 grid gap-3">
+                <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">
+                  Payment method
+                </legend>
+                <label className="flex items-center gap-3 text-sm">
+                  <input
+                    checked={paymentProvider === "ONEPAY"}
+                    className="accent-[#65771b]"
+                    name="paymentProvider"
+                    onChange={() => setPaymentProvider("ONEPAY")}
+                    type="radio"
+                    value="ONEPAY"
+                  />
+                  OnePay
+                </label>
+                <label
+                  className={`flex items-center gap-3 text-sm ${paypalClientId ? "" : "opacity-50"}`}
+                >
+                  <input
+                    checked={paymentProvider === "PAYPAL"}
+                    className="accent-[#65771b]"
+                    disabled={!paypalClientId}
+                    name="paymentProvider"
+                    onChange={() => setPaymentProvider("PAYPAL")}
+                    type="radio"
+                    value="PAYPAL"
+                  />
+                  PayPal
+                  {!paypalClientId && (
+                    <span className="text-xs text-[#65695f]">(unavailable)</span>
+                  )}
+                </label>
+              </fieldset>
               <CheckoutForm
                 defaultAddress={defaultAddress}
                 isAuthenticated={isAuthenticated}
-                items={purchaseItems.map(({ variantId, quantity }) => ({ variantId, quantity }))}
+                items={checkoutItems}
+                paymentProvider={paymentProvider}
+                paypalClientId={paypalClientId}
                 savedAddresses={savedAddresses}
               />
             </aside>

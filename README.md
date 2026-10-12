@@ -31,6 +31,21 @@ The documented status API returns a boolean `status` (`true` means paid); it doe
 
 Official references: [Payment API](https://docs.onepay.lk/api-documentation/payment-api), [Integration Guide](https://docs.onepay.lk/guide/integration-guide), and [Currencies](https://docs.onepay.lk/api-documentation/currencies).
 
+## PayPal checkout
+
+PayPal is available alongside OnePay when `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_ID`, and `PAYPAL_CLIENT_SECRET` are configured. The public client ID must match the server-side ID. Set `PAYPAL_ENVIRONMENT` to `sandbox` for testing or `live` for production. Register `https://YOUR_PUBLIC_DOMAIN/api/webhooks/paypal` in the PayPal developer dashboard and configure its webhook ID as `PAYPAL_WEBHOOK_ID`. Subscribe to `PAYMENT.CAPTURE.COMPLETED`; signature verification is performed server-to-server before events are processed.
+
+PayPal amounts are derived from the database-priced order in USD cents and sent to PayPal as USD. The browser creates an order through `/api/checkout/paypal/orders` and confirms approval through the server-side capture route; neither browser callbacks nor webhooks alone are trusted as proof without checking the linked PayPal order, completed capture, amount, and currency. Create/capture requests and webhook event handling are idempotent. Buyer cancellation retains the cart. The local order stores the submitted shipping-address snapshot.
+
+Apply the PayPal payment-attempt and shipping-snapshot migration before deployment:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+Use separate sandbox and live credentials/webhook IDs. Verify sandbox checkout, capture retries, webhook retries, and OnePay checkout before enabling the live client ID.
+
 ## Catalog management
 
 The storefront reads products and categories from PostgreSQL. Admin users can manage products at `/admin/products` and categories at `/admin/categories`; product image values are paths to files served from the app, such as `/products/worm/worm-01.jpg`.

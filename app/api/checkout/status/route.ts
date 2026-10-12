@@ -8,9 +8,10 @@ export async function GET(request: Request) {
   }
 
   const order = await prisma.order.findFirst({
-    where: { paymentProvider: "ONEPAY", providerReference: reference },
+    where: { providerReference: reference },
     select: {
       id: true,
+      paymentProvider: true,
       providerTransactionId: true,
       totalCents: true,
       currency: true,
@@ -18,6 +19,13 @@ export async function GET(request: Request) {
     },
   });
   if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
+
+  if (order.paymentProvider === "PAYPAL") {
+    return Response.json({ status: order.status }, { headers: { "Cache-Control": "no-store" } });
+  }
+  if (order.paymentProvider !== "ONEPAY") {
+    return Response.json({ status: order.status }, { headers: { "Cache-Control": "no-store" } });
+  }
 
   try {
     const status = await refreshOnePayOrderStatus(order);
