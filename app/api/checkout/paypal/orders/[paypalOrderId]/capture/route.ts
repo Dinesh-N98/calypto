@@ -57,7 +57,7 @@ export async function POST(
     return Response.json({ error: "Cross-origin capture is not allowed." }, { status: 403 });
   }
   const limit = await applyRateLimit(request, "paypal-capture", 30, 5 * 60);
-  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
   const { paypalOrderId } = await params;
   if (!paypalOrderId || paypalOrderId.length > 64) {

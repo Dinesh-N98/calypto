@@ -202,7 +202,7 @@ async function processCaptureEvent(eventType: string, resource: JsonObject) {
 
 export async function POST(request: Request) {
   const limit = await applyRateLimit(request, "paypal-webhook", 300, 5 * 60);
-  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
   let event: unknown;
   try {

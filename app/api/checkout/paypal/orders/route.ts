@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   }
 
   const limit = await applyRateLimit(request, "paypal-order-create", 12, 10 * 60);
-  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
   const idempotencyKey = request.headers.get("idempotency-key");
   if (

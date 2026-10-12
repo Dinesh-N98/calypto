@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Cross-origin checkout is not allowed." }, { status: 403 });
   }
   const limit = await applyRateLimit(request, "onepay-checkout", 12, 10 * 60);
-  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
   let payload: CheckoutPayload;
   try {

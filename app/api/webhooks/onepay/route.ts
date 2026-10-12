@@ -9,7 +9,7 @@ import {
 
 export async function POST(request: Request) {
   const limit = await applyRateLimit(request, "onepay-webhook", 300, 5 * 60);
-  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
   let body: unknown;
   try {

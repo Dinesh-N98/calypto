@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isIP } from "node:net";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -13,17 +14,17 @@ export class RequestBodyError extends Error {
 }
 
 type RateLimitResult =
-  | { allowed: true }
-  | { allowed: false; retryAfterSeconds: number };
+  | { allowed: true; limit: number; remaining: number }
+  | { allowed: false; limit: number; remaining: 0; retryAfterSeconds: number };
 
 function getClientAddress(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return (
-    request.headers.get("cf-connecting-ip")?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    forwarded ||
-    "unknown"
-  ).slice(0, 200);
+  const candidates = [
+    request.headers.get("cf-connecting-ip")?.trim(),
+    request.headers.get("x-real-ip")?.trim(),
+    forwarded,
+  ];
+  return candidates.find((address) => address && isIP(address)) ?? "unknown";
 }
 
 export async function applyRateLimit(
@@ -32,6 +33,13 @@ export async function applyRateLimit(
   limit: number,
   windowSeconds: number,
 ): Promise<RateLimitResult> {
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    throw new Error("Rate limit must be a positive safe integer.");
+  }
+  if (!Number.isSafeInteger(windowSeconds) || windowSeconds < 1) {
+    throw new Error("Rate limit window must be a positive safe integer.");
+  }
+
   const key = createHash("sha256")
     .update(`${scope}:${getClientAddress(request)}`)
     .digest("hex");
@@ -53,21 +61,29 @@ export async function applyRateLimit(
   `);
   const bucket = rows[0];
   if (!bucket) throw new Error("Rate limiter did not return a bucket.");
-  if (bucket.count <= limit) return { allowed: true };
+  if (bucket.count <= limit) {
+    return { allowed: true, limit, remaining: limit - bucket.count };
+  }
   return {
     allowed: false,
+    limit,
+    remaining: 0,
     retryAfterSeconds: Math.max(1, Math.ceil((bucket.resetAt.getTime() - Date.now()) / 1000)),
   };
 }
 
-export function rateLimitResponse(retryAfterSeconds: number): Response {
+export function rateLimitResponse(
+  result: Extract<RateLimitResult, { allowed: false }>,
+): Response {
   return Response.json(
     { error: "Too many requests. Please wait before trying again." },
     {
       status: 429,
       headers: {
         "Cache-Control": "no-store",
-        "Retry-After": String(retryAfterSeconds),
+        "Retry-After": String(result.retryAfterSeconds),
+        "X-RateLimit-Limit": String(result.limit),
+        "X-RateLimit-Remaining": String(result.remaining),
       },
     },
   );
