@@ -118,7 +118,6 @@ async function processCaptureEvent(eventType: string, resource: JsonObject) {
     if (
       providerOrder.status !== "COMPLETED" ||
       !getPayPalCapture(
-        providerOrder,
         unit,
         captureId,
         "COMPLETED",

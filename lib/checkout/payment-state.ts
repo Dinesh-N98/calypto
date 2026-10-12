@@ -90,6 +90,7 @@ export async function markPayPalAttemptRefunded({
         select: {
           provider: true,
           status: true,
+          amountCents: true,
           providerCaptureId: true,
           refundedAmountCents: true,
           order: { select: { id: true, status: true, paymentProvider: true } },

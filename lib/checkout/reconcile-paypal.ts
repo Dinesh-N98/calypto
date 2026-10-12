@@ -7,7 +7,12 @@ import {
   getPayPalCapture,
   getPayPalPurchaseUnit,
 } from "@/lib/checkout/paypal-order-validation";
-import { createPayPalOrder, getPayPalOrder } from "@/lib/paypal";
+import {
+  capturePayPalOrder,
+  createPayPalOrder,
+  getPayPalOrder,
+  PayPalApiError,
+} from "@/lib/paypal";
 
 const RECONCILE_BATCH_SIZE = 5;
 const CAPTURE_STALE_GRACE_MS = 2 * 60 * 1000;
@@ -18,6 +23,7 @@ type AttemptWithOrder = NonNullable<
 >[number];
 
 async function findExpiredAttempts(now: Date) {
+  const staleCutoff = new Date(now.getTime() - CAPTURE_STALE_GRACE_MS);
   return prisma.paymentAttempt.findMany({
     where: {
       provider: "PAYPAL",
@@ -25,8 +31,8 @@ async function findExpiredAttempts(now: Date) {
       OR: [
         { status: { in: ["pending", "approved"] } },
         {
-          status: "capturing",
-          updatedAt: { lte: new Date(now.getTime() - CAPTURE_STALE_GRACE_MS) },
+          status: { in: ["capturing", "reconciling"] },
+          updatedAt: { lte: staleCutoff },
         },
       ],
     },
@@ -40,19 +46,14 @@ async function claimAttempt(
   attempt: AttemptWithOrder,
   now: Date,
 ): Promise<boolean> {
-  const where =
-    attempt.status === "capturing"
-      ? {
-          id: attempt.id,
-          status: "capturing",
-          expiresAt: { lte: now },
-          updatedAt: { lte: new Date(now.getTime() - CAPTURE_STALE_GRACE_MS) },
-        }
-      : {
-          id: attempt.id,
-          status: attempt.status,
-          expiresAt: { lte: now },
-        };
+  const where = {
+    id: attempt.id,
+    status: attempt.status,
+    expiresAt: { lte: now },
+    ...(attempt.status === "capturing" || attempt.status === "reconciling"
+      ? { updatedAt: { lte: new Date(now.getTime() - CAPTURE_STALE_GRACE_MS) } }
+      : {}),
+  };
   const claimed = await prisma.paymentAttempt.updateMany({
     where,
     data: { status: "reconciling" },
@@ -111,6 +112,73 @@ async function deferAttempt(
   });
 }
 
+function getCompletedCaptureId(
+  paypalOrder: Record<string, unknown>,
+  attempt: AttemptWithOrder,
+  paypalOrderId: string,
+): string | null {
+  if (paypalOrder.status !== "COMPLETED") return null;
+
+  const purchaseUnit = getPayPalPurchaseUnit(paypalOrder, {
+    providerOrderId: paypalOrderId,
+    orderId: attempt.orderId,
+    amountCents: attempt.amountCents,
+    currency: attempt.currency,
+    order: { providerReference: attempt.order.providerReference },
+  });
+  if (!purchaseUnit) return null;
+
+  const payments = purchaseUnit.payments;
+  if (
+    !payments ||
+    typeof payments !== "object" ||
+    !("captures" in payments) ||
+    !Array.isArray(payments.captures)
+  ) {
+    return null;
+  }
+  const capture = payments.captures.find(
+    (candidate): candidate is Record<string, unknown> =>
+      !!candidate &&
+      typeof candidate === "object" &&
+      "id" in candidate &&
+      typeof candidate.id === "string" &&
+      getPayPalCapture(
+        purchaseUnit,
+        candidate.id,
+        "COMPLETED",
+        attempt.amountCents,
+        attempt.currency,
+      ) !== null,
+  );
+  return capture && typeof capture.id === "string" ? capture.id : null;
+}
+
+async function markCompletedOrderPaid(
+  paypalOrder: Record<string, unknown>,
+  attempt: AttemptWithOrder,
+  paypalOrderId: string,
+): Promise<boolean> {
+  const captureId = getCompletedCaptureId(paypalOrder, attempt, paypalOrderId);
+  if (!captureId) return false;
+  return markPayPalAttemptPaid({ attemptId: attempt.id, captureId });
+}
+
+function isTerminalCaptureError(error: unknown): error is PayPalApiError {
+  return (
+    error instanceof PayPalApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+  );
+}
+
+function retryStatus(attempt: AttemptWithOrder): "pending" | "approved" | "capturing" {
+  if (attempt.status === "approved" || attempt.status === "capturing") return attempt.status;
+  return "pending";
+}
+
 export async function reconcileExpiredPayPalAttempts() {
   const now = new Date();
   const attempts = await findExpiredAttempts(now);
@@ -127,7 +195,7 @@ export async function reconcileExpiredPayPalAttempts() {
     if (!(await claimAttempt(attempt, now))) continue;
     try {
       if (attempt.order.status !== "pending") {
-        await deferAttempt(attempt, attempt.status as "pending" | "approved" | "capturing", now);
+        await deferAttempt(attempt, retryStatus(attempt), now);
         continue;
       }
 
@@ -145,35 +213,9 @@ export async function reconcileExpiredPayPalAttempts() {
       }
 
       if (paypalOrder.status === "COMPLETED") {
-        const captures =
-          purchaseUnit.payments &&
-          typeof purchaseUnit.payments === "object" &&
-          "captures" in purchaseUnit.payments &&
-          Array.isArray(purchaseUnit.payments.captures)
-            ? purchaseUnit.payments.captures
-            : [];
-        const completedCapture = captures.find(
-          (capture): capture is Record<string, unknown> =>
-            !!capture &&
-            typeof capture === "object" &&
-            "id" in capture &&
-            typeof capture.id === "string" &&
-            getPayPalCapture(
-              purchaseUnit,
-              capture.id,
-              "COMPLETED",
-              attempt.amountCents,
-              attempt.currency,
-            ) !== null,
-        );
-        if (!completedCapture || typeof completedCapture.id !== "string") {
+        if (!(await markCompletedOrderPaid(paypalOrder, attempt, paypalOrderId))) {
           throw new Error("Completed PayPal order has no matching completed capture.");
         }
-        const paid = await markPayPalAttemptPaid({
-          attemptId: attempt.id,
-          captureId: completedCapture.id,
-        });
-        if (!paid) throw new Error("Local state did not allow the PayPal paid transition.");
         summary.paid += 1;
         continue;
       }
@@ -190,28 +232,52 @@ export async function reconcileExpiredPayPalAttempts() {
       }
 
       if (paypalOrder.status === "APPROVED") {
-        await deferAttempt(attempt, "approved", now);
-        summary.deferred += 1;
+        try {
+          const captureResponse = await capturePayPalOrder(
+            paypalOrderId,
+            attempt.captureRequestId,
+          );
+          if (!(await markCompletedOrderPaid(captureResponse, attempt, paypalOrderId))) {
+            throw new Error("PayPal capture response has no matching completed capture.");
+          }
+          summary.paid += 1;
+        } catch (error) {
+          if (!isTerminalCaptureError(error)) throw error;
+
+          // A rejected retry can mean a prior capture succeeded; verify provider state before release.
+          const currentOrder = await getPayPalOrder(paypalOrderId);
+          if (currentOrder.status === "COMPLETED") {
+            if (!(await markCompletedOrderPaid(currentOrder, attempt, paypalOrderId))) {
+              throw new Error("Completed PayPal order has no matching completed capture.");
+            }
+            summary.paid += 1;
+            continue;
+          }
+          const failed = await finishPayPalAttemptWithoutPayment({
+            attemptId: attempt.id,
+            orderId: attempt.orderId,
+            attemptStatus: "failed",
+            orderStatus: "failed",
+          });
+          if (failed) summary.failed += 1;
+        }
         continue;
       }
 
       await deferAttempt(
         attempt,
-        attempt.status === "capturing" ? "capturing" : "pending",
+        retryStatus(attempt),
         now,
       );
       summary.deferred += 1;
     } catch (error) {
       summary.errors += 1;
-      console.error("Unable to reconcile an expired PayPal payment attempt.", {
+      console.error(JSON.stringify({
+        event: "paypal_payment_attempt_reconciliation_failed",
         attemptId: attempt.id,
-        error,
-      });
-      await deferAttempt(
-        attempt,
-        attempt.status === "capturing" ? "capturing" : attempt.status as "pending" | "approved",
-        now,
-      );
+        error: error instanceof Error ? error.message : String(error),
+      }));
+      await deferAttempt(attempt, retryStatus(attempt), now);
     }
   }
 
