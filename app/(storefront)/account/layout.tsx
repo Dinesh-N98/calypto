@@ -7,6 +7,7 @@ import { SignOutButton } from "@/components/SignOutButton";
 export default async function AccountLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in?callbackUrl=%2Faccount");
+  const isAdmin = session.user.role === "ADMIN";
 
   return (
     <main className="box-border min-h-[60vh] w-full max-w-full overflow-x-clip bg-background px-4 py-8 text-foreground sm:px-6 md:px-[5vw] md:py-14">
@@ -34,7 +35,7 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
         </div>
         <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-12">
           <aside className="grid w-full min-w-0 content-start gap-4">
-            <AccountNavigation />
+            <AccountNavigation isAdmin={isAdmin} />
           </aside>
           <div className="min-w-0">{children}</div>
         </div>

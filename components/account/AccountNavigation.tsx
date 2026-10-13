@@ -9,15 +9,19 @@ const links = [
   { href: "/account/wishlist", label: "Wishlist" },
 ];
 
-export function AccountNavigation() {
+export function AccountNavigation({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const navigationLinks = isAdmin
+    ? [...links, { href: "/admin", label: "Admin Dashboard" }]
+    : links;
+
   return (
     <nav
       aria-label="Account navigation"
       className="sticky top-0 z-40 flex w-full min-w-0 items-center border-b border-border bg-background/95 px-4 py-2 text-foreground backdrop-blur-sm md:self-start md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
     >
       <ul className="scrollbar-none flex w-full min-w-0 snap-x snap-mandatory scroll-smooth items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 pr-4 motion-reduce:scroll-auto md:grid md:grid-cols-1 md:overflow-visible md:pb-0 md:pr-0">
-        {links.map(({ href, label }) => {
+        {navigationLinks.map(({ href, label }) => {
           const isCurrent = pathname === href;
           return (
             <li className="shrink-0 snap-start" key={href}>
