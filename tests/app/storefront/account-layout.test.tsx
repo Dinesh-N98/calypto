@@ -14,15 +14,14 @@ function getAccountNavigationFlag(node: ReactNode): boolean | undefined {
   let isAdmin: boolean | undefined;
 
   Children.forEach(node, (child) => {
-    if (!isValidElement(child)) return;
+    if (!isValidElement<{ children?: ReactNode; isAdmin?: boolean }>(child)) return;
 
     if (child.type === AccountNavigation) {
       isAdmin = child.props.isAdmin;
       return;
     }
 
-    isAdmin =
-      getAccountNavigationFlag((child.props as { children?: ReactNode }).children) ?? isAdmin;
+    isAdmin = getAccountNavigationFlag(child.props.children) ?? isAdmin;
   });
 
   return isAdmin;
