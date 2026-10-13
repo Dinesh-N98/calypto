@@ -13,6 +13,22 @@ enum UserRole {
   ADMIN
 }
 
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  CLOSED
+}
+
+enum CrmInteractionType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  OTHER
+}
+
 enum PaymentProvider {
   STRIPE
   ONEPAY
@@ -122,33 +138,40 @@ model Promotion {
 }
 
 model Lead {
-  id        String   @id @default(cuid())
-  type      String
-  name      String
-  email     String
-  phone     String?
-  company   String?
-  message   String
-  createdAt DateTime @default(now())
+  id           String           @id @default(cuid())
+  type         String
+  name         String
+  email        String
+  phone        String?
+  company      String?
+  message      String
+  status       LeadStatus       @default(NEW)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  interactions CrmInteraction[]
+
+  @@index([status, updatedAt])
 }
 
 model User {
-  id             String         @id @default(cuid())
-  name           String?
-  firstName      String?
-  lastName       String?
-  email          String         @unique
-  role           UserRole       @default(CUSTOMER)
-  emailVerified  DateTime?
-  image          String?
-  hashedPassword String?
-  address        String?
-  phone          String?
-  accounts       Account[]
-  sessions       Session[]
-  orders         Order[]
-  addresses      Address[]
-  wishlistItems  WishlistItem[]
+  id                      String           @id @default(cuid())
+  name                    String?
+  firstName               String?
+  lastName                String?
+  email                   String           @unique
+  role                    UserRole         @default(CUSTOMER)
+  emailVerified           DateTime?
+  image                   String?
+  hashedPassword          String?
+  address                 String?
+  phone                   String?
+  accounts                Account[]
+  sessions                Session[]
+  orders                  Order[]
+  addresses               Address[]
+  wishlistItems           WishlistItem[]
+  authoredCrmInteractions CrmInteraction[] @relation("CrmInteractionAuthor")
+  crmInteractions         CrmInteraction[] @relation("CrmInteractionCustomer")
 }
 
 model Address {
@@ -207,7 +230,30 @@ model Order {
   trackingUrl           String?
   items                 OrderItem[]
   paymentAttempts       PaymentAttempt[]
+  crmInteractions       CrmInteraction[]
   createdAt             DateTime         @default(now())
+}
+
+model CrmInteraction {
+  id         String             @id @default(cuid())
+  type       CrmInteractionType @default(NOTE)
+  subject    String?
+  content    String             @db.Text
+  occurredAt DateTime           @default(now())
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  authorId   String
+  author     User               @relation("CrmInteractionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  customerId String?
+  customer   User?              @relation("CrmInteractionCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+  leadId     String?
+  lead       Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  orderId    String?
+  order      Order?             @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, occurredAt])
+  @@index([leadId, occurredAt])
+  @@index([orderId, occurredAt])
 }
 
 model PaymentAttempt {

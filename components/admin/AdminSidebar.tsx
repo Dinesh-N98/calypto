@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Box,
   LayoutDashboard,
+  MessageSquare,
   Percent,
   ShoppingCart,
   Store,
@@ -25,7 +26,16 @@ const navigationItems = [
   { label: "Categories", href: "/admin/categories", icon: Tags },
   { label: "Promotions", href: "/admin/promotions", icon: Percent },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
-  { label: "Customers", href: "/admin#customers", icon: UsersRound },
+  {
+    label: "CRM",
+    href: "/admin/crm",
+    icon: UsersRound,
+    children: [
+      { label: "Customers", href: "/admin/crm/customers", icon: UsersRound },
+      { label: "Leads", href: "/admin/crm/leads", icon: MessageSquare },
+      { label: "Orders", href: "/admin/crm/orders", icon: ShoppingCart },
+    ],
+  },
 ];
 
 export function AdminSidebar({ isOpen, onNavigate, onClose }: AdminSidebarProps) {
@@ -63,22 +73,43 @@ export function AdminSidebar({ isOpen, onNavigate, onClose }: AdminSidebarProps)
           Workspace
         </p>
         <nav aria-label="Admin navigation" className="grid gap-1">
-          {navigationItems.map(({ label, href, icon: Icon }) => {
-            const isActive =
-              href === "/admin"
-                ? pathname === "/admin"
-                : pathname === href || pathname.startsWith(`${href}/`);
+          {navigationItems.map(({ label, href, icon: Icon, children }) => {
+            const isCurrentPage =
+              href === "/admin" ? pathname === "/admin" : pathname === href;
+            const isInSection = pathname === href || pathname.startsWith(`${href}/`);
             return (
-              <Link
-                aria-current={isActive ? "page" : undefined}
-                className={`flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors ${isActive ? "bg-[#a3bd32] text-[#171a14]" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
-                href={href}
-                key={href}
-                onClick={onNavigate}
-              >
-                <Icon aria-hidden="true" className="h-4 w-4" />
-                {label}
-              </Link>
+              <div key={href}>
+                <Link
+                  aria-current={isCurrentPage ? "page" : undefined}
+                  aria-expanded={children ? isInSection : undefined}
+                  className={`flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors ${isCurrentPage ? "bg-[#a3bd32] text-[#171a14]" : isInSection ? "text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
+                  href={href}
+                  onClick={onNavigate}
+                >
+                  <Icon aria-hidden="true" className="h-4 w-4" />
+                  {label}
+                </Link>
+                {children && isInSection && (
+                  <div className="ml-5 mt-1 grid gap-1 border-l border-white/15 pl-3">
+                    {children.map(({ label: childLabel, href: childHref, icon: ChildIcon }) => {
+                      const isChildCurrent =
+                        pathname === childHref || pathname.startsWith(`${childHref}/`);
+                      return (
+                        <Link
+                          aria-current={isChildCurrent ? "page" : undefined}
+                          className={`flex min-h-10 items-center gap-2 rounded-md px-3 text-xs font-semibold transition-colors ${isChildCurrent ? "bg-[#a3bd32] text-[#171a14]" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
+                          href={childHref}
+                          key={childHref}
+                          onClick={onNavigate}
+                        >
+                          <ChildIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                          {childLabel}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
