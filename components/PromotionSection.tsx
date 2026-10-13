@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Promotion } from "@prisma/client";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Copy, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Copy, Tag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Reveal } from "@/components/Reveal";
 import { useToast } from "@/components/ToastProvider";
 
 function getDiscountLabel(promotion: Promotion): string | null {
@@ -23,7 +24,7 @@ function formatEndDate(value: Date): string {
   }).format(value);
 }
 
-function PromotionCard({ promotion }: { promotion: Promotion }) {
+function PromotionCard({ promotion, delay }: { promotion: Promotion; delay: number }) {
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
   const copiedTimerRef = useRef<number | null>(null);
@@ -52,7 +53,11 @@ function PromotionCard({ promotion }: { promotion: Promotion }) {
   }
 
   return (
-    <article className="grid min-h-[22rem] overflow-hidden rounded-2xl bg-[#f1f0e8] text-[#171a14] shadow-[0_20px_60px_rgba(0,0,0,.24)] md:min-h-[25rem] md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)]">
+    <Reveal
+      as="article"
+      className="grid min-h-[22rem] overflow-hidden rounded-2xl bg-[#f1f0e8] text-[#171a14] shadow-[0_20px_60px_rgba(0,0,0,.24)] md:min-h-[25rem] md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)]"
+      delay={delay}
+    >
       <div className="relative min-h-56 overflow-hidden bg-[#262b20] md:min-h-full">
         <Image
           alt={promotion.title}
@@ -113,18 +118,23 @@ function PromotionCard({ promotion }: { promotion: Promotion }) {
           )}
 
           <Link
-            className="group/cta inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#171a14] px-5 text-xs font-extrabold uppercase tracking-[.09em] text-white transition-[background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-[#53641d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#65771b] motion-reduce:transform-none motion-reduce:transition-none"
+            className="group inline-flex items-center justify-center gap-3 whitespace-nowrap rounded-lg bg-[#829B22] px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-colors duration-200 ease-in-out hover:bg-[#a3e635] hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#65771b] motion-reduce:transition-none"
             href="/shop"
           >
-            Shop now
-            <ArrowUpRight
-              aria-hidden="true"
-              className="h-4 w-4 transition-transform duration-200 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 motion-reduce:transform-none"
-            />
+            <span className="transition-colors duration-200 group-hover:text-black">
+              Shop now
+            </span>
+            <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
+              <ArrowRight
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 text-white transition-colors duration-200 group-hover:text-black"
+                strokeWidth={2}
+              />
+            </span>
           </Link>
         </div>
       </div>
-    </article>
+    </Reveal>
   );
 }
 
@@ -151,14 +161,14 @@ export function PromotionSection({ promotions }: { promotions: Promotion[] }) {
     >
       <div className="site-container">
         <header className="mb-5 flex items-end justify-between gap-4 sm:mb-7">
-          <div>
+          <Reveal delay={0}>
             <p className="text-[.62rem] font-bold uppercase tracking-[.16em] text-lime">
               Offers made for the next cast
             </p>
-            <h2 className="mt-2 text-xl font-black uppercase tracking-[-.035em] text-paper sm:text-2xl">
+            <h2 className="mt-2 text-[clamp(2rem,6vw,3.25rem)] font-black uppercase leading-[.92] tracking-[-.07em] text-paper md:text-[clamp(3rem,5vw,4rem)]">
               Limited-time offers
             </h2>
-          </div>
+          </Reveal>
           {promotions.length > 1 && (
             <div className="hidden items-center gap-2 sm:flex">
               <button
@@ -203,7 +213,7 @@ export function PromotionSection({ promotions }: { promotions: Promotion[] }) {
               key={promotion.id}
               role={promotions.length > 1 ? "group" : undefined}
             >
-              <PromotionCard promotion={promotion} />
+              <PromotionCard promotion={promotion} delay={Math.min((index + 1) * 120, 400)} />
             </div>
           ))}
         </div>
