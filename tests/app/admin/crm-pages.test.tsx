@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getCrmLeads: vi.fn(),
   getCrmLeadCountries: vi.fn(),
+  getCrmLeadStates: vi.fn(),
   getCrmCustomers: vi.fn(),
   getCrmCustomerProfile: vi.fn(),
   notFound: vi.fn(() => {
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/actions/crm", () => ({
   getCrmLeads: mocks.getCrmLeads,
   getCrmLeadCountries: mocks.getCrmLeadCountries,
+  getCrmLeadStates: mocks.getCrmLeadStates,
   getCrmCustomers: mocks.getCrmCustomers,
   getCrmCustomerProfile: mocks.getCrmCustomerProfile,
 }));
@@ -28,6 +30,7 @@ import CrmLeadsPage from "@/app/admin/crm/leads/page";
 beforeEach(() => {
   mocks.getCrmLeads.mockResolvedValue({ ok: true, leads: [], nextCursor: null });
   mocks.getCrmLeadCountries.mockResolvedValue(["Canada", "Singapore"]);
+  mocks.getCrmLeadStates.mockResolvedValue(["Alberta", "Ontario"]);
   mocks.getCrmCustomers.mockResolvedValue({ ok: true, customers: [], nextCursor: null });
   mocks.getCrmCustomerProfile.mockResolvedValue({
     ok: true,
@@ -75,6 +78,7 @@ describe("CRM admin pages", () => {
         search: ["  ada  ", "ignored"],
         status: "NEW",
         country: " Canada ",
+        state: " Ontario ",
         cursor: " lead-0 ",
       }),
     });
@@ -84,12 +88,15 @@ describe("CRM admin pages", () => {
       search: "ada",
       status: "NEW",
       country: "Canada",
+      state: "Ontario",
       cursor: "lead-0",
     });
+    expect(mocks.getCrmLeadStates).toHaveBeenCalledWith("Canada");
     expect(screen.getByRole("heading", { name: "Leads" })).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Search leads" })).toHaveValue("ada");
     expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue("NEW");
     expect(screen.getByRole("combobox", { name: "Country" })).toHaveValue("Canada");
+    expect(screen.getByRole("combobox", { name: "State / Province" })).toHaveValue("Ontario");
     expect(screen.getAllByText("Canada")).toHaveLength(2);
     expect(screen.getByText("Toronto • Ontario")).toBeInTheDocument();
     expect(screen.getByText("100 Main Street")).toBeInTheDocument();
@@ -102,7 +109,7 @@ describe("CRM admin pages", () => {
     expect(screen.getByText("Imported lead notes")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Next page" })).toHaveAttribute(
       "href",
-      "/admin/crm/leads?search=ada&status=NEW&country=Canada&cursor=lead-1",
+      "/admin/crm/leads?search=ada&status=NEW&country=Canada&state=Ontario&cursor=lead-1",
     );
   });
 

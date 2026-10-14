@@ -27,6 +27,7 @@ import {
   getCrmCustomerProfile,
   getCrmCustomers,
   getCrmLeadCountries,
+  getCrmLeadStates,
   getCrmLeads,
 } from "@/lib/actions/crm";
 
@@ -85,13 +86,14 @@ describe("CRM server actions", () => {
     );
   });
 
-  it("searches lead location fields and filters by country", async () => {
-    await getCrmLeads({ search: "Toronto", country: "Canada" });
+  it("searches lead location fields and filters by country and state", async () => {
+    await getCrmLeads({ search: "Toronto", country: "Canada", state: "Ontario" });
 
     expect(mocks.leadFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           country: { equals: "Canada", mode: "insensitive" },
+          state: { equals: "Ontario", mode: "insensitive" },
           OR: [
             { name: { contains: "Toronto", mode: "insensitive" } },
             { email: { contains: "Toronto", mode: "insensitive" } },
@@ -120,6 +122,27 @@ describe("CRM server actions", () => {
       distinct: ["country"],
       orderBy: { country: "asc" },
       select: { country: true },
+    });
+  });
+
+  it("returns distinct states optionally scoped to a selected country", async () => {
+    mocks.leadFindMany.mockResolvedValue([
+      { state: "Ontario" },
+      { state: "Alberta" },
+      { state: null },
+      { state: " " },
+    ]);
+
+    await expect(getCrmLeadStates("Canada")).resolves.toEqual(["Alberta", "Ontario"]);
+    expect(mocks.requireAdminPage).toHaveBeenCalledWith("/admin/crm/leads");
+    expect(mocks.leadFindMany).toHaveBeenCalledWith({
+      where: {
+        state: { not: null, notIn: [""] },
+        country: { equals: "Canada", mode: "insensitive" },
+      },
+      distinct: ["state"],
+      orderBy: { state: "asc" },
+      select: { state: true },
     });
   });
 

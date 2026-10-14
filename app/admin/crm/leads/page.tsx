@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCrmLeadCountries, getCrmLeads } from "@/lib/actions/crm";
+import { getCrmLeadCountries, getCrmLeads, getCrmLeadStates } from "@/lib/actions/crm";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +7,7 @@ type PageSearchParams = Promise<{
   search?: string | string[];
   status?: string | string[];
   country?: string | string[];
+  state?: string | string[];
   cursor?: string | string[];
 }>;
 
@@ -20,12 +21,14 @@ function makePageHref(
   search: string,
   status: string,
   country: string,
+  state: string,
   cursor: string | null,
 ): string {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (status) params.set("status", status);
   if (country) params.set("country", country);
+  if (state) params.set("state", state);
   if (cursor) params.set("cursor", cursor);
   const query = params.toString();
   return query ? `/admin/crm/leads?${query}` : "/admin/crm/leads";
@@ -46,15 +49,18 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
   const requestedStatus = firstValue(params.status) ?? "";
   const status = statuses.find((candidate) => candidate === requestedStatus) ?? "";
   const country = (firstValue(params.country) ?? "").trim().slice(0, 100);
+  const state = (firstValue(params.state) ?? "").trim().slice(0, 100);
   const cursor = firstValue(params.cursor)?.trim().slice(0, 191);
-  const [result, countries] = await Promise.all([
+  const [result, countries, states] = await Promise.all([
     getCrmLeads({
       ...(search ? { search } : {}),
       ...(status ? { status } : {}),
       ...(country ? { country } : {}),
+      ...(state ? { state } : {}),
       ...(cursor ? { cursor } : {}),
     }),
     getCrmLeadCountries(),
+    getCrmLeadStates(country || undefined),
   ]);
 
   return (
@@ -111,6 +117,21 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
             {countries.map((leadCountry) => (
               <option key={leadCountry} value={leadCountry}>
                 {leadCountry}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs font-bold text-[#55594f] sm:w-44">
+          State / Province
+          <select
+            className="mt-1 min-h-11 w-full rounded-md border border-black/20 bg-white px-3 text-sm font-normal text-[#161812] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#718126]"
+            defaultValue={state}
+            name="state"
+          >
+            <option value="">All states / provinces</option>
+            {states.map((leadState) => (
+              <option key={leadState} value={leadState}>
+                {leadState}
               </option>
             ))}
           </select>
@@ -233,7 +254,7 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
             <div className="flex justify-end">
               <Link
                 className="inline-flex min-h-11 items-center border border-black/20 bg-white px-4 text-xs font-bold uppercase tracking-[.06em] hover:border-[#718126] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#718126]"
-                href={makePageHref(search, status, country, result.nextCursor)}
+                href={makePageHref(search, status, country, state, result.nextCursor)}
               >
                 Next page
               </Link>

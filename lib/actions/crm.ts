@@ -14,6 +14,7 @@ const leadQuerySchema = z
     search: z.string().trim().max(100).optional(),
     status: z.enum(leadStatuses).optional(),
     country: z.string().trim().min(1).max(100).optional(),
+    state: z.string().trim().min(1).max(100).optional(),
     cursor: z.string().trim().min(1).max(191).optional(),
     limit: z.number().int().min(1).max(50).default(25),
   })
@@ -50,10 +51,11 @@ export async function getCrmLeads(input: unknown = {}) {
   const parsed = leadQuerySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Lead filters are invalid." } as const;
 
-  const { search, status, country, cursor, limit } = parsed.data;
+  const { search, status, country, state, cursor, limit } = parsed.data;
   const where: Prisma.LeadWhereInput = {
     ...(status ? { status } : {}),
     ...(country ? { country: { equals: country, mode: "insensitive" } } : {}),
+    ...(state ? { state: { equals: state, mode: "insensitive" } } : {}),
     ...(search
       ? {
           OR: [
@@ -118,6 +120,23 @@ export async function getCrmLeadCountries() {
   });
   return leads
     .map(({ country }) => country?.trim() ?? "")
+    .filter(Boolean)
+    .sort((first, second) => first.localeCompare(second));
+}
+
+export async function getCrmLeadStates(country?: string) {
+  await requireAdminPage("/admin/crm/leads");
+  const leads = await prisma.lead.findMany({
+    where: {
+      state: { not: null, notIn: [""] },
+      ...(country ? { country: { equals: country, mode: "insensitive" } } : {}),
+    },
+    distinct: ["state"],
+    orderBy: { state: "asc" },
+    select: { state: true },
+  });
+  return leads
+    .map(({ state }) => state?.trim() ?? "")
     .filter(Boolean)
     .sort((first, second) => first.localeCompare(second));
 }
