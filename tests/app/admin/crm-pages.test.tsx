@@ -103,6 +103,32 @@ describe("CRM admin pages", () => {
     expect(screen.getByRole("searchbox", { name: "Search customers" })).toHaveValue("no-match");
   });
 
+  it("shows an explicit placeholder for leads without email addresses", async () => {
+    mocks.getCrmLeads.mockResolvedValue({
+      ok: true,
+      leads: [
+        {
+          id: "lead-no-email",
+          name: "North Shop",
+          email: null,
+          phone: "+1 555 0100",
+          company: "North Shop",
+          type: "wholesale",
+          status: "NEW",
+          createdAt: new Date("2026-10-13T12:00:00.000Z"),
+          updatedAt: new Date("2026-10-13T12:00:00.000Z"),
+        },
+      ],
+      nextCursor: null,
+    });
+
+    const page = await CrmLeadsPage({ searchParams: Promise.resolve({}) });
+    render(page);
+
+    expect(screen.getByText("No email provided")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "null" })).not.toBeInTheDocument();
+  });
+
   it("renders customer details for a valid profile and calls notFound for a missing profile", async () => {
     const page = await CrmCustomerDetailPage({
       params: Promise.resolve({ customerId: "customer-1" }),

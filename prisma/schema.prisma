@@ -141,9 +141,14 @@ model Lead {
   id           String           @id @default(cuid())
   type         String
   name         String
-  email        String
+  email        String?
   phone        String?
   company      String?
+  country      String?
+  city         String?
+  state        String?
+  address      String?
+  website      String?
   message      String
   status       LeadStatus       @default(NEW)
   createdAt    DateTime         @default(now())

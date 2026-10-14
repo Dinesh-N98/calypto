@@ -122,12 +122,16 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
                   <tr key={lead.id}>
                     <td className="px-4 py-4">
                       <span className="block font-bold">{lead.name}</span>
-                      <a
-                        className="mt-1 block text-xs text-[#65695f] underline underline-offset-2 hover:text-[#171a14]"
-                        href={`mailto:${lead.email}`}
-                      >
-                        {lead.email}
-                      </a>
+                      {lead.email ? (
+                        <a
+                          className="mt-1 block text-xs text-[#65695f] underline underline-offset-2 hover:text-[#171a14]"
+                          href={`mailto:${lead.email}`}
+                        >
+                          {lead.email}
+                        </a>
+                      ) : (
+                        <span className="mt-1 block text-xs text-[#65695f]">No email provided</span>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-[#55594f]">{lead.phone || "—"}</td>
                     <td className="px-4 py-4 text-[#55594f]">{lead.company || "—"}</td>

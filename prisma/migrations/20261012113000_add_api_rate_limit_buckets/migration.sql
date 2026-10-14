@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS "ApiRateLimitBucket" (
+CREATE TABLE "ApiRateLimitBucket" (
     "key" TEXT NOT NULL,
     "count" INTEGER NOT NULL,
     "resetAt" TIMESTAMP(3) NOT NULL,
@@ -7,4 +7,4 @@ CREATE TABLE IF NOT EXISTS "ApiRateLimitBucket" (
     CONSTRAINT "ApiRateLimitBucket_pkey" PRIMARY KEY ("key")
 );
 
-CREATE INDEX IF NOT EXISTS "ApiRateLimitBucket_resetAt_idx" ON "ApiRateLimitBucket"("resetAt");
+CREATE INDEX "ApiRateLimitBucket_resetAt_idx" ON "ApiRateLimitBucket"("resetAt");
