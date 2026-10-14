@@ -13,6 +13,7 @@ const leadQuerySchema = z
   .object({
     search: z.string().trim().max(100).optional(),
     status: z.enum(leadStatuses).optional(),
+    country: z.string().trim().min(1).max(100).optional(),
     cursor: z.string().trim().min(1).max(191).optional(),
     limit: z.number().int().min(1).max(50).default(25),
   })
@@ -49,15 +50,19 @@ export async function getCrmLeads(input: unknown = {}) {
   const parsed = leadQuerySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Lead filters are invalid." } as const;
 
-  const { search, status, cursor, limit } = parsed.data;
+  const { search, status, country, cursor, limit } = parsed.data;
   const where: Prisma.LeadWhereInput = {
     ...(status ? { status } : {}),
+    ...(country ? { country: { equals: country, mode: "insensitive" } } : {}),
     ...(search
       ? {
           OR: [
             { name: { contains: search, mode: "insensitive" } },
             { email: { contains: search, mode: "insensitive" } },
             { company: { contains: search, mode: "insensitive" } },
+            { country: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { address: { contains: search, mode: "insensitive" } },
           ],
         }
       : {}),
@@ -77,6 +82,12 @@ export async function getCrmLeads(input: unknown = {}) {
         email: true,
         phone: true,
         company: true,
+        country: true,
+        city: true,
+        state: true,
+        address: true,
+        website: true,
+        message: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -95,6 +106,20 @@ export async function getCrmLeads(input: unknown = {}) {
   const hasMore = leads.length > limit;
   const page = hasMore ? leads.slice(0, limit) : leads;
   return { ok: true, leads: page, nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null } as const;
+}
+
+export async function getCrmLeadCountries() {
+  await requireAdminPage("/admin/crm/leads");
+  const leads = await prisma.lead.findMany({
+    where: { country: { not: null, notIn: [""] } },
+    distinct: ["country"],
+    orderBy: { country: "asc" },
+    select: { country: true },
+  });
+  return leads
+    .map(({ country }) => country?.trim() ?? "")
+    .filter(Boolean)
+    .sort((first, second) => first.localeCompare(second));
 }
 
 export async function getCrmCustomers(input: unknown = {}) {

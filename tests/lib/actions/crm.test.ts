@@ -26,6 +26,7 @@ import {
   createCrmInteraction,
   getCrmCustomerProfile,
   getCrmCustomers,
+  getCrmLeadCountries,
   getCrmLeads,
 } from "@/lib/actions/crm";
 
@@ -72,8 +73,54 @@ describe("CRM server actions", () => {
       expect.objectContaining({
         take: 3,
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        select: expect.objectContaining({
+          country: true,
+          city: true,
+          state: true,
+          address: true,
+          website: true,
+          message: true,
+        }),
       }),
     );
+  });
+
+  it("searches lead location fields and filters by country", async () => {
+    await getCrmLeads({ search: "Toronto", country: "Canada" });
+
+    expect(mocks.leadFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          country: { equals: "Canada", mode: "insensitive" },
+          OR: [
+            { name: { contains: "Toronto", mode: "insensitive" } },
+            { email: { contains: "Toronto", mode: "insensitive" } },
+            { company: { contains: "Toronto", mode: "insensitive" } },
+            { country: { contains: "Toronto", mode: "insensitive" } },
+            { city: { contains: "Toronto", mode: "insensitive" } },
+            { address: { contains: "Toronto", mode: "insensitive" } },
+          ],
+        },
+      }),
+    );
+  });
+
+  it("returns distinct nonblank lead countries for the filter", async () => {
+    mocks.leadFindMany.mockResolvedValue([
+      { country: "Singapore" },
+      { country: "Canada" },
+      { country: null },
+      { country: " " },
+    ]);
+
+    await expect(getCrmLeadCountries()).resolves.toEqual(["Canada", "Singapore"]);
+    expect(mocks.requireAdminPage).toHaveBeenCalledWith("/admin/crm/leads");
+    expect(mocks.leadFindMany).toHaveBeenCalledWith({
+      where: { country: { not: null, notIn: [""] } },
+      distinct: ["country"],
+      orderBy: { country: "asc" },
+      select: { country: true },
+    });
   });
 
   it("selects only CRM-safe customer profile fields", async () => {
