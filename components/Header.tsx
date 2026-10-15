@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { Menu, ShoppingBag, UserRound, X } from "lucide-react";
+import { Heart, Menu, ShoppingBag, UserRound, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useCart } from "./CartProvider";
+import { useWishlist } from "./WishlistProvider";
 const links = [
   ["Home", "/"],
   ["Shop", "/shop"],
@@ -14,6 +15,7 @@ export function Header() {
   const [open, setOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { itemCount } = useCart();
+  const { productIds, status: wishlistStatus } = useWishlist();
   const { data: session, status } = useSession();
   const isSignedIn = status === "authenticated";
   const accountLabel = session?.user?.name || session?.user?.email || "Account";
@@ -59,9 +61,9 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center justify-self-end gap-3 md:gap-6 md:border-l md:border-[rgba(241,240,232,.18)] md:pl-6">
+        <div className="flex items-center justify-self-end gap-0 md:gap-6 md:border-l md:border-[rgba(241,240,232,.18)] md:pl-6">
           <Link
-            className="relative inline-flex min-h-12 min-w-12 items-center justify-center p-3 text-muted transition-colors hover:text-lime"
+            className="relative inline-flex h-11 w-11 items-center justify-center text-muted transition-colors hover:scale-105 hover:text-lime sm:h-12 sm:w-12 sm:p-3"
             href="/cart"
             aria-label={`Cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
           >
@@ -72,6 +74,21 @@ export function Header() {
             >
               {itemCount}
             </b>
+          </Link>
+          <Link
+            className="relative inline-flex h-11 w-11 items-center justify-center text-muted transition-all hover:scale-105 hover:text-lime sm:h-12 sm:w-12"
+            href="/account/wishlist"
+            aria-label="Wishlist"
+          >
+            <Heart aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
+            {wishlistStatus === "ready" && productIds.size > 0 && (
+              <b
+                key={productIds.size}
+                className="animate-badge-pop absolute right-0 top-0 inline-grid h-[19px] min-w-[19px] place-items-center rounded-full bg-lime px-1 text-[.6rem] text-ink motion-reduce:animate-none"
+              >
+                {productIds.size}
+              </b>
+            )}
           </Link>
           {isSignedIn ? (
             <Link
@@ -84,7 +101,7 @@ export function Header() {
             </Link>
           ) : (
             <Link
-              className="hidden h-12 w-12 items-center justify-center rounded-full text-muted transition-colors hover:text-lime focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:inline-flex"
+              className="hidden h-11 w-11 items-center justify-center rounded-full text-muted transition-colors hover:text-lime focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:h-12 md:w-12 md:inline-flex"
               href="/sign-in"
               aria-label="Sign in"
             >
@@ -93,7 +110,7 @@ export function Header() {
           )}
           {isSignedIn && (
             <Link
-              className="grid h-12 w-12 place-items-center rounded-full md:hidden"
+              className="grid h-11 w-11 place-items-center rounded-full md:hidden"
               href="/account"
               title={accountLabel}
               aria-label={`Go to account, ${accountLabel}`}
@@ -105,7 +122,7 @@ export function Header() {
           )}
           {!isSignedIn && (
             <Link
-              className="grid h-12 w-12 place-items-center rounded-full text-paper md:hidden"
+              className="grid h-11 w-11 place-items-center rounded-full text-paper md:hidden"
               href="/sign-in"
               aria-label="Sign in"
             >
@@ -113,7 +130,7 @@ export function Header() {
             </Link>
           )}
           <button
-            className="inline-flex min-h-12 min-w-12 items-center justify-center border-0 bg-transparent p-3 text-paper md:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center border-0 bg-transparent text-paper md:hidden"
             onClick={() => setOpen(true)}
             aria-label="Open menu"
           >
@@ -145,6 +162,20 @@ export function Header() {
                 {label}
               </Link>
             ))}
+            <Link
+              className="animate-hero-rise flex min-h-12 items-center gap-3 border-b border-[rgba(241,240,232,.18)] py-3 text-[1.6rem] font-black uppercase tracking-[-.04em] motion-reduce:animate-none"
+              href="/account/wishlist"
+              onClick={() => setOpen(false)}
+              style={{ animationDelay: `${Math.min(links.length * 80, 400)}ms` }}
+            >
+              <Heart aria-hidden="true" className="h-6 w-6 shrink-0" />
+              Wishlist
+              {wishlistStatus === "ready" && productIds.size > 0 && (
+                <span className="inline-grid h-6 min-w-6 place-items-center rounded-full bg-lime px-1.5 text-xs tracking-normal text-ink">
+                  {productIds.size}
+                </span>
+              )}
+            </Link>
           </nav>
         </div>
       )}
