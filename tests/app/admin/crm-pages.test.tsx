@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getCrmLeads: vi.fn(),
   getCrmLeadCountries: vi.fn(),
   getCrmLeadStates: vi.fn(),
+  getCrmLeadSummaryMetrics: vi.fn(),
   getCrmCustomers: vi.fn(),
   getCrmCustomerProfile: vi.fn(),
   notFound: vi.fn(() => {
@@ -18,6 +19,7 @@ vi.mock("@/lib/actions/crm", () => ({
   getCrmLeads: mocks.getCrmLeads,
   getCrmLeadCountries: mocks.getCrmLeadCountries,
   getCrmLeadStates: mocks.getCrmLeadStates,
+  getCrmLeadSummaryMetrics: mocks.getCrmLeadSummaryMetrics,
   getCrmCustomers: mocks.getCrmCustomers,
   getCrmCustomerProfile: mocks.getCrmCustomerProfile,
 }));
@@ -28,9 +30,31 @@ import CrmCustomerDetailPage from "@/app/admin/crm/customers/[customerId]/page";
 import CrmLeadsPage from "@/app/admin/crm/leads/page";
 
 beforeEach(() => {
-  mocks.getCrmLeads.mockResolvedValue({ ok: true, leads: [], nextCursor: null });
+  mocks.getCrmLeads.mockResolvedValue({
+    ok: true,
+    leads: [],
+    totalCount: 0,
+    page: 1,
+    totalPages: 0,
+    nextCursor: null,
+  });
   mocks.getCrmLeadCountries.mockResolvedValue(["Canada", "Singapore"]);
   mocks.getCrmLeadStates.mockResolvedValue(["Alberta", "Ontario"]);
+  mocks.getCrmLeadSummaryMetrics.mockResolvedValue({
+    ok: true,
+    global: {
+      totalCount: 0,
+      countryDistribution: [],
+      statusCounts: { NEW: 0, CONTACTED: 0, QUALIFIED: 0, CONVERTED: 0, CLOSED: 0 },
+      contactCoverage: { phoneCount: 0, phonePercent: 0, emailCount: 0, emailPercent: 0 },
+    },
+    scoped: {
+      totalCount: 0,
+      countryDistribution: [],
+      statusCounts: { NEW: 0, CONTACTED: 0, QUALIFIED: 0, CONVERTED: 0, CLOSED: 0 },
+      contactCoverage: { phoneCount: 0, phonePercent: 0, emailCount: 0, emailPercent: 0 },
+    },
+  });
   mocks.getCrmCustomers.mockResolvedValue({ ok: true, customers: [], nextCursor: null });
   mocks.getCrmCustomerProfile.mockResolvedValue({
     ok: true,
@@ -48,7 +72,7 @@ beforeEach(() => {
 });
 
 describe("CRM admin pages", () => {
-  it("normalizes lead filters and preserves them in the next-page link", async () => {
+  it("normalizes lead filters and preserves them across pagination", async () => {
     mocks.getCrmLeads.mockResolvedValue({
       ok: true,
       leads: [
@@ -70,7 +94,34 @@ describe("CRM admin pages", () => {
           updatedAt: new Date("2026-10-13T12:00:00.000Z"),
         },
       ],
-      nextCursor: "lead-1",
+      totalCount: 151,
+      page: 3,
+      totalPages: 4,
+    });
+    mocks.getCrmLeadSummaryMetrics.mockResolvedValue({
+      ok: true,
+      global: {
+        totalCount: 151,
+        countryDistribution: [{ country: "Canada", count: 82 }],
+        statusCounts: { NEW: 82, CONTACTED: 30, QUALIFIED: 20, CONVERTED: 10, CLOSED: 9 },
+        contactCoverage: {
+          phoneCount: 120,
+          phonePercent: 79.5,
+          emailCount: 140,
+          emailPercent: 92.7,
+        },
+      },
+      scoped: {
+        totalCount: 151,
+        countryDistribution: [{ country: "Canada", count: 82 }],
+        statusCounts: { NEW: 82, CONTACTED: 30, QUALIFIED: 20, CONVERTED: 10, CLOSED: 9 },
+        contactCoverage: {
+          phoneCount: 120,
+          phonePercent: 79.5,
+          emailCount: 140,
+          emailPercent: 92.7,
+        },
+      },
     });
 
     const page = await CrmLeadsPage({
@@ -79,25 +130,40 @@ describe("CRM admin pages", () => {
         status: "NEW",
         country: " Canada ",
         state: " Ontario ",
-        cursor: " lead-0 ",
+        page: "3",
+        limit: "50",
       }),
     });
-    render(page);
+    const { container } = render(page);
 
     expect(mocks.getCrmLeads).toHaveBeenCalledWith({
       search: "ada",
       status: "NEW",
       country: "Canada",
       state: "Ontario",
-      cursor: "lead-0",
+      page: 3,
+      limit: 50,
+    });
+    expect(mocks.getCrmLeadSummaryMetrics).toHaveBeenCalledWith({
+      search: "ada",
+      status: "NEW",
+      country: "Canada",
+      state: "Ontario",
     });
     expect(mocks.getCrmLeadStates).toHaveBeenCalledWith("Canada");
     expect(screen.getByRole("heading", { name: "Leads" })).toBeInTheDocument();
+    expect(screen.getByText("Total pipeline")).toBeInTheDocument();
+    expect(screen.getByText("151")).toBeInTheDocument();
+    expect(screen.getByText("All leads")).toBeInTheDocument();
+    expect(screen.getByText("New: 82")).toBeInTheDocument();
+    expect(screen.getByText("Phone coverage")).toBeInTheDocument();
+    expect(screen.getByText("Email coverage")).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Search leads" })).toHaveValue("ada");
     expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue("NEW");
     expect(screen.getByRole("combobox", { name: "Country" })).toHaveValue("Canada");
     expect(screen.getByRole("combobox", { name: "State / Province" })).toHaveValue("Ontario");
-    expect(screen.getAllByText("Canada")).toHaveLength(2);
+    expect(screen.getByRole("combobox", { name: "Page size" })).toHaveValue("50");
+    expect(container.querySelector('input[name="page"]')).toHaveAttribute("value", "1");
     expect(screen.getByText("Toronto • Ontario")).toBeInTheDocument();
     expect(screen.getByText("100 Main Street")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "example.com" })).toHaveAttribute(
@@ -107,9 +173,63 @@ describe("CRM admin pages", () => {
     expect(screen.getByText("GENERAL")).toBeInTheDocument();
     expect(screen.getAllByText("New")).toHaveLength(2);
     expect(screen.getByText("Imported lead notes")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Next page" })).toHaveAttribute(
+    expect(screen.getByText("Page 3 of 4 · 151 leads")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
       "href",
-      "/admin/crm/leads?search=ada&status=NEW&country=Canada&state=Ontario&cursor=lead-1",
+      "/admin/crm/leads?search=ada&status=NEW&country=Canada&state=Ontario&page=4&limit=50",
+    );
+    expect(screen.getByRole("link", { name: "Previous" })).toHaveAttribute(
+      "href",
+      "/admin/crm/leads?search=ada&status=NEW&country=Canada&state=Ontario&page=2&limit=50",
+    );
+    expect(screen.getByRole("link", { name: "Clear all filters" })).toHaveAttribute(
+      "href",
+      "/admin/crm/leads?page=1&limit=50",
+    );
+  });
+
+  it("country badges apply that country while resetting page and preserving other filters", async () => {
+    mocks.getCrmLeadSummaryMetrics.mockResolvedValue({
+      ok: true,
+      global: {
+        totalCount: 5,
+        countryDistribution: [
+          { country: "Canada", count: 3 },
+          { country: "Singapore", count: 2 },
+        ],
+        statusCounts: { NEW: 5, CONTACTED: 0, QUALIFIED: 0, CONVERTED: 0, CLOSED: 0 },
+        contactCoverage: { phoneCount: 1, phonePercent: 20, emailCount: 4, emailPercent: 80 },
+      },
+      scoped: {
+        totalCount: 5,
+        countryDistribution: [
+          { country: "Canada", count: 3 },
+          { country: "Singapore", count: 2 },
+        ],
+        statusCounts: { NEW: 5, CONTACTED: 0, QUALIFIED: 0, CONVERTED: 0, CLOSED: 0 },
+        contactCoverage: { phoneCount: 1, phonePercent: 20, emailCount: 4, emailPercent: 80 },
+      },
+    });
+
+    const page = await CrmLeadsPage({
+      searchParams: Promise.resolve({
+        search: "north",
+        status: "NEW",
+        state: "Ontario",
+        page: "4",
+        limit: "50",
+      }),
+    });
+    render(page);
+
+    expect(screen.getByRole("link", { name: "Filter by Canada, 3 leads" })).toHaveAttribute(
+      "href",
+      "/admin/crm/leads?country=Canada&page=1&search=north&status=NEW&state=Ontario&limit=50",
+    );
+    expect(screen.getByRole("combobox", { name: "Page size" })).toHaveValue("50");
+    expect(screen.getByRole("link", { name: "Clear all filters" })).toHaveAttribute(
+      "href",
+      "/admin/crm/leads?page=1&limit=50",
     );
   });
 
