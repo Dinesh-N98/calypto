@@ -90,6 +90,7 @@ export async function getCrmLeads(input: unknown = {}) {
         address: true,
         website: true,
         message: true,
+        notes: true,
         status: true,
         createdAt: true,
         updatedAt: true,

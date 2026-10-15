@@ -234,10 +234,20 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
                       {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
                         lead.createdAt,
                       )}
-                      {lead.message && (
+                      {lead.notes && (
                         <details className="mt-2 max-w-64 text-xs">
                           <summary className="cursor-pointer font-semibold text-[#4e5d1c] underline underline-offset-2">
                             View notes
+                          </summary>
+                          <p className="mt-1 whitespace-pre-line break-words text-[#65695f]">
+                            {lead.notes}
+                          </p>
+                        </details>
+                      )}
+                      {lead.message && (
+                        <details className="mt-2 max-w-64 text-xs">
+                          <summary className="cursor-pointer font-semibold text-[#4e5d1c] underline underline-offset-2">
+                            View message
                           </summary>
                           <p className="mt-1 whitespace-pre-line break-words text-[#65695f]">
                             {lead.message}
