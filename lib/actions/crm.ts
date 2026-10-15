@@ -30,6 +30,13 @@ const leadStatusUpdateSchema = z
   })
   .strict();
 
+const leadNotesUpdateSchema = z
+  .object({
+    leadId: z.string().trim().min(1).max(191),
+    notes: z.string().trim().max(5000),
+  })
+  .strict();
+
 const bulkLeadStatusUpdateSchema = z
   .object({
     leadIds: z.array(z.string().trim().min(1).max(191)).min(1).max(100),
@@ -134,7 +141,11 @@ export async function getCrmLeads(input: unknown = {}) {
       },
     });
   } catch (error) {
-    if (legacyCursor && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    if (
+      legacyCursor &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
       return {
         ok: false,
         error: "The lead page cursor is no longer available. Reload the list.",
@@ -218,7 +229,9 @@ export async function getCrmLeadSummaryMetrics(input: unknown = {}) {
   return { ok: true, global, scoped } as const;
 }
 
-export async function updateCrmLeadStatus(input: unknown): Promise<
+export async function updateCrmLeadStatus(
+  input: unknown,
+): Promise<
   | { ok: true; lead: { id: string; status: (typeof leadStatuses)[number] }; changed: boolean }
   | ActionError
 > {
@@ -236,13 +249,15 @@ export async function updateCrmLeadStatus(input: unknown): Promise<
         select: { id: true, status: true },
       });
       if (!existing) return { error: "Lead not found." } as const;
-      if (existing.status === status) return { lead: { id: leadId, status }, changed: false } as const;
+      if (existing.status === status)
+        return { lead: { id: leadId, status }, changed: false } as const;
 
       const updated = await transaction.lead.updateMany({
         where: { id: leadId, status: existing.status },
         data: { status },
       });
-      if (updated.count !== 1) return { error: "Lead status changed concurrently. Reload and retry." } as const;
+      if (updated.count !== 1)
+        return { error: "Lead status changed concurrently. Reload and retry." } as const;
 
       await transaction.crmInteraction.create({
         data: {
@@ -266,13 +281,16 @@ export async function updateCrmLeadStatus(input: unknown): Promise<
   return { ok: true, ...result };
 }
 
-export async function bulkUpdateCrmLeadStatus(input: unknown): Promise<
-  { ok: true; updatedCount: number } | ActionError
-> {
+export async function bulkUpdateCrmLeadStatus(
+  input: unknown,
+): Promise<{ ok: true; updatedCount: number } | ActionError> {
   const admin = await requireAdminPage("/admin/crm/leads");
   const parsed = bulkLeadStatusUpdateSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Lead status update is invalid." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Lead status update is invalid.",
+    };
   }
 
   const leadIds = [...new Set(parsed.data.leadIds)];
@@ -283,7 +301,8 @@ export async function bulkUpdateCrmLeadStatus(input: unknown): Promise<
         where: { id: { in: leadIds } },
         select: { id: true, status: true },
       });
-      if (leads.length !== leadIds.length) return { error: "One or more leads were not found." } as const;
+      if (leads.length !== leadIds.length)
+        return { error: "One or more leads were not found." } as const;
 
       const changedLeads = leads.filter((lead) => lead.status !== status);
       if (changedLeads.length === 0) return { updatedCount: 0 } as const;
@@ -294,7 +313,9 @@ export async function bulkUpdateCrmLeadStatus(input: unknown): Promise<
         data: { status },
       });
       if (updated.count !== changedIds.length) {
-        return { error: "One or more lead statuses changed concurrently. Reload and retry." } as const;
+        return {
+          error: "One or more lead statuses changed concurrently. Reload and retry.",
+        } as const;
       }
 
       await transaction.crmInteraction.createMany({
@@ -334,6 +355,26 @@ export async function getCrmLeadDetail(leadId: unknown) {
     },
   });
   if (!lead) return { ok: false, error: "Lead not found." } as const;
+  return { ok: true, lead } as const;
+}
+
+export async function updateCrmLeadNotes(input: unknown) {
+  await requireAdminPage("/admin/crm/leads");
+  const parsed = leadNotesUpdateSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Lead notes are invalid.",
+    } as const;
+  }
+
+  const lead = await prisma.lead.update({
+    where: { id: parsed.data.leadId },
+    data: { notes: parsed.data.notes || null },
+    select: { id: true, notes: true },
+  });
+  revalidatePath("/admin/crm/leads");
+  revalidatePath(`/admin/crm/leads/${lead.id}`);
   return { ok: true, lead } as const;
 }
 

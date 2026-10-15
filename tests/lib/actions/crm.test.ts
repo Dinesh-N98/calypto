@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   userFindMany: vi.fn(),
   leadFindUnique: vi.fn(),
   leadUpdateMany: vi.fn(),
+  leadUpdate: vi.fn(),
   orderFindUnique: vi.fn(),
   interactionCreate: vi.fn(),
   interactionCreateMany: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("@/lib/prisma", () => ({
       count: mocks.leadCount,
       groupBy: mocks.leadGroupBy,
       updateMany: mocks.leadUpdateMany,
+      update: mocks.leadUpdate,
     },
     crmInteraction: { create: mocks.interactionCreate, createMany: mocks.interactionCreateMany },
     user: { findFirst: mocks.userFindFirst, findMany: mocks.userFindMany },
@@ -45,6 +47,7 @@ import {
   getCrmLeads,
   bulkUpdateCrmLeadStatus,
   updateCrmLeadStatus,
+  updateCrmLeadNotes,
 } from "@/lib/actions/crm";
 
 beforeEach(() => {
@@ -61,6 +64,7 @@ beforeEach(() => {
   mocks.userFindMany.mockResolvedValue([]);
   mocks.leadFindUnique.mockResolvedValue(null);
   mocks.leadUpdateMany.mockResolvedValue({ count: 1 });
+  mocks.leadUpdate.mockResolvedValue({ id: "lead-1", notes: "Internal note" });
   mocks.orderFindUnique.mockResolvedValue(null);
   mocks.interactionCreate.mockResolvedValue({
     id: "interaction-1",
@@ -397,6 +401,29 @@ describe("CRM server actions", () => {
     expect(mocks.leadFindUnique).not.toHaveBeenCalled();
   });
 
+  it("updates internal lead notes after validating input and revalidates the CRM page", async () => {
+    const result = await updateCrmLeadNotes({ leadId: " lead-1 ", notes: "  Internal note  " });
+
+    expect(result).toEqual({ ok: true, lead: { id: "lead-1", notes: "Internal note" } });
+    expect(mocks.requireAdminPage).toHaveBeenCalledWith("/admin/crm/leads");
+    expect(mocks.leadUpdate).toHaveBeenCalledWith({
+      where: { id: "lead-1" },
+      data: { notes: "Internal note" },
+      select: { id: true, notes: true },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/crm/leads");
+  });
+
+  it("rejects invalid lead notes without writing", async () => {
+    await expect(updateCrmLeadNotes({ leadId: "", notes: "note" })).resolves.toMatchObject({
+      ok: false,
+    });
+    await expect(
+      updateCrmLeadNotes({ leadId: "lead-1", notes: "n".repeat(5001) }),
+    ).resolves.toMatchObject({ ok: false });
+    expect(mocks.leadUpdate).not.toHaveBeenCalled();
+  });
+
   it("returns the empty customer profile without looking up email-matched guest orders", async () => {
     mocks.userFindFirst.mockResolvedValue({
       id: "customer-1",
@@ -473,6 +500,9 @@ describe("CRM server actions", () => {
     await expect(getCrmLeads()).rejects.toThrow("Not authorized");
     await expect(getCrmLeadSummaryMetrics()).rejects.toThrow("Not authorized");
     await expect(getCrmLeadDetail("lead-1")).rejects.toThrow("Not authorized");
+    await expect(updateCrmLeadNotes({ leadId: "lead-1", notes: "Private note" })).rejects.toThrow(
+      "Not authorized",
+    );
     await expect(updateCrmLeadStatus({ leadId: "lead-1", status: "CLOSED" })).rejects.toThrow(
       "Not authorized",
     );
@@ -489,6 +519,7 @@ describe("CRM server actions", () => {
     expect(mocks.leadCount).not.toHaveBeenCalled();
     expect(mocks.leadGroupBy).not.toHaveBeenCalled();
     expect(mocks.leadFindUnique).not.toHaveBeenCalled();
+    expect(mocks.leadUpdate).not.toHaveBeenCalled();
     expect(mocks.userFindFirst).not.toHaveBeenCalled();
     expect(mocks.userFindMany).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();

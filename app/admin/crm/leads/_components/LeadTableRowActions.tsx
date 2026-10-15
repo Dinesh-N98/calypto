@@ -34,6 +34,7 @@ type LeadTableRowActionsProps = {
   lead: LeadRow;
   selected: boolean;
   onSelectionChange: (leadId: string, selected: boolean) => void;
+  onOpen: (leadId: string) => void;
 };
 
 function getWebsiteHref(website: string): string | null {
@@ -65,6 +66,7 @@ export function LeadTableRowActions({
   lead,
   selected,
   onSelectionChange,
+  onOpen,
 }: LeadTableRowActionsProps) {
   const router = useRouter();
   const [savedStatus, setSavedStatus] = useState(lead.status);
@@ -117,7 +119,27 @@ export function LeadTableRowActions({
   const displayStatus = (value: LeadStatus) => value.charAt(0) + value.slice(1).toLowerCase();
 
   return (
-    <tr>
+    <tr
+      aria-label={`Open lead details for ${lead.name}`}
+      className="cursor-pointer hover:bg-[#fafbf8] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#718126]"
+      onClick={(event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("a,button,input,select,textarea,summary,label")
+        ) {
+          return;
+        }
+        onOpen(lead.id);
+      }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(lead.id);
+        }
+      }}
+      tabIndex={0}
+    >
       <td className="px-4 py-4">
         <input
           aria-label={`Select ${lead.name}`}

@@ -11,9 +11,14 @@ const mocks = vi.hoisted(() => ({
   getCrmLeadSummaryMetrics: vi.fn(),
   updateCrmLeadStatus: vi.fn(),
   bulkUpdateCrmLeadStatus: vi.fn(),
+  getCrmLeadDetail: vi.fn(),
+  createCrmInteraction: vi.fn(),
+  updateCrmLeadNotes: vi.fn(),
   getCrmCustomers: vi.fn(),
   getCrmCustomerProfile: vi.fn(),
   refresh: vi.fn(),
+  push: vi.fn(),
+  replace: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
@@ -26,12 +31,19 @@ vi.mock("@/lib/actions/crm", () => ({
   getCrmLeadSummaryMetrics: mocks.getCrmLeadSummaryMetrics,
   updateCrmLeadStatus: mocks.updateCrmLeadStatus,
   bulkUpdateCrmLeadStatus: mocks.bulkUpdateCrmLeadStatus,
+  getCrmLeadDetail: mocks.getCrmLeadDetail,
+  createCrmInteraction: mocks.createCrmInteraction,
+  updateCrmLeadNotes: mocks.updateCrmLeadNotes,
   getCrmCustomers: mocks.getCrmCustomers,
   getCrmCustomerProfile: mocks.getCrmCustomerProfile,
 }));
 vi.mock("next/navigation", () => ({
   notFound: mocks.notFound,
-  useRouter: () => ({ refresh: mocks.refresh }),
+  useRouter: () => ({
+    refresh: mocks.refresh,
+    push: mocks.push,
+    replace: mocks.replace,
+  }),
 }));
 
 import CrmCustomersPage from "@/app/admin/crm/customers/page";
@@ -70,6 +82,45 @@ beforeEach(() => {
     changed: true,
   });
   mocks.bulkUpdateCrmLeadStatus.mockResolvedValue({ ok: true, updatedCount: 1 });
+  mocks.getCrmLeadDetail.mockResolvedValue({
+    ok: true,
+    lead: {
+      id: "lead-1",
+      type: "wholesale",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      phone: "+1 555 0100",
+      company: "Analytical Engines",
+      country: "Canada",
+      city: "Toronto",
+      state: "Ontario",
+      address: "100 Main Street",
+      website: "example.com",
+      message: "Interested in wholesale",
+      notes: "Follow up next week",
+      status: "NEW",
+      createdAt: new Date("2026-10-13T12:00:00.000Z"),
+      updatedAt: new Date("2026-10-13T12:00:00.000Z"),
+      interactions: [
+        {
+          id: "interaction-1",
+          type: "CALL",
+          subject: "Introductory call",
+          content: "Discussed the wholesale program.",
+          occurredAt: new Date("2026-10-14T12:00:00.000Z"),
+          author: { id: "admin-1", name: "Store Admin" },
+        },
+      ],
+    },
+  });
+  mocks.createCrmInteraction.mockResolvedValue({
+    ok: true,
+    interaction: { id: "interaction-2", type: "NOTE", occurredAt: new Date() },
+  });
+  mocks.updateCrmLeadNotes.mockResolvedValue({
+    ok: true,
+    lead: { id: "lead-1", notes: "Updated internal note" },
+  });
   mocks.getCrmCustomers.mockResolvedValue({ ok: true, customers: [], nextCursor: null });
   mocks.getCrmCustomerProfile.mockResolvedValue({
     ok: true,
@@ -383,6 +434,7 @@ describe("CRM admin pages", () => {
 
     await user.click(screen.getByRole("checkbox", { name: "Select Ada Lovelace" }));
     expect(screen.getByText("1 lead selected")).toBeInTheDocument();
+    expect(mocks.getCrmLeadDetail).not.toHaveBeenCalled();
     await user.click(screen.getByRole("checkbox", { name: "Select all leads on this page" }));
     expect(screen.getByText("2 leads selected")).toBeInTheDocument();
     await user.selectOptions(screen.getByRole("combobox", { name: "Bulk status" }), "CONTACTED");
@@ -520,6 +572,87 @@ describe("CRM admin pages", () => {
       ].join("\n"),
     );
     expect(await screen.findAllByText("Copied!")).toHaveLength(2);
+  });
+
+  it("opens the drawer from the lead URL, switches tabs, logs activity, and closes URL state", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/admin/crm/leads?page=2&limit=50&leadId=lead-1");
+    mocks.getCrmLeads.mockResolvedValue({
+      ok: true,
+      leads: [
+        {
+          id: "lead-1",
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          phone: "+1 555 0100",
+          company: "Analytical Engines",
+          country: "Canada",
+          city: "Toronto",
+          state: "Ontario",
+          address: "100 Main Street",
+          website: "example.com",
+          message: "Interested in wholesale",
+          notes: "Follow up next week",
+          type: "wholesale",
+          status: "NEW",
+          createdAt: new Date("2026-10-13T12:00:00.000Z"),
+          updatedAt: new Date("2026-10-13T12:00:00.000Z"),
+        },
+      ],
+      totalCount: 1,
+      page: 2,
+      totalPages: 2,
+    });
+
+    const page = await CrmLeadsPage({
+      searchParams: Promise.resolve({ page: "2", limit: "50", leadId: "lead-1" }),
+    });
+    render(page);
+
+    expect(mocks.getCrmLeadDetail).toHaveBeenCalledWith("lead-1");
+    expect(
+      screen.getByRole("dialog", { name: "Lead details: Analytical Engines" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Customer inquiry")).toBeInTheDocument();
+    expect(screen.getAllByText("Interested in wholesale")).toHaveLength(2);
+    expect(screen.getByText("Internal admin notes")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Activity (1)" }));
+    expect(screen.getByText("Discussed the wholesale program.")).toBeInTheDocument();
+    expect(screen.getByText(/Store Admin · Oct 14, 2026/u)).toBeInTheDocument();
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Activity notes" }),
+      "Sent pricing details.",
+    );
+    await user.click(screen.getByRole("button", { name: "Log activity" }));
+
+    await waitFor(() => {
+      expect(mocks.createCrmInteraction).toHaveBeenCalledWith({
+        leadId: "lead-1",
+        type: "NOTE",
+        subject: "",
+        content: "Sent pricing details.",
+      });
+    });
+    expect(await screen.findByText("Activity logged.")).toBeInTheDocument();
+    await waitFor(() => expect(mocks.getCrmLeadDetail).toHaveBeenCalledTimes(2));
+
+    await user.click(screen.getByRole("button", { name: "Close lead details" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mocks.replace).toHaveBeenCalledWith("/admin/crm/leads?page=2&limit=50", {
+      scroll: false,
+    });
+
+    await user.click(screen.getByRole("row", { name: "Open lead details for Ada Lovelace" }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("dialog", { name: "Lead details: Analytical Engines" }),
+      ).toBeInTheDocument();
+    });
+    expect(mocks.push).toHaveBeenCalledWith("/admin/crm/leads?page=2&limit=50&leadId=lead-1", {
+      scroll: false,
+    });
   });
 
   it("renders customer details for a valid profile and calls notFound for a missing profile", async () => {

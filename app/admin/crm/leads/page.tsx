@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  getCrmLeadDetail,
   getCrmLeadCountries,
   getCrmLeads,
   getCrmLeadStates,
@@ -17,6 +18,7 @@ type PageSearchParams = Promise<{
   state?: string | string[];
   page?: string | string[];
   limit?: string | string[];
+  leadId?: string | string[];
 }>;
 
 const statuses = ["NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "CLOSED"] as const;
@@ -60,6 +62,7 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
   const state = (firstValue(params.state) ?? "").trim().slice(0, 100);
   const requestedPage = getPositiveInteger(firstValue(params.page), 1);
   const requestedLimit = getPositiveInteger(firstValue(params.limit), 25);
+  const leadId = (firstValue(params.leadId) ?? "").trim().slice(0, 191);
   const limit = pageSizes.find((pageSize) => pageSize === requestedLimit) ?? 25;
   const filters = {
     ...(search ? { search } : {}),
@@ -67,7 +70,7 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
     ...(country ? { country } : {}),
     ...(state ? { state } : {}),
   };
-  const [result, countries, states, summary] = await Promise.all([
+  const [result, countries, states, summary, detail] = await Promise.all([
     getCrmLeads({
       ...filters,
       page: requestedPage,
@@ -76,8 +79,10 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
     getCrmLeadCountries(),
     getCrmLeadStates(country || undefined),
     getCrmLeadSummaryMetrics(filters),
+    leadId ? getCrmLeadDetail(leadId) : Promise.resolve(null),
   ]);
   const page = result.ok ? result.page : requestedPage;
+  const initialLead = detail?.ok ? detail.lead : null;
 
   return (
     <section aria-labelledby="crm-leads-title" className="space-y-6">
@@ -199,12 +204,15 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
           {result.error}
         </div>
       ) : result.leads.length === 0 ? (
-        <div className="rounded-lg border border-black/10 bg-white p-6 text-sm text-[#65695f]">
-          No leads match these filters.
-        </div>
+        <>
+          <div className="rounded-lg border border-black/10 bg-white p-6 text-sm text-[#65695f]">
+            No leads match these filters.
+          </div>
+          {initialLead && <LeadTable initialLead={initialLead} leads={[]} />}
+        </>
       ) : (
         <>
-          <LeadTable leads={result.leads} />
+          <LeadTable initialLead={initialLead} leads={result.leads} />
           <div className="flex flex-col gap-3 rounded-lg border border-black/10 bg-white px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <p aria-live="polite" className="text-[#55594f]">
               Showing {result.totalCount === 0 ? 0 : (page - 1) * limit + 1}–
