@@ -163,7 +163,7 @@ export function NewsletterPopup() {
           <X aria-hidden="true" className="h-7 w-7" strokeWidth={2} />
         </button>
 
-        <div className="relative h-28 md:h-auto">
+        <div className="relative h-36 overflow-hidden bg-[#171a13] md:h-auto">
           <Image
             src={popupAnglerImage}
             alt="Angler holding a perch caught on a Calypto soft bait"
@@ -172,12 +172,12 @@ export function NewsletterPopup() {
             placeholder="blur"
             blurDataURL={popupAnglerImage.blurDataURL}
             sizes="(max-width: 767px) calc(100vw - 32px), 390px"
-            className="object-cover object-[30%_center]"
+            className="object-cover object-[center_35%] md:object-[68%_center]"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-ink/70" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/40 to-ink md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-ink/70" />
         </div>
 
-        <div className="flex flex-col items-center px-5 pb-5 pt-1 text-center md:px-8 md:py-8">
+        <div className="relative z-[1] -mt-5 flex flex-col items-center bg-gradient-to-b from-transparent via-ink/90 to-ink px-5 pb-5 pt-1 text-center md:mt-0 md:bg-none md:px-8 md:py-8">
           <p className="text-[1.6rem] font-black leading-none tracking-[.14em] md:text-[2rem]">
             calypto
           </p>
