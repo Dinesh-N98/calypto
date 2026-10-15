@@ -81,7 +81,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   });
 
   return (
-    <main className="bg-paper px-[6vw] py-8 text-ink md:px-[8vw] md:py-12">
+    <main className="bg-paper px-4 py-6 text-ink sm:px-6 sm:py-8 md:px-[8vw] md:py-12">
       <div className="site-container">
         <ProductDetailExperience
           averageRating={reviews._avg.rating ?? 0}

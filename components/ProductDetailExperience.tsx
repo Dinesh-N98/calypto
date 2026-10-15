@@ -210,8 +210,8 @@ export function ProductDetailExperience({
   }
 
   return (
-    <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] lg:gap-12">
-      <div>
+    <section className="grid w-full min-w-0 grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] lg:gap-12">
+      <div className="min-w-0">
         <div className="relative aspect-square overflow-hidden rounded-sm bg-[#f0f0e8]">
           <Image
             alt={gallery[activeImageIndex]?.altText ?? product.name}
@@ -263,7 +263,7 @@ export function ProductDetailExperience({
         )}
       </div>
 
-      <div className="self-start">
+      <div className="min-w-0 self-start">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs font-bold uppercase tracking-[.15em] text-[#718126]">
             {categoryName}
@@ -274,8 +274,8 @@ export function ProductDetailExperience({
             </span>
           )}
         </div>
-        <div className="mt-3 flex items-start justify-between gap-4">
-          <h1 className="text-3xl font-black leading-tight tracking-[-.04em] md:text-4xl">
+        <div className="mt-3 flex items-start justify-between gap-3 sm:gap-4">
+          <h1 className="min-w-0 flex-1 break-words text-[clamp(1.75rem,7vw,2.5rem)] font-black leading-tight tracking-[-.04em] md:text-4xl">
             {product.name}
           </h1>
           <div className="flex shrink-0 gap-1">
@@ -293,7 +293,7 @@ export function ProductDetailExperience({
             />
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-sm">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
           <span aria-label={`${averageRating.toFixed(1)} out of 5 stars`} className="flex text-amber-500">
             {Array.from({ length: 5 }, (_, index) => (
               <Star
@@ -307,7 +307,7 @@ export function ProductDetailExperience({
           <span className="font-semibold">{averageRating ? averageRating.toFixed(1) : "New"}</span>
           <span className="text-[#62665c]">Ratings ({reviewCount})</span>
         </div>
-        <p className="mt-5 text-sm leading-7 text-[#55584e]">{product.description}</p>
+        <p className="mt-5 text-sm leading-7 text-[#55584e] sm:text-base">{product.description}</p>
 
         {savingPercent > 0 && (
           <div className="mt-6 rounded-md bg-[#fff2e5] p-4">
@@ -324,7 +324,7 @@ export function ProductDetailExperience({
         )}
 
         <div className="mt-5 flex flex-wrap items-baseline gap-3">
-          <p className="text-3xl font-black">{formatPrice(currentUnitPrice)}</p>
+          <p className="text-[clamp(1.5rem,6vw,1.875rem)] font-black">{formatPrice(currentUnitPrice)}</p>
           {referencePrice > saleUnitPrice && (
             <>
               <p className="text-base text-[#777b70] line-through">{formatPrice(referencePrice)}</p>
@@ -333,7 +333,7 @@ export function ProductDetailExperience({
           )}
         </div>
         <p className="mt-1 text-xs text-[#62665c]">Price per item after applicable quantity discounts</p>
-        <p className="mt-4 rounded-md border border-ink/10 bg-white/60 px-3 py-2 text-sm text-[#55584e]">
+        <p className="mt-4 rounded-md border border-ink/10 bg-white/60 px-3 py-2 text-sm text-[#55584e] sm:px-4 sm:py-3">
           Informational estimate: 3 monthly installments from{" "}
           <strong>{formatPrice(installmentCents)}</strong> per month. Provider terms may vary.
         </p>
@@ -354,7 +354,7 @@ export function ProductDetailExperience({
                   <button
                     aria-label={color}
                     aria-pressed={selectedColor === color}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-md border-2 px-2.5 text-xs font-bold ${selectedColor === color ? "border-[#718126] bg-[#edf2d9]" : "border-ink/15 bg-white"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+                    className={`inline-flex min-h-11 max-w-full items-center gap-2 rounded-md border-2 px-2.5 text-xs font-bold ${selectedColor === color ? "border-[#718126] bg-[#edf2d9]" : "border-ink/15 bg-white"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
                     disabled={disabled}
                     key={color}
                     onClick={() => chooseColor(color)}
@@ -378,7 +378,7 @@ export function ProductDetailExperience({
                         style={{ backgroundColor: swatch }}
                       />
                     ) : null}
-                    <span>{color}</span>
+                    <span className="break-words">{color}</span>
                   </button>
                 );
               })}
@@ -402,7 +402,7 @@ export function ProductDetailExperience({
                 return (
                   <button
                     aria-pressed={selectedVariant?.size === size}
-                    className={`min-h-11 border px-4 text-sm font-bold ${selectedVariant?.size === size ? "border-[#718126] bg-[#edf2d9]" : "border-ink/20"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+                    className={`min-h-11 max-w-full whitespace-normal break-words border px-3 text-sm font-bold sm:px-4 ${selectedVariant?.size === size ? "border-[#718126] bg-[#edf2d9]" : "border-ink/20"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
                     disabled={disabled}
                     key={size}
                     onClick={() => chooseSize(size)}
@@ -433,18 +433,18 @@ export function ProductDetailExperience({
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <QuantitySelector
             value={quantity}
             onChange={(nextQuantity) =>
               setQuantity(Math.max(1, Math.min(nextQuantity, selectedVariant?.stock ?? nextQuantity)))
             }
           />
-          <p className="text-sm text-[#62665c]">
+          <p className="min-w-0 flex-1 break-words text-right text-xs text-[#62665c] sm:flex-none sm:text-left sm:text-sm">
             {selectedVariant ? `${selectedVariant.stock} available · SKU ${selectedVariant.sku}` : "Select a variant"}
           </p>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#a3bd32] px-5 text-sm font-extrabold uppercase tracking-[.08em] text-ink hover:bg-[#b6cf45] disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!selectedVariant || selectedVariant.stock < quantity}
