@@ -130,18 +130,31 @@ function clean(value) {
 
 export function mapLeadRow(row) {
   const shopName = clean(row.shop_name);
+  const country = clean(row.country);
+  const city = clean(row.city);
   const email = clean(row.email).toLowerCase();
   const sendEmail = clean(row.send_email) || "Not provided";
   const notes = clean(row.notes) || "None";
+  const name = shopName || "Unknown Shop";
+  const company = shopName || null;
+  const matchesIgnoringCaseAndWhitespace = (left, right) =>
+    left.trim().toLocaleLowerCase("en") === right.trim().toLocaleLowerCase("en");
 
   return {
     type: "wholesale",
-    name: shopName || "Unknown Shop",
+    name:
+      company && matchesIgnoringCaseAndWhitespace(name, company)
+        ? ""
+        : name,
     email: email || null,
     phone: clean(row.phone) || null,
-    company: shopName || null,
-    country: clean(row.country) || null,
-    city: clean(row.city) || null,
+    company,
+    country: country || null,
+    city:
+      city &&
+      !(country && matchesIgnoringCaseAndWhitespace(city, country))
+        ? city
+        : null,
     state: clean(row.state) || null,
     address: clean(row.address) || null,
     website: clean(row.website) || null,
@@ -156,7 +169,7 @@ function normalize(value) {
 export function duplicateKey(lead) {
   if (lead.email) return `email:${normalize(lead.email)}`;
   if (lead.company && lead.country) {
-    return `name-country:${normalize(lead.name)}\u0000${normalize(lead.country)}`;
+    return `name-country:${normalize(lead.company)}\u0000${normalize(lead.country)}`;
   }
   return null;
 }
@@ -165,8 +178,8 @@ export function existingDuplicateKeys(leads) {
   const keys = new Set();
   for (const lead of leads) {
     if (lead.email) keys.add(`email:${normalize(lead.email)}`);
-    if (lead.country) {
-      keys.add(`name-country:${normalize(lead.name)}\u0000${normalize(lead.country)}`);
+    if (lead.company && lead.country) {
+      keys.add(`name-country:${normalize(lead.company)}\u0000${normalize(lead.country)}`);
     }
   }
   return keys;
@@ -177,7 +190,7 @@ function duplicateWhere(lead) {
     return { email: { equals: lead.email, mode: "insensitive" } };
   }
   return {
-    name: { equals: lead.name, mode: "insensitive" },
+    company: { equals: lead.company, mode: "insensitive" },
     country: { equals: lead.country, mode: "insensitive" },
   };
 }
@@ -188,7 +201,7 @@ async function findExistingDuplicateKeys(prisma, leads) {
 
   const existing = await prisma.lead.findMany({
     where: { OR: where },
-    select: { email: true, name: true, country: true },
+    select: { email: true, name: true, company: true, country: true },
   });
   return existingDuplicateKeys(existing);
 }

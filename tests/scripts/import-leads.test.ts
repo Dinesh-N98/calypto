@@ -45,6 +45,35 @@ describe("lead CSV import helpers", () => {
     });
   });
 
+  it("stores a shop name only in company and removes city when it duplicates country", () => {
+    const lead = mapLeadRow({
+      shop_name: "  Singapore Supply  ",
+      country: "Singapore",
+      city: " singapore ",
+    });
+
+    expect(lead).toMatchObject({
+      name: "",
+      company: "Singapore Supply",
+      country: "Singapore",
+      city: null,
+    });
+  });
+
+  it("keeps a distinct city and compares fields case-insensitively after trimming", () => {
+    const lead = mapLeadRow({
+      shop_name: "FLORIDA OUTFITTERS",
+      country: "Florida",
+      city: "Miami",
+    });
+
+    expect(lead).toMatchObject({
+      name: "",
+      company: "FLORIDA OUTFITTERS",
+      city: "Miami",
+    });
+  });
+
   it("matches headers by name and rejects malformed row widths", () => {
     const headers = "shop_name,country,city,state,address,email,phone,website,send_email,notes";
     expect(parseLeadCsv(`${headers}\nShop,Canada,,,,,,,,`).at(0)).toMatchObject({
