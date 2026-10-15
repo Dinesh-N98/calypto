@@ -150,7 +150,7 @@ export function LeadTableRowActions({
         />
       </td>
       <td className="px-4 py-4">
-        <span className="block font-bold">{lead.name}</span>
+        <span className="block font-bold">{lead.company || lead.name || "Unknown Lead"}</span>
         {lead.email ? (
           <a
             className="mt-1 block text-xs text-[#65695f] underline underline-offset-2 hover:text-[#171a14]"
@@ -161,7 +161,6 @@ export function LeadTableRowActions({
         ) : (
           <span className="mt-1 block text-xs text-[#65695f]">No email provided</span>
         )}
-        {lead.company && <span className="mt-1 block text-xs text-[#65695f]">{lead.company}</span>}
       </td>
       <td className="px-4 py-4 text-[#55594f]">
         {lead.phone ? <a href={`tel:${lead.phone}`}>{lead.phone}</a> : "—"}
@@ -198,7 +197,9 @@ export function LeadTableRowActions({
         {!lead.address && !lead.website && "—"}
       </td>
       <td className="px-4 py-4">
-        <span className="block text-[#55594f]">{lead.type}</span>
+        <span className="inline-flex rounded-full bg-[#f0f2e8] px-2.5 py-1 text-xs font-semibold text-[#4e5d1c]">
+          {lead.type}
+        </span>
         <label className="sr-only" htmlFor={`lead-status-${lead.id}`}>
           Status for {lead.name}
         </label>
@@ -219,21 +220,26 @@ export function LeadTableRowActions({
         </select>
       </td>
       <td className="px-4 py-4 text-[#55594f]">
-        {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(lead.createdAt)}
-        {lead.notes && (
+        <span className="block">
+          {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(lead.createdAt)}
+        </span>
+        {(lead.notes || lead.message) && (
           <details className="mt-2 max-w-64 text-xs">
             <summary className="cursor-pointer font-semibold text-[#4e5d1c] underline underline-offset-2">
               View notes
             </summary>
-            <p className="mt-1 whitespace-pre-line break-words text-[#65695f]">{lead.notes}</p>
-          </details>
-        )}
-        {lead.message && (
-          <details className="mt-2 max-w-64 text-xs">
-            <summary className="cursor-pointer font-semibold text-[#4e5d1c] underline underline-offset-2">
-              View message
-            </summary>
-            <p className="mt-1 whitespace-pre-line break-words text-[#65695f]">{lead.message}</p>
+            {lead.notes && (
+              <>
+                <p className="mt-1 font-semibold text-[#55594f]">Admin notes</p>
+                <p className="whitespace-pre-line break-words text-[#65695f]">{lead.notes}</p>
+              </>
+            )}
+            {lead.message && (
+              <>
+                <p className="mt-1 font-semibold text-[#55594f]">Customer inquiry</p>
+                <p className="whitespace-pre-line break-words text-[#65695f]">{lead.message}</p>
+              </>
+            )}
           </details>
         )}
       </td>

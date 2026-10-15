@@ -147,13 +147,14 @@ describe("CRM admin pages", () => {
           name: "Ada Lovelace",
           email: "ada@example.com",
           phone: null,
-          company: null,
+          company: "Analytical Engines",
           country: "Canada",
           city: "Toronto",
           state: "Ontario",
           address: "100 Main Street",
           website: "example.com",
           message: "Imported lead notes",
+          notes: "Call after the trade show",
           type: "GENERAL",
           status: "NEW",
           createdAt: new Date("2026-10-13T12:00:00.000Z"),
@@ -239,6 +240,21 @@ describe("CRM admin pages", () => {
     expect(screen.getByText("GENERAL")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Status for Ada Lovelace" })).toHaveValue("NEW");
     expect(screen.getByText("Imported lead notes")).toBeInTheDocument();
+    const leadRow = screen.getByRole("row", { name: "Open lead details for Ada Lovelace" });
+    const cells = leadRow.querySelectorAll("td");
+    expect(cells[1]?.textContent).toContain("Analytical Engines");
+    expect(cells[1]?.textContent).toContain("ada@example.com");
+    expect(cells[1]?.textContent?.indexOf("Analytical Engines")).toBeLessThan(
+      cells[1]?.textContent?.indexOf("ada@example.com") ?? -1,
+    );
+    expect(cells[2]?.textContent).toBe("—");
+    expect(cells[3]?.textContent).toContain("Canada");
+    expect(cells[3]?.textContent).toContain("Toronto • Ontario");
+    expect(cells[4]?.textContent).toContain("100 Main Street");
+    expect(cells[5]?.querySelector("span")?.textContent).toBe("GENERAL");
+    expect(cells[6]?.querySelectorAll("details")).toHaveLength(1);
+    expect(cells[6]?.querySelector("summary")?.textContent).toBe("View notes");
+    expect(cells[6]?.textContent).toContain("Oct 13, 2026");
     expect(screen.getByText("Showing 101–150 of 151 leads · Page 3 of 4")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
       "href",
@@ -613,7 +629,7 @@ describe("CRM admin pages", () => {
     expect(
       screen.getByRole("dialog", { name: "Lead details: Analytical Engines" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Customer inquiry")).toBeInTheDocument();
+    expect(screen.getAllByText("Customer inquiry")).toHaveLength(2);
     expect(screen.getAllByText("Interested in wholesale")).toHaveLength(2);
     expect(screen.getByText("Internal admin notes")).toBeInTheDocument();
 
