@@ -5,6 +5,7 @@ import {
   getCrmLeadStates,
   getCrmLeadSummaryMetrics,
 } from "@/lib/actions/crm";
+import { LeadTable } from "./_components/LeadTable";
 import { LeadKpiCards } from "./_components/LeadKpiCards";
 
 export const dynamic = "force-dynamic";
@@ -48,15 +49,6 @@ function getPositiveInteger(value: string | undefined, fallback: number): number
   if (!value || !/^\d+$/u.test(value)) return fallback;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function getWebsiteHref(website: string): string | null {
-  try {
-    const url = new URL(/^https?:\/\//iu.test(website) ? website : `https://${website}`);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
-  } catch {
-    return null;
-  }
 }
 
 export default async function CrmLeadsPage({ searchParams }: { searchParams: PageSearchParams }) {
@@ -212,107 +204,12 @@ export default async function CrmLeadsPage({ searchParams }: { searchParams: Pag
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-black/10 bg-white shadow-sm">
-            <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
-              <thead className="bg-[#f4f5f1] text-xs uppercase tracking-[.08em] text-[#55594f]">
-                <tr>
-                  <th className="px-4 py-3">Name / email</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3">Address / website</th>
-                  <th className="px-4 py-3">Type / status</th>
-                  <th className="px-4 py-3">Notes / received</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/10">
-                {result.leads.map((lead) => (
-                  <tr key={lead.id}>
-                    <td className="px-4 py-4">
-                      <span className="block font-bold">{lead.name}</span>
-                      {lead.email ? (
-                        <a
-                          className="mt-1 block text-xs text-[#65695f] underline underline-offset-2 hover:text-[#171a14]"
-                          href={`mailto:${lead.email}`}
-                        >
-                          {lead.email}
-                        </a>
-                      ) : (
-                        <span className="mt-1 block text-xs text-[#65695f]">No email provided</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-[#55594f]">{lead.phone || "—"}</td>
-                    <td className="px-4 py-4">
-                      {lead.country ? (
-                        <span className="inline-flex rounded-full bg-[#f0f2e8] px-2.5 py-1 text-xs font-semibold text-[#4e5d1c]">
-                          {lead.country}
-                        </span>
-                      ) : (
-                        <span className="text-[#55594f]">—</span>
-                      )}
-                      {(lead.city || lead.state) && (
-                        <span className="mt-1 block text-xs text-[#65695f]">
-                          {[lead.city, lead.state].filter(Boolean).join(" • ")}
-                        </span>
-                      )}
-                    </td>
-                    <td className="max-w-64 px-4 py-4 text-[#55594f]">
-                      {lead.address && (
-                        <span className="block whitespace-pre-line">{lead.address}</span>
-                      )}
-                      {lead.website &&
-                        (getWebsiteHref(lead.website) ? (
-                          <a
-                            className="mt-1 block break-all text-xs text-[#4e5d1c] underline underline-offset-2 hover:text-[#171a14]"
-                            href={getWebsiteHref(lead.website) ?? undefined}
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            {lead.website}
-                          </a>
-                        ) : (
-                          <span className="mt-1 block break-all text-xs">{lead.website}</span>
-                        ))}
-                      {!lead.address && !lead.website && "—"}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="block text-[#55594f]">{lead.type}</span>
-                      <span className="mt-1 inline-flex rounded-full bg-[#f0f2e8] px-2.5 py-1 text-xs font-semibold text-[#4e5d1c]">
-                        {lead.status.charAt(0) + lead.status.slice(1).toLowerCase()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-[#55594f]">
-                      {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
-                        lead.createdAt,
-                      )}
-                      {lead.notes && (
-                        <details className="mt-2 max-w-64 text-xs">
-                          <summary className="cursor-pointer font-semibold text-[#4e5d1c] underline underline-offset-2">
-                            View notes
-                          </summary>
-                          <p className="mt-1 whitespace-pre-line break-words text-[#65695f]">
-                            {lead.notes}
-                          </p>
-                        </details>
-                      )}
-                      {lead.message && (
-                        <details className="mt-2 max-w-64 text-xs">
-                          <summary className="cursor-pointer font-semibold text-[#4e5d1c] underline underline-offset-2">
-                            View message
-                          </summary>
-                          <p className="mt-1 whitespace-pre-line break-words text-[#65695f]">
-                            {lead.message}
-                          </p>
-                        </details>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LeadTable leads={result.leads} />
           <div className="flex flex-col gap-3 rounded-lg border border-black/10 bg-white px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <p aria-live="polite" className="text-[#55594f]">
-              Page {page} of {Math.max(1, result.totalPages)} · {result.totalCount} leads
+              Showing {result.totalCount === 0 ? 0 : (page - 1) * limit + 1}–
+              {Math.min(page * limit, result.totalCount)} of {result.totalCount} leads · Page {page}{" "}
+              of {Math.max(1, result.totalPages)}
             </p>
             <nav aria-label="Lead pagination" className="flex gap-2">
               {page > 1 ? (

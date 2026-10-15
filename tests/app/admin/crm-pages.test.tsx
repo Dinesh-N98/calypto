@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -8,8 +9,11 @@ const mocks = vi.hoisted(() => ({
   getCrmLeadCountries: vi.fn(),
   getCrmLeadStates: vi.fn(),
   getCrmLeadSummaryMetrics: vi.fn(),
+  updateCrmLeadStatus: vi.fn(),
+  bulkUpdateCrmLeadStatus: vi.fn(),
   getCrmCustomers: vi.fn(),
   getCrmCustomerProfile: vi.fn(),
+  refresh: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
@@ -20,10 +24,15 @@ vi.mock("@/lib/actions/crm", () => ({
   getCrmLeadCountries: mocks.getCrmLeadCountries,
   getCrmLeadStates: mocks.getCrmLeadStates,
   getCrmLeadSummaryMetrics: mocks.getCrmLeadSummaryMetrics,
+  updateCrmLeadStatus: mocks.updateCrmLeadStatus,
+  bulkUpdateCrmLeadStatus: mocks.bulkUpdateCrmLeadStatus,
   getCrmCustomers: mocks.getCrmCustomers,
   getCrmCustomerProfile: mocks.getCrmCustomerProfile,
 }));
-vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
+vi.mock("next/navigation", () => ({
+  notFound: mocks.notFound,
+  useRouter: () => ({ refresh: mocks.refresh }),
+}));
 
 import CrmCustomersPage from "@/app/admin/crm/customers/page";
 import CrmCustomerDetailPage from "@/app/admin/crm/customers/[customerId]/page";
@@ -55,6 +64,12 @@ beforeEach(() => {
       contactCoverage: { phoneCount: 0, phonePercent: 0, emailCount: 0, emailPercent: 0 },
     },
   });
+  mocks.updateCrmLeadStatus.mockResolvedValue({
+    ok: true,
+    lead: { id: "lead-1", status: "CONTACTED" },
+    changed: true,
+  });
+  mocks.bulkUpdateCrmLeadStatus.mockResolvedValue({ ok: true, updatedCount: 1 });
   mocks.getCrmCustomers.mockResolvedValue({ ok: true, customers: [], nextCursor: null });
   mocks.getCrmCustomerProfile.mockResolvedValue({
     ok: true,
@@ -171,9 +186,9 @@ describe("CRM admin pages", () => {
       "https://example.com/",
     );
     expect(screen.getByText("GENERAL")).toBeInTheDocument();
-    expect(screen.getAllByText("New")).toHaveLength(2);
+    expect(screen.getByRole("combobox", { name: "Status for Ada Lovelace" })).toHaveValue("NEW");
     expect(screen.getByText("Imported lead notes")).toBeInTheDocument();
-    expect(screen.getByText("Page 3 of 4 · 151 leads")).toBeInTheDocument();
+    expect(screen.getByText("Showing 101–150 of 151 leads · Page 3 of 4")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
       "href",
       "/admin/crm/leads?search=ada&status=NEW&country=Canada&state=Ontario&page=4&limit=50",
@@ -314,6 +329,197 @@ describe("CRM admin pages", () => {
 
     expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "javascript:alert(1)" })).not.toBeInTheDocument();
+  });
+
+  it("selects rows, selects or clears the current page, and bulk-updates selected leads", async () => {
+    const user = userEvent.setup();
+    mocks.getCrmLeads.mockResolvedValue({
+      ok: true,
+      leads: [
+        {
+          id: "lead-1",
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          phone: "+1 555 0100",
+          company: "Analytical Engines",
+          country: "Canada",
+          city: "Toronto",
+          state: "Ontario",
+          address: "100 Main Street",
+          website: "example.com",
+          message: "Interested in wholesale",
+          notes: "Follow up next week",
+          type: "wholesale",
+          status: "NEW",
+          createdAt: new Date("2026-10-13T12:00:00.000Z"),
+          updatedAt: new Date("2026-10-13T12:00:00.000Z"),
+        },
+        {
+          id: "lead-2",
+          name: "Grace Hopper",
+          email: "grace@example.com",
+          phone: null,
+          company: "Compiler Co",
+          country: "USA",
+          city: "Arlington",
+          state: "Virginia",
+          address: "200 Main Street",
+          website: null,
+          message: "Interested in a demo",
+          notes: null,
+          type: "contact",
+          status: "QUALIFIED",
+          createdAt: new Date("2026-10-12T12:00:00.000Z"),
+          updatedAt: new Date("2026-10-12T12:00:00.000Z"),
+        },
+      ],
+      totalCount: 2,
+      page: 1,
+      totalPages: 1,
+    });
+
+    const page = await CrmLeadsPage({ searchParams: Promise.resolve({}) });
+    render(page);
+
+    await user.click(screen.getByRole("checkbox", { name: "Select Ada Lovelace" }));
+    expect(screen.getByText("1 lead selected")).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: "Select all leads on this page" }));
+    expect(screen.getByText("2 leads selected")).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Bulk status" }), "CONTACTED");
+
+    await waitFor(() => {
+      expect(mocks.bulkUpdateCrmLeadStatus).toHaveBeenCalledWith({
+        leadIds: ["lead-1", "lead-2"],
+        status: "CONTACTED",
+      });
+      expect(screen.queryByText("2 leads selected")).not.toBeInTheDocument();
+    });
+    expect(mocks.refresh).toHaveBeenCalled();
+
+    await user.click(screen.getByRole("checkbox", { name: "Select all leads on this page" }));
+    expect(screen.getByText("2 leads selected")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(screen.queryByText("2 leads selected")).not.toBeInTheDocument();
+  });
+
+  it("optimistically updates a lead status and reports server failures", async () => {
+    const user = userEvent.setup();
+    let resolveUpdate:
+      | ((result: { ok: true; lead: { id: string; status: string }; changed: boolean }) => void)
+      | undefined;
+    mocks.updateCrmLeadStatus.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveUpdate = resolve;
+        }),
+    );
+    mocks.getCrmLeads.mockResolvedValue({
+      ok: true,
+      leads: [
+        {
+          id: "lead-1",
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          phone: null,
+          company: null,
+          country: null,
+          city: null,
+          state: null,
+          address: null,
+          website: null,
+          message: "",
+          notes: null,
+          type: "contact",
+          status: "NEW",
+          createdAt: new Date("2026-10-13T12:00:00.000Z"),
+          updatedAt: new Date("2026-10-13T12:00:00.000Z"),
+        },
+      ],
+      totalCount: 1,
+      page: 1,
+      totalPages: 1,
+    });
+
+    const page = await CrmLeadsPage({ searchParams: Promise.resolve({}) });
+    render(page);
+    const statusPicker = screen.getByRole("combobox", { name: "Status for Ada Lovelace" });
+
+    await user.selectOptions(statusPicker, "CONTACTED");
+
+    expect(statusPicker).toHaveValue("CONTACTED");
+    expect(mocks.updateCrmLeadStatus).toHaveBeenCalledWith({
+      leadId: "lead-1",
+      status: "CONTACTED",
+    });
+    await act(async () => {
+      resolveUpdate?.({ ok: true, lead: { id: "lead-1", status: "CONTACTED" }, changed: true });
+    });
+    expect(mocks.refresh).toHaveBeenCalled();
+
+    mocks.updateCrmLeadStatus.mockResolvedValue({ ok: false, error: "Unable to update status." });
+    await user.selectOptions(statusPicker, "QUALIFIED");
+    expect(await screen.findAllByText("Unable to update status.")).toHaveLength(2);
+  });
+
+  it("copies lead details and renders direct telephone and email links", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    mocks.getCrmLeads.mockResolvedValue({
+      ok: true,
+      leads: [
+        {
+          id: "lead-1",
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          phone: "+1 555 0100",
+          company: "Analytical Engines",
+          country: "Canada",
+          city: "Toronto",
+          state: "Ontario",
+          address: "100 Main Street",
+          website: "example.com",
+          message: "",
+          notes: null,
+          type: "wholesale",
+          status: "NEW",
+          createdAt: new Date("2026-10-13T12:00:00.000Z"),
+          updatedAt: new Date("2026-10-13T12:00:00.000Z"),
+        },
+      ],
+      totalCount: 1,
+      page: 1,
+      totalPages: 1,
+    });
+
+    const page = await CrmLeadsPage({ searchParams: Promise.resolve({}) });
+    render(page);
+
+    expect(screen.getByRole("link", { name: "ada@example.com" })).toHaveAttribute(
+      "href",
+      "mailto:ada@example.com",
+    );
+    expect(screen.getByRole("link", { name: "+1 555 0100" })).toHaveAttribute(
+      "href",
+      "tel:+1 555 0100",
+    );
+    await user.click(screen.getByRole("button", { name: "Copy details for Ada Lovelace" }));
+
+    expect(writeText).toHaveBeenCalledWith(
+      [
+        "Company: Analytical Engines",
+        "Name: Ada Lovelace",
+        "Phone: +1 555 0100",
+        "Email: ada@example.com",
+        "Location: Toronto, Ontario, Canada",
+        "Address: 100 Main Street",
+        "Website: example.com",
+      ].join("\n"),
+    );
+    expect(await screen.findAllByText("Copied!")).toHaveLength(2);
   });
 
   it("renders customer details for a valid profile and calls notFound for a missing profile", async () => {
