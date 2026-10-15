@@ -166,8 +166,12 @@ a {
 
 .bg-paper .auth-input {
   border: 1px solid rgba(13, 14, 12, 0.45);
+  border-radius: 0.5rem;
   background: #ffffff;
   color: var(--color-ink);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .bg-paper .auth-input:focus {
