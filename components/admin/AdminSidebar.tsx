@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   Box,
+  ChartNoAxesCombined,
   LayoutDashboard,
   MessageSquare,
   Percent,
@@ -26,6 +27,7 @@ const navigationItems = [
   { label: "Categories", href: "/admin/categories", icon: Tags },
   { label: "Promotions", href: "/admin/promotions", icon: Percent },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { label: "Analytics", href: "/admin/analytics", icon: ChartNoAxesCombined },
   {
     label: "CRM",
     href: "/admin/crm",
