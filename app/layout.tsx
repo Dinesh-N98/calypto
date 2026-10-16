@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthSessionProvider } from "@/components/SessionProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import { UmamiAnalytics } from "@/components/UmamiAnalytics";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.calyptobait.com"),
@@ -39,6 +40,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <AuthSessionProvider>
           <ToastProvider>{children}</ToastProvider>
           <UmamiAnalytics />
+          {process.env.NODE_ENV === "production" && (
+            <Analytics
+              beforeSend={(event) => {
+                try {
+                  const pathname = new URL(event.url, "https://calyptobait.com").pathname;
+                  if (pathname === "/admin" || pathname.startsWith("/admin/")) return null;
+                  return event;
+                } catch {
+                  return null;
+                }
+              }}
+            />
+          )}
         </AuthSessionProvider>
       </body>
     </html>
