@@ -3,6 +3,7 @@ import "aos/dist/aos.css";
 import "./globals.css";
 import { AuthSessionProvider } from "@/components/SessionProvider";
 import { ToastProvider } from "@/components/ToastProvider";
+import { UmamiAnalytics } from "@/components/UmamiAnalytics";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.calyptobait.com"),
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <AuthSessionProvider>
           <ToastProvider>{children}</ToastProvider>
+          <UmamiAnalytics />
         </AuthSessionProvider>
       </body>
     </html>
