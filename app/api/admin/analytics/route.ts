@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin";
 import {
-  getUmamiAnalytics,
-  UmamiAnalyticsError,
-  type AnalyticsRange,
-  type AnalyticsUnit,
-} from "@/lib/umami-analytics";
+  getVercelAnalytics,
+  VercelAnalyticsError,
+} from "@/lib/vercel-analytics";
+import type {
+  AnalyticsRange,
+  AnalyticsUnit,
+} from "@/lib/analytics-types";
 
 export const dynamic = "force-dynamic";
 
@@ -37,15 +39,15 @@ export async function GET(request: Request) {
   const unit: AnalyticsUnit = range === "24h" ? "hour" : "day";
 
   try {
-    const analytics = await getUmamiAnalytics(range, startAt, endAt, unit);
+    const analytics = await getVercelAnalytics(range, startAt, endAt, unit);
     return NextResponse.json(analytics, {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
-    if (error instanceof UmamiAnalyticsError) {
+    if (error instanceof VercelAnalyticsError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    console.error("Unable to fetch Umami analytics.", error);
+    console.error("Unable to fetch Vercel analytics.", error);
     return NextResponse.json(
       { error: "Unable to load analytics right now." },
       { status: 500 },

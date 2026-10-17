@@ -14,7 +14,7 @@ import type {
   AnalyticsDashboardData,
   AnalyticsMetric,
   AnalyticsRange,
-} from "@/lib/umami-analytics";
+} from "@/lib/analytics-types";
 
 const ranges: Array<{ value: AnalyticsRange; label: string }> = [
   { value: "24h", label: "Last 24 hours" },
