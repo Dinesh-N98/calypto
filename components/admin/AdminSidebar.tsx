@@ -35,7 +35,6 @@ const navigationItems = [
     children: [
       { label: "Customers", href: "/admin/crm/customers", icon: UsersRound },
       { label: "Leads", href: "/admin/crm/leads", icon: MessageSquare },
-      { label: "Orders", href: "/admin/crm/orders", icon: ShoppingCart },
     ],
   },
 ];
