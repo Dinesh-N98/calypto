@@ -17,6 +17,7 @@ export default function AboutPage() {
           "From realistic worms to high-action swimbaits, every bait is designed with one goal:",
         ]}
         emphasizedLine="Catch more fish."
+        compact
       />
       <section className="px-[7vw] py-16 text-center md:px-[10vw] md:py-28">
         <Reveal className="site-container">

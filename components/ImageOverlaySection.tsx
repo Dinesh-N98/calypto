@@ -9,6 +9,7 @@ type ImageOverlaySectionProps = {
   paragraphs: string[];
   emphasizedLine?: string;
   cta?: { label: string; href: string };
+  compact?: boolean;
 };
 
 export function ImageOverlaySection({
@@ -17,9 +18,16 @@ export function ImageOverlaySection({
   paragraphs,
   emphasizedLine,
   cta,
+  compact = false,
 }: ImageOverlaySectionProps) {
   return (
-    <section className="relative min-h-[540px] overflow-hidden px-[7vw] py-16 md:min-h-[660px] md:px-[10vw] md:py-28">
+    <section
+      className={`relative overflow-hidden px-[7vw] md:px-[10vw] ${
+        compact
+          ? "min-h-[460px] pb-10 pt-16 md:min-h-[560px] md:pb-16 md:pt-28"
+          : "min-h-[540px] py-16 md:min-h-[660px] md:py-28"
+      }`}
+    >
       <Image
         src={lifestyleImage}
         alt="Angler enjoying a day on the water"
