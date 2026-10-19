@@ -10,9 +10,9 @@ export default function WholesalePage() {
             For the ones who stock the good stuff
           </p>
           <h1 className="my-4 max-w-4xl text-[clamp(2.65rem,9vw,3.8rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-5 md:text-[clamp(3.5rem,6vw,6rem)]">
-            Built for tackle shops
+            Your next bestselling bait
             <br />
-            <em className="text-lime not-italic">that sell more fish.</em>
+            <em className="text-lime not-italic">starts here.</em>
           </h1>
           <p className="max-w-2xl text-[.9rem] leading-[1.55] text-muted md:text-base md:leading-[1.7]">
             We build custom bait mold designs and hand-finished airbrush paintwork for shops that
