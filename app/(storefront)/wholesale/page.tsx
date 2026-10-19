@@ -36,25 +36,8 @@ export default function WholesalePage() {
             <em className="text-lime not-italic">you need.</em>
           </h2>
 
-          <div className="mt-9 grid gap-8 border-t border-[rgba(16,16,14,.18)] pt-6 md:mt-12 md:grid-cols-[1fr_1.2fr] md:gap-12 md:pt-10">
+          <div className="mt-9 grid gap-8 md:mt-12 md:grid-cols-[1fr_1.2fr] md:gap-12">
             <Reveal as="article">
-              <p className="mb-5 text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
-                What we can do
-              </p>
-              <ul className="space-y-3 text-[.9rem] leading-[1.6] text-[#2b2d2a]">
-                <li>Custom bait mold design and airbrush paintwork.</li>
-                <li>Handmade production for shops that want something unique.</li>
-                <li>Low MOQ and fast delivery with clear communication.</li>
-              </ul>
-              <p className="mt-8 text-[.8rem] font-bold uppercase tracking-[.12em] text-lime">
-                <a href="mailto:hello@calypto.co">hello@calypto.co</a>
-              </p>
-            </Reveal>
-
-            <Reveal
-              as="article"
-              className="border-t border-[rgba(16,16,14,.18)] pt-6 md:border-l md:border-t-0 md:pl-10 md:pt-0"
-            >
               <p className="mb-5 text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
                 Send your details
               </p>
