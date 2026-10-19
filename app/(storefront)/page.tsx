@@ -185,41 +185,6 @@ export default async function Home() {
         </div>
       </section>
       <PromotionSection promotions={promotions} />
-      <section className="bg-[#12140f] px-[7vw] py-14 md:px-[10vw] md:py-28">
-        <Reveal className="site-container mb-8 flex flex-col items-start gap-3 md:mb-12 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
-              The Calypto difference
-            </p>
-            <h2 className="my-4 text-[clamp(2.5rem,8vw,3.5rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3rem,5vw,5.25rem)]">
-              Built for the
-              <br />
-              <em className="text-lime not-italic">moment of truth.</em>
-            </h2>
-          </div>
-          <p className="max-w-[290px] text-[.9rem] leading-[1.55] text-muted md:text-base">
-            Every shape, color, and action is refined for the instant a curious fish becomes a
-            committed strike.
-          </p>
-        </Reveal>
-        <RevealStagger className="site-container grid grid-cols-1 gap-6 border-t border-[rgba(241,240,232,.18)] pt-6 md:grid-cols-3 md:gap-8 md:pt-8">
-          <IconFeature
-            label="01"
-            title="Dialed-in profiles"
-            text="Natural silhouettes that make fish look twice."
-          />
-          <IconFeature
-            label="02"
-            title="Proven action"
-            text="Subtle vibration and kick at every retrieve speed."
-          />
-          <IconFeature
-            label="03"
-            title="Tough by design"
-            text="Soft enough to fool them. Tough enough to last."
-          />
-        </RevealStagger>
-      </section>
       <section className="bg-paper px-[7vw] py-14 text-ink md:px-[10vw] md:py-28" id="shop">
         <Reveal className="site-container mb-8 flex flex-col items-start gap-3 md:mb-12 md:flex-row md:items-end md:justify-between">
           <div>

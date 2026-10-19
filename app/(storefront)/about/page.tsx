@@ -1,10 +1,8 @@
 // Mission/values copy is placeholder — needs client review before launch.
 import Link from "next/link";
-import { ArrowRight, Award, Fish, Waves } from "lucide-react";
-import { IconFeature } from "@/components/IconFeature";
+import { ArrowRight } from "lucide-react";
 import { ImageOverlaySection } from "@/components/ImageOverlaySection";
 import { Reveal } from "@/components/Reveal";
-import { RevealStagger } from "@/components/RevealStagger";
 
 export default function AboutPage() {
   return (
@@ -28,32 +26,6 @@ export default function AboutPage() {
             engineered with intent, tested on the water, built to earn a permanent spot in your box.
           </p>
         </Reveal>
-      </section>
-      <section className="bg-[#12140f] px-[7vw] py-14 md:px-[10vw] md:py-28">
-        <Reveal className="site-container mb-8 md:mb-12">
-          <h2 className="my-4 text-[clamp(2.5rem,8vw,3.5rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3rem,5vw,5.25rem)]">
-            What We
-            <br />
-            <em className="text-lime not-italic">Stand For.</em>
-          </h2>
-        </Reveal>
-        <RevealStagger className="site-container grid grid-cols-1 gap-6 border-t border-[rgba(241,240,232,.18)] pt-6 md:grid-cols-3 md:gap-8 md:pt-8">
-          <IconFeature
-            icon={Award}
-            title="Quality Materials"
-            text="Every bait starts with premium soft plastic and consistent color runs."
-          />
-          <IconFeature
-            icon={Waves}
-            title="Field-Tested Action"
-            text="Profiles and movement refined through real time on the water, not just in the lab."
-          />
-          <IconFeature
-            icon={Fish}
-            title="Built for Anglers"
-            text="From weekend casts to tournament day, gear that holds up to how it's actually used."
-          />
-        </RevealStagger>
       </section>
       <Reveal
         as="section"
