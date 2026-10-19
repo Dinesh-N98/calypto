@@ -12,8 +12,6 @@ export default function ContactPage() {
           </p>
           <h1 className="my-4 max-w-3xl text-[clamp(2.65rem,9vw,3.8rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-5 md:text-[clamp(3.5rem,6vw,6rem)]">
             Let&apos;s talk
-            <br />
-            <em className="text-lime not-italic">shop.</em>
           </h1>
           <p className="max-w-xl text-[.9rem] leading-[1.55] text-muted md:text-base md:leading-[1.7]">
             Questions about an order, a bait, or anything else. We read every message.
