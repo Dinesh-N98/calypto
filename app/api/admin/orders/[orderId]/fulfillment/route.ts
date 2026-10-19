@@ -44,13 +44,32 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Fulfillment details are invalid." }, { status: 400 });
   }
 
+  if (
+    (body.carrier !== undefined && typeof body.carrier !== "string") ||
+    (body.trackingNumber !== undefined && typeof body.trackingNumber !== "string") ||
+    (body.trackingUrl !== undefined && typeof body.trackingUrl !== "string")
+  ) {
+    return NextResponse.json({ error: "Fulfillment details are invalid." }, { status: 400 });
+  }
+
   const carrier = typeof body.carrier === "string" ? body.carrier.trim() : "";
   const trackingNumber = typeof body.trackingNumber === "string" ? body.trackingNumber.trim() : "";
   const rawTrackingUrl = typeof body.trackingUrl === "string" ? body.trackingUrl.trim() : "";
   const status = body.status === undefined ? "SHIPPED" : body.status;
-  if (!carrier || carrier.length > 100 || !trackingNumber || trackingNumber.length > 200) {
+  const hasTrackingDetails = Boolean(carrier || trackingNumber || rawTrackingUrl);
+  const hasExplicitStatus = body.status !== undefined;
+  if (
+    (hasTrackingDetails && (!carrier || !trackingNumber)) ||
+    (carrier.length > 100 || trackingNumber.length > 200)
+  ) {
     return NextResponse.json(
-      { error: "Enter a carrier and a valid tracking number." },
+      { error: "Enter both a carrier and a valid tracking number." },
+      { status: 400 },
+    );
+  }
+  if (!hasExplicitStatus && !hasTrackingDetails) {
+    return NextResponse.json(
+      { error: "Provide a fulfillment status or tracking details." },
       { status: 400 },
     );
   }
@@ -61,8 +80,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (rawTrackingUrl.length > 2000) {
     return NextResponse.json({ error: "Tracking URL is too long." }, { status: 400 });
   }
-  const trackingUrl =
-    rawTrackingUrl || (carrier.toLowerCase() === "dhl" ? getDhlTrackingUrl(trackingNumber) : "");
+  const trackingUrl = hasTrackingDetails
+    ? rawTrackingUrl ||
+      (carrier.toLowerCase() === "dhl" ? getDhlTrackingUrl(trackingNumber) : "")
+    : "";
   if (trackingUrl) {
     try {
       const parsedUrl = new URL(trackingUrl);
@@ -84,9 +105,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       const order = await transaction.order.update({
         where: { id: orderId },
         data: {
-          carrier,
-          trackingNumber,
-          trackingUrl: trackingUrl || null,
+          ...(hasTrackingDetails
+            ? {
+                carrier,
+                trackingNumber,
+                trackingUrl: trackingUrl || null,
+              }
+            : {}),
           fulfillmentStatus: status,
         },
         select: {
