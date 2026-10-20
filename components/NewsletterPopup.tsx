@@ -16,6 +16,9 @@ const HIDDEN_PATHS = ["/cart", "/checkout", "/sign-in", "/sign-up"];
 type Stored = { status: "dismissed" | "subscribed"; at: number };
 type PopupState = "hidden" | "modal" | "badge" | "subscribed";
 
+let memoryStored: Stored | null = null;
+let storageUnavailable = false;
+
 function parseStored(raw: string | null): Stored | null {
   if (raw === null) return null;
 
@@ -42,17 +45,34 @@ function parseStored(raw: string | null): Stored | null {
 
 function getStored(): Stored | null {
   try {
-    return parseStored(window.localStorage.getItem(STORAGE_KEY));
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (storageUnavailable && memoryStored !== null) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryStored));
+      storageUnavailable = false;
+      return memoryStored;
+    }
+
+    storageUnavailable = false;
+    if (raw === null) {
+      memoryStored = null;
+      return null;
+    }
+
+    memoryStored = parseStored(raw);
+    return memoryStored;
   } catch {
-    return null;
+    storageUnavailable = true;
+    return memoryStored;
   }
 }
 
 function remember(status: Stored["status"]) {
+  memoryStored = { status, at: Date.now() };
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ status, at: Date.now() }));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryStored));
+    storageUnavailable = false;
   } catch {
-    // Storage may be unavailable; the current UI state still updates.
+    storageUnavailable = true;
   }
 }
 

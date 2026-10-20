@@ -69,7 +69,8 @@ describe("NewsletterPopup visibility states", () => {
   });
 
   it("hides the modal and badge after a successful subscription", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
     render(createElement(NewsletterPopup));
 
     await act(async () => {
@@ -90,6 +91,13 @@ describe("NewsletterPopup visibility states", () => {
     expect(JSON.parse(localStorage.getItem(NEWSLETTER_KEY) ?? "{}")).toMatchObject({
       status: "subscribed",
     });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/subscribe",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ email: "angler@example.com" }),
+      }),
+    );
   });
 
   it("hides on targeting withdrawal and waits before showing after consent is granted", async () => {
@@ -126,6 +134,85 @@ describe("NewsletterPopup visibility states", () => {
     expect(screen.queryByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeNull();
 
     act(() => updateTargetingConsent(true));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    expect(screen.getByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeInTheDocument();
+  });
+
+  it("shows a retryable error when subscription fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Please try again." }),
+      }),
+    );
+    render(createElement(NewsletterPopup));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    const emailInput = screen.getByRole("textbox", { name: "Your email address" });
+    fireEvent.change(emailInput, { target: { value: "angler@example.com" } });
+
+    await act(async () => {
+      fireEvent.submit(emailInput.closest("form")!);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Please try again.");
+    expect(screen.getByRole("button", { name: /Get my 15% off/ })).toBeEnabled();
+    expect(screen.getByRole("dialog", { name: "15% Off" })).toBeInTheDocument();
+  });
+
+  it("preserves the submitting state and allows retry after a network error", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Network unavailable")));
+    render(createElement(NewsletterPopup));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    const emailInput = screen.getByRole("textbox", { name: "Your email address" });
+    fireEvent.change(emailInput, { target: { value: "angler@example.com" } });
+
+    await act(async () => {
+      fireEvent.submit(emailInput.closest("form")!);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Something went wrong. Please try again.");
+    expect(screen.getByRole("button", { name: /Get my 15% off/ })).toBeEnabled();
+    expect(screen.getByRole("dialog", { name: "15% Off" })).toBeInTheDocument();
+  });
+
+  it("keeps dismissal state in memory when localStorage access fails", async () => {
+    const { unmount } = render(createElement(NewsletterPopup));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    const originalGetItem = Storage.prototype.getItem;
+    const originalSetItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(function (this: Storage, key) {
+      if (key === NEWSLETTER_KEY) throw new DOMException("Storage is unavailable");
+      return originalGetItem.call(this, key);
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+      this: Storage,
+      key,
+      value,
+    ) {
+      if (key === NEWSLETTER_KEY) throw new DOMException("Storage is unavailable");
+      return originalSetItem.call(this, key, value);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeInTheDocument();
+
+    unmount();
+    render(createElement(NewsletterPopup));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(6000);
     });
