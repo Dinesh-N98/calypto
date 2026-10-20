@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Pencil, Plus, Search, Trash2, X } from "lucide-react";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { ExternalLink, ImagePlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   createCategory,
   deleteCategory,
@@ -15,6 +16,7 @@ type CategoryRecord = {
   id: string;
   name: string;
   slug: string;
+  image: string | null;
   tieredDiscountsEnabled: boolean;
   productCount: number;
 };
@@ -42,15 +44,78 @@ function CategoryDrawer({
   const [pending, startTransition] = useTransition();
   const [name, setName] = useState(category?.name ?? "");
   const [slug, setSlug] = useState(category?.slug ?? "");
+  const [image, setImage] = useState(category?.image ?? "");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!image.startsWith("blob:")) return;
+    return () => URL.revokeObjectURL(image);
+  }, [image]);
+
+  async function uploadImage(file: File | undefined) {
+    if (!file) return;
+    if (file.type && !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setImageError("Choose a JPG, PNG, WEBP, or GIF image.");
+      return;
+    }
+    if (file.size === 0 || file.size > 10 * 1024 * 1024) {
+      setImageError("Choose an image no larger than 10 MB.");
+      return;
+    }
+
+    const previousImage = image;
+    const preview = URL.createObjectURL(file);
+    setImage(preview);
+    setImageError("");
+    setUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      const response = await fetch("/api/admin/product-images", {
+        method: "POST",
+        body: formData,
+      });
+      const result: unknown = await response.json();
+      if (
+        !response.ok ||
+        typeof result !== "object" ||
+        result === null ||
+        !("imageUrl" in result) ||
+        typeof result.imageUrl !== "string"
+      ) {
+        const message =
+          typeof result === "object" &&
+          result !== null &&
+          "error" in result &&
+          typeof result.error === "string"
+            ? result.error
+            : "The category image could not be uploaded.";
+        setImageError(message);
+        setImage(previousImage);
+        return;
+      }
+      setImage(result.imageUrl);
+    } catch {
+      setImageError("The category image could not be uploaded. Please try again.");
+      setImage(previousImage);
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    if (!form.reportValidity()) return;
+    if (uploadingImage || !form.reportValidity()) return;
     const formData = new FormData(form);
     if (category) formData.set("id", category.id);
+    formData.set("image", image.startsWith("blob:") ? (category?.image ?? "") : image);
 
     startTransition(async () => {
       try {
@@ -74,7 +139,7 @@ function CategoryDrawer({
     <div
       className="fixed inset-0 z-50 flex justify-end bg-black/45"
       onClick={(event) => {
-        if (event.target === event.currentTarget && !pending) onClose();
+        if (event.target === event.currentTarget && !pending && !uploadingImage) onClose();
       }}
     >
       <section
@@ -95,7 +160,7 @@ function CategoryDrawer({
           <button
             aria-label="Close category form"
             className="grid h-10 w-10 place-items-center rounded-md text-[#55594f] hover:bg-black/5"
-            disabled={pending}
+            disabled={pending || uploadingImage}
             onClick={onClose}
             type="button"
           >
@@ -160,11 +225,73 @@ function CategoryDrawer({
                 Generated from the category name; edit it here to customize.
               </span>
             </label>
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#55594f]" htmlFor="category-image">
+                Category image
+              </label>
+              <input name="image" type="hidden" value={image.startsWith("blob:") ? "" : image} />
+              <div className="flex items-center gap-3">
+                <div
+                  className="relative h-20 w-28 shrink-0 overflow-hidden rounded-md bg-[#e8e9e4]"
+                  role="presentation"
+                >
+                  {image && (
+                    <Image
+                      alt={`Preview of ${name || "category"} image`}
+                      className="object-cover"
+                      fill
+                      sizes="112px"
+                      src={image}
+                      unoptimized
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <input
+                    className="admin-catalog-input"
+                    disabled={uploadingImage}
+                    id="category-image"
+                    maxLength={500}
+                    onChange={(event) => {
+                      setImage(event.target.value.trim());
+                      setImageError("");
+                    }}
+                    placeholder="/categories/soft-baits.jpg or https://..."
+                    type="text"
+                    value={image.startsWith("blob:") ? "" : image}
+                  />
+                  <label className="mt-2 inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-black/15 px-3 text-xs font-bold text-[#42463b] hover:bg-[#f4f5f1]">
+                    <ImagePlus aria-hidden="true" className="h-4 w-4" />
+                    {uploadingImage ? "Uploading..." : "Upload image"}
+                    <input
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="sr-only"
+                      disabled={uploadingImage}
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0];
+                        event.currentTarget.value = "";
+                        void uploadImage(file);
+                      }}
+                      ref={imageInputRef}
+                      type="file"
+                    />
+                  </label>
+                </div>
+              </div>
+              {imageError && (
+                <p aria-live="polite" className="text-xs text-red-700">
+                  {imageError}
+                </p>
+              )}
+              <p className="text-xs font-normal text-[#73786b]">
+                Provide a site-root path or HTTPS URL, or upload a JPG, PNG, WEBP, or GIF image.
+              </p>
+            </div>
           </div>
           <footer className="flex justify-end gap-3 border-t border-black/10 px-6 py-4">
             <button
               className="min-h-11 rounded-md border border-black/15 px-4 text-xs font-bold hover:bg-[#f4f5f1]"
-              disabled={pending}
+              disabled={pending || uploadingImage}
               onClick={onClose}
               type="button"
             >
@@ -172,10 +299,16 @@ function CategoryDrawer({
             </button>
             <button
               className="min-h-11 rounded-md bg-[#a3bd32] px-5 text-xs font-extrabold uppercase tracking-[.08em] text-[#171a14] hover:bg-[#b6cf45]"
-              disabled={pending}
+              disabled={pending || uploadingImage}
               type="submit"
             >
-              {pending ? "Saving..." : category ? "Save changes" : "Create category"}
+              {uploadingImage
+                ? "Uploading image..."
+                : pending
+                  ? "Saving..."
+                  : category
+                    ? "Save changes"
+                    : "Create category"}
             </button>
           </footer>
         </form>
@@ -351,9 +484,10 @@ export function AdminCategoriesTable({ categories }: { categories: CategoryRecor
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] border-collapse text-left">
+          <table className="w-full min-w-[920px] border-collapse text-left">
             <thead className="bg-[#f7f8f5] text-[.65rem] uppercase tracking-[.1em] text-[#73786b]">
               <tr>
+                <th className="px-4 py-3 font-bold">Image</th>
                 <th className="px-4 py-3 font-bold">Category name</th>
                 <th className="px-4 py-3 font-bold">URL slug</th>
                 <th className="px-4 py-3 font-bold">Linked products</th>
@@ -369,6 +503,20 @@ export function AdminCategoriesTable({ categories }: { categories: CategoryRecor
 
                 return (
                   <tr className="hover:bg-[#fafbf8]" key={category.id}>
+                    <td className="px-4 py-3">
+                      <div className="relative h-10 w-14 overflow-hidden rounded bg-[#e8e9e4]">
+                        {category.image && (
+                          <Image
+                            alt={`${category.name} category image`}
+                            className="object-cover"
+                            fill
+                            sizes="56px"
+                            src={category.image}
+                            unoptimized
+                          />
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <p className="text-sm font-bold text-[#161812]">{category.name}</p>
                     </td>
@@ -478,9 +626,7 @@ export function AdminCategoriesTable({ categories }: { categories: CategoryRecor
         <CategoryDrawer
           category={drawerCategory ?? undefined}
           onClose={() => setDrawerCategory(undefined)}
-          onComplete={(result) =>
-            completeAction(result, () => setDrawerCategory(undefined))
-          }
+          onComplete={(result) => completeAction(result, () => setDrawerCategory(undefined))}
         />
       )}
       {deleteTarget && (

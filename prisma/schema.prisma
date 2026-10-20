@@ -114,6 +114,7 @@ model Category {
   id                     String    @id @default(cuid())
   name                   String
   slug                   String    @unique
+  image                  String?
   tieredDiscountsEnabled Boolean   @default(false)
   createdAt              DateTime  @default(now())
   products               Product[]

@@ -176,6 +176,16 @@ function isValidImagePath(value: string): boolean {
   return value.length <= 500 && value.startsWith("/") && !value.startsWith("//");
 }
 
+function isValidCategoryImage(value: string): boolean {
+  if (!value) return true;
+  if (isValidImagePath(value)) return true;
+  try {
+    return new URL(value).protocol === "https:" && value.length <= 500;
+  } catch {
+    return false;
+  }
+}
+
 function revalidateCatalog(): void {
   revalidatePath("/admin");
   revalidatePath("/admin/products");
@@ -191,6 +201,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 function readCategory(formData: FormData) {
   const name = getText(formData, "name");
   const slug = slugify(getText(formData, "slug") || name);
+  const image = getText(formData, "image");
   const tieredDiscountsEnabled = formData.get("tieredDiscountsEnabled") === "on";
 
   if (!name || name.length > 100) {
@@ -199,8 +210,13 @@ function readCategory(formData: FormData) {
   if (!isValidSlug(slug)) {
     return { error: "Use a URL-safe slug with lowercase letters, numbers, and hyphens." } as const;
   }
+  if (!isValidCategoryImage(image)) {
+    return {
+      error: "Use a site-root image path or an HTTPS image URL (max 500 characters).",
+    } as const;
+  }
 
-  return { data: { name, slug, tieredDiscountsEnabled } } as const;
+  return { data: { name, slug, image: image || null, tieredDiscountsEnabled } } as const;
 }
 
 export async function createCategory(

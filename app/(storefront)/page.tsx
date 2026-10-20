@@ -9,6 +9,7 @@ import { IconFeature } from "@/components/IconFeature";
 import { Reveal } from "@/components/Reveal";
 import { RevealStagger } from "@/components/RevealStagger";
 import { PromotionSection } from "@/components/PromotionSection";
+import { CategoryCarousel } from "@/components/CategoryCarousel";
 
 const fallbackProducts = [
   {
@@ -80,16 +81,31 @@ export default async function Home() {
     console.error("Failed to load products from DB, using fallback:", err);
   }
   const now = new Date();
-  const promotions = await prisma.promotion.findMany({
-    where: {
-      isActive: true,
-      AND: [
-        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
-        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
-      ],
-    },
-    orderBy: [{ startDate: "asc" }, { createdAt: "desc" }],
-  });
+  const [promotions, categories] = await Promise.all([
+    prisma.promotion.findMany({
+      where: {
+        isActive: true,
+        AND: [
+          { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+          { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+        ],
+      },
+      orderBy: [{ startDate: "asc" }, { createdAt: "desc" }],
+    }),
+    prisma.category.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        name: true,
+        slug: true,
+        image: true,
+        products: {
+          take: 1,
+          orderBy: { createdAt: "asc" },
+          select: { imageUrl: true },
+        },
+      },
+    }),
+  ]);
 
   return (
     <main>
@@ -185,6 +201,13 @@ export default async function Home() {
         </div>
       </section>
       <PromotionSection promotions={promotions} />
+      <CategoryCarousel
+        categories={categories.map((category) => ({
+          name: category.name,
+          slug: category.slug,
+          image: category.image ?? category.products[0]?.imageUrl ?? null,
+        }))}
+      />
       <section className="bg-paper px-[7vw] py-14 text-ink md:px-[10vw] md:py-28" id="shop">
         <Reveal className="site-container mb-8 flex flex-col items-start gap-3 md:mb-12 md:flex-row md:items-end md:justify-between">
           <div>
