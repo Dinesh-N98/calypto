@@ -3,7 +3,6 @@ import Link from "next/link";
 import heroImage from "../../public/hero-fishing.jpeg";
 import { ArrowUpRight, ShieldCheck, Store, Truck, Waves } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { ImageOverlaySection } from "@/components/ImageOverlaySection";
 import { IconFeature } from "@/components/IconFeature";
 import { Reveal } from "@/components/Reveal";
 import { PromotionSection } from "@/components/PromotionSection";
@@ -137,17 +136,6 @@ export default async function Home() {
           slug: category.slug,
           image: category.image ?? category.products[0]?.imageUrl ?? null,
         }))}
-      />
-      <ImageOverlaySection
-        eyebrow="Made with intent"
-        headingLines={[
-          { text: "Less guesswork.", color: "white" },
-          { text: "More water time.", color: "lime" },
-        ]}
-        paragraphs={[
-          "We started Calypto because the best days on the water come from confidence. Confidence in your gear. Confidence in your presentation. Confidence that the next cast could be the one.",
-        ]}
-        cta={{ label: "Our Story", href: "/about" }}
       />
       <Reveal as="section" className="bg-lime px-[7vw] py-14 text-ink md:px-[10vw] md:py-20">
         <div className="site-container">
