@@ -2,18 +2,19 @@
 
 import Image from "next/image";
 import popupAnglerImage from "../public/popup-angler.jpg";
-import { ArrowRight, BadgeCheck, Fish, Leaf, Mail, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, BadgeCheck, Fish, Gift, Leaf, Mail, X, type LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { getCookieConsent, subscribeCookieConsent } from "@/lib/cookieConsent";
 
 const STORAGE_KEY = "calypto-newsletter-popup";
 const DISMISS_DAYS = 7;
+const DISMISS_MS = DISMISS_DAYS * 24 * 60 * 60 * 1000;
 const DELAY_MS = 6000;
 const HIDDEN_PATHS = ["/cart", "/checkout", "/sign-in", "/sign-up"];
-const DISCOUNT_CODE = "CALYPTO15";
 
 type Stored = { status: "dismissed" | "subscribed"; at: number };
+type PopupState = "hidden" | "modal" | "badge" | "subscribed";
 
 function parseStored(raw: string | null): Stored | null {
   if (raw === null) return null;
@@ -39,15 +40,11 @@ function parseStored(raw: string | null): Stored | null {
   }
 }
 
-function shouldShow(): boolean {
+function getStored(): Stored | null {
   try {
-    const stored = parseStored(window.localStorage.getItem(STORAGE_KEY));
-    if (!stored) return true;
-    if (stored.status === "subscribed") return false;
-
-    return Date.now() - stored.at > DISMISS_DAYS * 24 * 60 * 60 * 1000;
+    return parseStored(window.localStorage.getItem(STORAGE_KEY));
   } catch {
-    return true;
+    return null;
   }
 }
 
@@ -55,7 +52,7 @@ function remember(status: Stored["status"]) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ status, at: Date.now() }));
   } catch {
-    // storage unavailable (private mode) – popup may reappear, that's acceptable
+    // Storage may be unavailable; the current UI state still updates.
   }
 }
 
@@ -68,12 +65,11 @@ const perks: { icon: LucideIcon; label: string }[] = [
 export function NewsletterPopup() {
   const pathname = usePathname();
   const hidden = HIDDEN_PATHS.some((path) => pathname.startsWith(path));
-  const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
+  const [popupState, setPopupState] = useState<PopupState>("hidden");
+  const [submissionStatus, setSubmissionStatus] = useState<"idle" | "submitting">("idle");
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
 
-  const visible = open && !hidden;
+  const visible = popupState === "modal" && !hidden;
 
   useEffect(() => {
     let timer: number | undefined;
@@ -87,23 +83,48 @@ export function NewsletterPopup() {
       clearTimer();
 
       if (hidden) {
-        setOpen(false);
+        setPopupState((current) => (current === "subscribed" ? current : "hidden"));
         return;
       }
 
       const consent = getCookieConsent();
       if (!consent || consent.targeting !== true) {
-        setOpen(false);
+        setPopupState((current) => (current === "subscribed" ? current : "hidden"));
         return;
       }
 
-      if (open || !shouldShow()) return;
+      const stored = getStored();
+      if (stored?.status === "subscribed") {
+        setPopupState("subscribed");
+        return;
+      }
+
+      if (popupState === "modal" || popupState === "badge") return;
+
+      const dismissalAge = stored?.status === "dismissed" ? Date.now() - stored.at : null;
+      if (dismissalAge !== null && dismissalAge >= 0 && dismissalAge < DISMISS_MS) {
+        setPopupState("badge");
+        return;
+      }
 
       timer = window.setTimeout(() => {
         timer = undefined;
         const currentConsent = getCookieConsent();
-        if (!hidden && currentConsent?.targeting === true && shouldShow()) {
-          setOpen(true);
+        const latestStored = getStored();
+        const latestDismissalAge =
+          latestStored?.status === "dismissed" ? Date.now() - latestStored.at : null;
+        const dismissedRecently =
+          latestDismissalAge !== null &&
+          latestDismissalAge >= 0 &&
+          latestDismissalAge < DISMISS_MS;
+
+        if (
+          !hidden &&
+          currentConsent?.targeting === true &&
+          latestStored?.status !== "subscribed" &&
+          !dismissedRecently
+        ) {
+          setPopupState("modal");
         }
       }, DELAY_MS);
     };
@@ -115,12 +136,12 @@ export function NewsletterPopup() {
       unsubscribe();
       clearTimer();
     };
-  }, [hidden, open, pathname]);
+  }, [hidden, pathname, popupState]);
 
   const close = useCallback(() => {
-    if (status !== "success") remember("dismissed");
-    setOpen(false);
-  }, [status]);
+    remember("dismissed");
+    setPopupState("badge");
+  }, []);
 
   useEffect(() => {
     if (!visible) return;
@@ -142,7 +163,7 @@ export function NewsletterPopup() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    setStatus("submitting");
+    setSubmissionStatus("submitting");
 
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "")
@@ -159,29 +180,34 @@ export function NewsletterPopup() {
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         setError(body?.error || "Something went wrong. Please try again.");
-        setStatus("idle");
+        setSubmissionStatus("idle");
         return;
       }
 
       remember("subscribed");
-      setStatus("success");
+      setSubmissionStatus("idle");
+      setPopupState("subscribed");
     } catch {
       setError("Something went wrong. Please try again.");
-      setStatus("idle");
+      setSubmissionStatus("idle");
     }
   }
 
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(DISCOUNT_CODE);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard blocked – code is still visible to copy manually
-    }
-  }
+  if (hidden || popupState === "hidden" || popupState === "subscribed") return null;
 
-  if (!visible) return null;
+  if (popupState === "badge") {
+    return (
+      <button
+        className="fixed bottom-5 left-5 z-[70] inline-flex items-center gap-2 rounded-full border border-lime/60 bg-ink px-4 py-3 text-sm font-extrabold text-paper shadow-2xl transition hover:-translate-y-0.5 hover:bg-[#171a13] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime motion-reduce:transform-none"
+        type="button"
+        onClick={() => setPopupState("modal")}
+        aria-label="Reopen newsletter offer: get 15% off"
+      >
+        <Gift aria-hidden="true" className="h-4 w-4 text-lime" />
+        Get 15% OFF
+      </button>
+    );
+  }
 
   return (
     <div
@@ -237,71 +263,41 @@ export function NewsletterPopup() {
           </h2>
           <p className="text-[.75rem] font-bold uppercase tracking-[.3em]">Your first order</p>
 
-          {status === "success" ? (
-            <div className="mt-5 w-full">
-              <p className="text-xl font-black uppercase tracking-[-.02em]">You&apos;re in.</p>
-              <p className="mt-2 text-sm leading-[1.6] text-muted">
-                Use this code at checkout for 15% off your first order.
+          <p className="mt-3 max-w-xs text-[.8rem] leading-[1.6] text-muted">
+            Get exclusive offers, new designs and fishing tips straight to your inbox.
+          </p>
+          <form className="mt-4 grid w-full gap-2.5" onSubmit={handleSubmit} noValidate>
+            <label className="relative block">
+              <span className="sr-only">Your email address</span>
+              <Mail
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-ink"
+                strokeWidth={2}
+              />
+              <input
+                className="h-11 w-full bg-paper pl-11 pr-3 text-base text-ink outline-none placeholder:text-[#8a8d80] focus:ring-2 focus:ring-lime"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="Your email address"
+              />
+            </label>
+            <button
+              className="inline-flex h-11 items-center justify-center gap-3 bg-lime px-5 text-[.8rem] font-extrabold uppercase tracking-[.08em] text-ink hover:bg-[#b6cf45]"
+              type="submit"
+              disabled={submissionStatus === "submitting"}
+            >
+              {submissionStatus === "submitting" ? "Sending..." : "Get my 15% off"}
+              <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+            </button>
+            {error && (
+              <p className="text-sm text-[#e89b87]" role="alert">
+                {error}
               </p>
-              <div className="mt-4 flex items-stretch border border-lime">
-                <span className="flex-1 px-4 py-3 text-lg font-black tracking-[.2em] text-lime">
-                  {DISCOUNT_CODE}
-                </span>
-                <button
-                  className="bg-lime px-4 text-[.65rem] font-extrabold uppercase tracking-[.1em] text-ink"
-                  type="button"
-                  onClick={copyCode}
-                >
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-              <button
-                className="mt-5 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime underline"
-                type="button"
-                onClick={close}
-              >
-                Start shopping
-              </button>
-            </div>
-          ) : (
-            <>
-              <p className="mt-3 max-w-xs text-[.8rem] leading-[1.6] text-muted">
-                Get exclusive offers, new designs and fishing tips straight to your inbox.
-              </p>
-              <form className="mt-4 grid w-full gap-2.5" onSubmit={handleSubmit} noValidate>
-                <label className="relative block">
-                  <span className="sr-only">Your email address</span>
-                  <Mail
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-ink"
-                    strokeWidth={2}
-                  />
-                  <input
-                    className="h-11 w-full bg-paper pl-11 pr-3 text-base text-ink outline-none placeholder:text-[#8a8d80] focus:ring-2 focus:ring-lime"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="Your email address"
-                  />
-                </label>
-                <button
-                  className="inline-flex h-11 items-center justify-center gap-3 bg-lime px-5 text-[.8rem] font-extrabold uppercase tracking-[.08em] text-ink hover:bg-[#b6cf45]"
-                  type="submit"
-                  disabled={status === "submitting"}
-                >
-                  {status === "submitting" ? "Sending..." : "Get my 15% off"}
-                  <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
-                </button>
-                {error && (
-                  <p className="text-sm text-[#e89b87]" role="alert">
-                    {error}
-                  </p>
-                )}
-              </form>
-              <p className="mt-2 text-[.7rem] text-muted">No spam. Unsubscribe anytime.</p>
-            </>
-          )}
+            )}
+          </form>
+          <p className="mt-2 text-[.7rem] text-muted">No spam. Unsubscribe anytime.</p>
 
           <ul className="mt-5 hidden w-full grid-cols-3 gap-2 border-t border-[rgba(241,240,232,.18)] pt-4 md:grid">
             {perks.map((perk) => (
