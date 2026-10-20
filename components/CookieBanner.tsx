@@ -1,9 +1,17 @@
 "use client";
 
-import { startTransition, useEffect, useState } from "react";
-import { getCookieConsent, saveCookieConsent } from "@/lib/cookieConsent";
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  COOKIE_SETTINGS_EVENT,
+  type CookiePreferences,
+  getCookieConsent,
+  saveCookieConsent,
+  subscribeCookieConsent,
+} from "@/lib/cookieConsent";
 
-type Preferences = { functional: boolean; performance: boolean; targeting: boolean };
+type Preferences = Omit<CookiePreferences, "necessary">;
 
 const allEnabled: Preferences = { functional: true, performance: true, targeting: true };
 const allDisabled: Preferences = { functional: false, performance: false, targeting: false };
@@ -13,7 +21,17 @@ export function CookieBanner() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
-    startTransition(() => setVisible(getCookieConsent() === null));
+    const syncConsent = () => setVisible(getCookieConsent() === null);
+    syncConsent();
+
+    const unsubscribe = subscribeCookieConsent(syncConsent);
+    const openSettings = () => setSettingsOpen(true);
+    window.addEventListener(COOKIE_SETTINGS_EVENT, openSettings);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener(COOKIE_SETTINGS_EVENT, openSettings);
+    };
   }, []);
 
   function save(preferences: Preferences) {
@@ -31,36 +49,50 @@ export function CookieBanner() {
   return (
     <>
       <section
-        className="fixed inset-x-0 bottom-0 z-[80] border-t border-[rgba(241,240,232,.18)] bg-ink text-paper"
+        className="fixed bottom-4 left-4 right-4 z-50 rounded-2xl border border-neutral-800/80 bg-neutral-950/90 p-5 text-paper shadow-2xl backdrop-blur-md transition-all duration-300 animate-[cookie-banner-in_300ms_ease-out_both] motion-reduce:animate-none md:left-auto md:right-6 md:max-w-xl"
         role="region"
         aria-label="Cookie consent"
       >
-        <div className="flex flex-col gap-4 px-[7vw] py-5 md:flex-row md:items-center md:justify-between md:px-[10vw]">
-          <p className="max-w-2xl text-[.8rem] leading-[1.6] text-muted">
-            By clicking “Accept All Cookies”, you agree to the storing of cookies on your device to
-            enhance site navigation, analyze site usage, and assist in our marketing efforts.
-          </p>
-          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0 flex-1">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-neutral-100">
+              <ShieldCheck aria-hidden="true" className="h-4 w-4 text-lime" />
+              Privacy Preferences
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-neutral-400">
+              We use cookies to improve your experience and understand site usage. Choose which
+              optional cookies you allow.
+            </p>
+            <Link
+              className="mt-2 inline-block text-xs text-neutral-400 underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+              href="/privacy"
+            >
+              Privacy Policy
+            </Link>
+          </div>
+          <div className="flex shrink-0 flex-col gap-3 md:items-end">
+            <div className="flex gap-2">
+              <button
+                className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs text-neutral-200 transition hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:flex-none"
+                type="button"
+                onClick={() => save(allDisabled)}
+              >
+                Reject All
+              </button>
+              <button
+                className="flex-1 rounded-lg bg-[#a3e635] px-4 py-2 text-xs font-semibold text-black transition hover:bg-[#84cc16] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:flex-none"
+                type="button"
+                onClick={() => save(allEnabled)}
+              >
+                Accept All
+              </button>
+            </div>
             <button
-              className="auth-button-secondary w-full !py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:w-auto md:!py-4"
+              className="self-center text-xs text-neutral-400 underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:self-end"
               type="button"
               onClick={() => setSettingsOpen(true)}
             >
-              Cookies Settings
-            </button>
-            <button
-              className="auth-button-secondary w-full !py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:w-auto md:!py-4"
-              type="button"
-              onClick={() => save(allDisabled)}
-            >
-              Reject All
-            </button>
-            <button
-              className="auth-button w-full !py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime md:w-auto md:!py-4"
-              type="button"
-              onClick={() => save(allEnabled)}
-            >
-              Accept All Cookies
+              Settings
             </button>
           </div>
         </div>

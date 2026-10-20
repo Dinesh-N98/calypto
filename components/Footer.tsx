@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
+import { CookieSettingsTrigger } from "@/components/CookieSettingsTrigger";
 
 export function Footer({ categories }: { categories: { name: string; slug: string }[] }) {
   return (
@@ -41,6 +42,7 @@ export function Footer({ categories }: { categories: { name: string; slug: strin
           <Link className="text-[.75rem] text-muted" href="/contact">
             Contact
           </Link>
+          <CookieSettingsTrigger />
         </div>
         <div className="flex flex-col gap-3">
           <h3 className="text-[.65rem] uppercase tracking-[.16em] text-lime">Follow us</h3>
