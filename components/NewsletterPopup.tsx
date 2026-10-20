@@ -5,7 +5,7 @@ import popupAnglerImage from "../public/popup-angler.jpg";
 import { ArrowRight, BadgeCheck, Fish, Leaf, Mail, X, type LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { COOKIE_CONSENT_EVENT, getCookieConsent } from "@/lib/cookieConsent";
+import { getCookieConsent, subscribeCookieConsent } from "@/lib/cookieConsent";
 
 const STORAGE_KEY = "calypto-newsletter-popup";
 const DISMISS_DAYS = 7;
@@ -15,12 +15,34 @@ const DISCOUNT_CODE = "CALYPTO15";
 
 type Stored = { status: "dismissed" | "subscribed"; at: number };
 
+function parseStored(raw: string | null): Stored | null {
+  if (raw === null) return null;
+
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      !("status" in value) ||
+      (value.status !== "dismissed" && value.status !== "subscribed") ||
+      !("at" in value) ||
+      typeof value.at !== "number" ||
+      !Number.isFinite(value.at) ||
+      value.at < 0
+    ) {
+      return null;
+    }
+
+    return { status: value.status, at: value.at };
+  } catch {
+    return null;
+  }
+}
+
 function shouldShow(): boolean {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return true;
-
-    const stored = JSON.parse(raw) as Stored;
+    const stored = parseStored(window.localStorage.getItem(STORAGE_KEY));
+    if (!stored) return true;
     if (stored.status === "subscribed") return false;
 
     return Date.now() - stored.at > DISMISS_DAYS * 24 * 60 * 60 * 1000;
@@ -54,27 +76,46 @@ export function NewsletterPopup() {
   const visible = open && !hidden;
 
   useEffect(() => {
-    if (hidden) return;
-
     let timer: number | undefined;
-    const startTimer = () => {
-      if (timer !== undefined) return;
+    const clearTimer = () => {
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+        timer = undefined;
+      }
+    };
+    const syncEligibility = () => {
+      clearTimer();
+
+      if (hidden) {
+        setOpen(false);
+        return;
+      }
+
+      const consent = getCookieConsent();
+      if (!consent || consent.targeting !== true) {
+        setOpen(false);
+        return;
+      }
+
+      if (open || !shouldShow()) return;
+
       timer = window.setTimeout(() => {
-        if (shouldShow()) setOpen(true);
+        timer = undefined;
+        const currentConsent = getCookieConsent();
+        if (!hidden && currentConsent?.targeting === true && shouldShow()) {
+          setOpen(true);
+        }
       }, DELAY_MS);
     };
 
-    if (getCookieConsent() !== null) {
-      startTimer();
-    } else {
-      window.addEventListener(COOKIE_CONSENT_EVENT, startTimer, { once: true });
-    }
+    syncEligibility();
+    const unsubscribe = subscribeCookieConsent(syncEligibility);
 
     return () => {
-      window.removeEventListener(COOKIE_CONSENT_EVENT, startTimer);
-      if (timer !== undefined) window.clearTimeout(timer);
+      unsubscribe();
+      clearTimer();
     };
-  }, [hidden]);
+  }, [hidden, open, pathname]);
 
   const close = useCallback(() => {
     if (status !== "success") remember("dismissed");
