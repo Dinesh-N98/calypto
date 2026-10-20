@@ -4,82 +4,12 @@ import heroImage from "../../public/hero-fishing.jpeg";
 import { ArrowUpRight, ShieldCheck, Store, Truck, Waves } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ImageOverlaySection } from "@/components/ImageOverlaySection";
-import { ProductCard } from "@/components/ProductCard";
 import { IconFeature } from "@/components/IconFeature";
 import { Reveal } from "@/components/Reveal";
-import { RevealStagger } from "@/components/RevealStagger";
 import { PromotionSection } from "@/components/PromotionSection";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 
-const fallbackProducts = [
-  {
-    slug: "worm-01",
-    name: "Worm Bait Color 01",
-    category: "Worm Bait",
-    priceCents: 210000,
-    imageUrl: "/products/worm/worm-01.jpg",
-  },
-  {
-    slug: "swimbait-01",
-    name: "Swimbait Color 01",
-    category: "Swimbait",
-    priceCents: 270000,
-    imageUrl: "/products/swimbait/swimbait-01.jpg",
-  },
-  {
-    slug: "jig-01",
-    name: "Jig Color 01",
-    category: "Jig",
-    priceCents: 180000,
-    imageUrl: "/products/jig/jig-01.jpg",
-  },
-];
 export default async function Home() {
-  let products: {
-    id?: string;
-    slug: string;
-    name: string;
-    priceCents: number;
-    imageUrl: string;
-    variants?: {
-      id: string;
-      sku: string;
-      priceCents: number;
-      stock: number;
-      size: string | null;
-      color: string | null;
-      imageUrl: string | null;
-    }[];
-  }[] = fallbackProducts;
-  try {
-    products =
-      (await prisma.product.findMany({
-        take: 3,
-        where: { slug: { in: ["worm-01", "swimbait-01", "jig-01"] } },
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          priceCents: true,
-          imageUrl: true,
-          variants: {
-            orderBy: { createdAt: "asc" },
-            select: {
-              id: true,
-              sku: true,
-              priceCents: true,
-              stock: true,
-              size: true,
-              color: true,
-              imageUrl: true,
-            },
-          },
-        },
-      })) || fallbackProducts;
-  } catch (err) {
-    console.error("Failed to load products from DB, using fallback:", err);
-  }
   const now = new Date();
   const [promotions, categories] = await Promise.all([
     prisma.promotion.findMany({
@@ -208,34 +138,6 @@ export default async function Home() {
           image: category.image ?? category.products[0]?.imageUrl ?? null,
         }))}
       />
-      <section className="bg-paper px-[7vw] py-14 text-ink md:px-[10vw] md:py-28" id="shop">
-        <Reveal className="site-container mb-8 flex flex-col items-start gap-3 md:mb-12 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
-              The lineup
-            </p>
-            <h2 className="my-4 text-[clamp(2.5rem,8vw,3.5rem)] font-black uppercase leading-[.92] tracking-[-.07em] md:my-[1.3rem] md:text-[clamp(3rem,5vw,5.25rem)]">
-              Our best-selling
-              <br />
-              <em className="text-lime not-italic">soft baits.</em>
-            </h2>
-          </div>
-          <Link
-            className="group link-underline inline-flex items-center gap-1.5 pb-1 text-[.7rem] font-extrabold uppercase tracking-[.12em] text-lime"
-            href="/shop"
-          >
-            View all baits{" "}
-            <span className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none">
-              <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-            </span>
-          </Link>
-        </Reveal>
-        <RevealStagger className="site-container grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard key={product.slug} product={product} />
-          ))}
-        </RevealStagger>
-      </section>
       <ImageOverlaySection
         eyebrow="Made with intent"
         headingLines={[
