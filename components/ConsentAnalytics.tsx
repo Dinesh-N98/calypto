@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UmamiAnalytics } from "@/components/UmamiAnalytics";
-import { VercelAnalytics } from "@/components/VercelAnalytics";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { getCookieConsent, subscribeCookieConsent } from "@/lib/cookieConsent";
 
 export function ConsentAnalytics() {
@@ -19,10 +18,5 @@ export function ConsentAnalytics() {
 
   if (!performanceConsent) return null;
 
-  return (
-    <>
-      <UmamiAnalytics />
-      {process.env.NODE_ENV === "production" && <VercelAnalytics />}
-    </>
-  );
+  return <GoogleAnalytics />;
 }

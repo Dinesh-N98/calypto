@@ -21,7 +21,6 @@
     "@neon/config": "^1.7.2",
     "@neon/env": "^1.4.3",
     "@prisma/client": "^6.19.3",
-    "@vercel/analytics": "^2.0.1",
     "aos": "^2.3.4",
     "bcrypt": "^6.0.0",
     "lucide-react": "^1.49.0",
