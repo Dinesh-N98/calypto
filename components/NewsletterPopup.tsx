@@ -101,12 +101,6 @@ export function NewsletterPopup() {
 
       if (popupState === "modal" || popupState === "badge") return;
 
-      const dismissalAge = stored?.status === "dismissed" ? Date.now() - stored.at : null;
-      if (dismissalAge !== null && dismissalAge >= 0 && dismissalAge < DISMISS_MS) {
-        setPopupState("badge");
-        return;
-      }
-
       timer = window.setTimeout(() => {
         timer = undefined;
         const currentConsent = getCookieConsent();
@@ -118,12 +112,12 @@ export function NewsletterPopup() {
           latestDismissalAge >= 0 &&
           latestDismissalAge < DISMISS_MS;
 
-        if (
-          !hidden &&
-          currentConsent?.targeting === true &&
-          latestStored?.status !== "subscribed" &&
-          !dismissedRecently
-        ) {
+        if (hidden || currentConsent?.targeting !== true) return;
+        if (latestStored?.status === "subscribed") {
+          setPopupState("subscribed");
+        } else if (dismissedRecently) {
+          setPopupState("badge");
+        } else {
           setPopupState("modal");
         }
       }, DELAY_MS);

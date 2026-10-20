@@ -13,6 +13,20 @@ vi.mock("next/image", () => ({
 
 const NEWSLETTER_KEY = "calypto-newsletter-popup";
 
+function updateTargetingConsent(targeting: boolean) {
+  const consent = JSON.stringify({
+    necessary: true,
+    functional: false,
+    performance: false,
+    targeting,
+    at: Date.now(),
+  });
+  localStorage.setItem(COOKIE_CONSENT_KEY, consent);
+  window.dispatchEvent(
+    new StorageEvent("storage", { key: COOKIE_CONSENT_KEY, newValue: consent }),
+  );
+}
+
 beforeEach(() => {
   vi.unstubAllGlobals();
   vi.useFakeTimers();
@@ -76,5 +90,45 @@ describe("NewsletterPopup visibility states", () => {
     expect(JSON.parse(localStorage.getItem(NEWSLETTER_KEY) ?? "{}")).toMatchObject({
       status: "subscribed",
     });
+  });
+
+  it("hides on targeting withdrawal and waits before showing after consent is granted", async () => {
+    render(createElement(NewsletterPopup));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    expect(screen.getByRole("dialog", { name: "15% Off" })).toBeInTheDocument();
+
+    act(() => updateTargetingConsent(false));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    act(() => updateTargetingConsent(true));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5999);
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(screen.getByRole("dialog", { name: "15% Off" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeInTheDocument();
+    act(() => updateTargetingConsent(false));
+    expect(screen.queryByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeNull();
+
+    act(() => updateTargetingConsent(true));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    expect(screen.getByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeInTheDocument();
   });
 });
