@@ -1,23 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin";
-import {
-  getVercelAnalytics,
-  VercelAnalyticsError,
-} from "@/lib/vercel-analytics";
-import type {
-  AnalyticsRange,
-  AnalyticsUnit,
-} from "@/lib/analytics-types";
+import { getAdminAnalytics } from "@/lib/ga-analytics";
+import type { AnalyticsRange } from "@/lib/analytics-types";
 
 export const dynamic = "force-dynamic";
 
-const rangeDurations: Record<AnalyticsRange, number> = {
-  "24h": 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
-  "30d": 30 * 24 * 60 * 60 * 1000,
-};
-
-function isAnalyticsRange(value: string): value is AnalyticsRange {
+function isAnalyticsRange(value: string | null): value is AnalyticsRange {
   return value === "24h" || value === "7d" || value === "30d";
 }
 
@@ -28,28 +16,18 @@ export async function GET(request: Request) {
   const requestedRange = new URL(request.url).searchParams.get("range");
   const range = requestedRange ?? "7d";
   if (!isAnalyticsRange(range)) {
-    return NextResponse.json(
-      { error: "Range must be one of 24h, 7d, or 30d." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Range must be one of 24h, 7d, or 30d." }, { status: 400 });
   }
 
-  const endAt = Date.now();
-  const startAt = endAt - rangeDurations[range];
-  const unit: AnalyticsUnit = range === "24h" ? "hour" : "day";
-
   try {
-    const analytics = await getVercelAnalytics(range, startAt, endAt, unit);
+    const analytics = await getAdminAnalytics(range);
     return NextResponse.json(analytics, {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
-    if (error instanceof VercelAnalyticsError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-    console.error("Unable to fetch Vercel analytics.", error);
+    console.error("Unable to fetch admin analytics.", error);
     return NextResponse.json(
-      { error: "Unable to load analytics right now." },
+      { error: "Unable to load analytics. Verify GA4 service account access and configuration." },
       { status: 500 },
     );
   }
