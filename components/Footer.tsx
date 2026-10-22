@@ -63,8 +63,8 @@ export function Footer({ categories }: { categories: { name: string; slug: strin
             YouTube{" "}
             <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
           </a>
-          <a className="text-[.75rem] text-muted" href="#email">
-            hello@calypto.co
+          <a className="text-[.75rem] text-muted" href="mailto:icalypto@gmail.com">
+            icalypto@gmail.com
           </a>
         </div>
         <small className="col-span-full pt-8 text-[.75rem] text-muted">

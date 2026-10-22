@@ -23,8 +23,8 @@ export default function ContactPage() {
             <p className="mb-5 text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
               Direct contact
             </p>
-            <a className="text-lg font-bold md:text-xl" href="mailto:hello@calypto.co">
-              hello@calypto.co
+            <a className="text-lg font-bold md:text-xl" href="mailto:icalypto@gmail.com">
+              icalypto@gmail.com
             </a>
             <p className="mt-3 max-w-xs leading-[1.6] text-muted">
               We usually reply within 1 business day.

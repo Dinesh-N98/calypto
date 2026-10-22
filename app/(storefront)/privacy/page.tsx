@@ -22,6 +22,7 @@ export default function PrivacyPolicyPage() {
             This policy explains how Calypto collects, uses, stores, and shares information when you
             visit our storefront, create an account, place an order, or contact us.
           </p>
+          <p className="mt-3 text-xs text-[#a5a89a]">Last updated: October 22, 2026</p>
         </header>
 
         <section aria-labelledby="information-we-collect" className={sectionClass}>
@@ -122,6 +123,23 @@ export default function PrivacyPolicyPage() {
           </div>
         </section>
 
+        <section aria-labelledby="do-not-track" className={sectionClass}>
+          <h2 className="text-2xl font-extrabold" id="do-not-track">
+            Do Not Track and analytics choices
+          </h2>
+          <p className={paragraphClass}>
+            Some browsers offer a “Do Not Track” (DNT) signal. This site does not currently
+            interpret DNT as a separate preference. Google Analytics is controlled by your
+            performance choice in Cookie Settings: it is not loaded unless you enable that category.
+            If you have enabled performance analytics, turn it off in Cookie Settings to stop the
+            site from loading Google Analytics. A DNT signal by itself does not change a saved
+            Cookie Settings choice.
+          </p>
+          <div className="mt-4">
+            <CookieSettingsTrigger />
+          </div>
+        </section>
+
         <section aria-labelledby="sharing" className={sectionClass}>
           <h2 className="text-2xl font-extrabold" id="sharing">
             Third-party services
@@ -207,10 +225,33 @@ export default function PrivacyPolicyPage() {
           <p className={paragraphClass}>
             To help us protect your information, we may need to verify your identity before
             completing a request. Contact{" "}
-            <a className="text-lime underline underline-offset-4" href="mailto:hello@calypto.co">
-              hello@calypto.co
+            <a className="text-lime underline underline-offset-4" href="mailto:icalypto@gmail.com">
+              icalypto@gmail.com
             </a>{" "}
             for privacy, access, deletion, correction, or newsletter opt-out requests.
+          </p>
+          <h3 className="mt-7 text-lg font-bold text-paper">European data protection rights</h3>
+          <p className={paragraphClass}>
+            If the GDPR or similar European data protection law applies to you, you may have rights
+            to access and receive a copy of your personal data, correct inaccurate data, request
+            erasure or restriction, receive certain data in a portable format, object to certain
+            processing, and withdraw consent where processing relies on consent. You may also lodge
+            a complaint with your local data protection supervisory authority. These rights may be
+            subject to legal conditions and exceptions.
+          </p>
+          <h3 className="mt-7 text-lg font-bold text-paper">California consumer rights</h3>
+          <p className={paragraphClass}>
+            If California privacy law applies to you, you may have rights to know/access, correct,
+            and request deletion of personal information, and to opt out of its sale or sharing for
+            cross-context behavioral advertising. You also have the right not to receive
+            discriminatory treatment for exercising applicable privacy rights. Calypto does not sell
+            personal information for money or use it for cross-context behavioral advertising. We do
+            disclose information to service providers for the purposes described in this policy; to
+            submit a request or ask about an opt-out, email us at{" "}
+            <a className="text-lime underline underline-offset-4" href="mailto:icalypto@gmail.com">
+              icalypto@gmail.com
+            </a>
+            .
           </p>
         </section>
 
@@ -228,6 +269,19 @@ export default function PrivacyPolicyPage() {
               contact form
             </Link>
             .
+          </p>
+        </section>
+
+        <section aria-labelledby="policy-updates" className={sectionClass}>
+          <h2 className="text-2xl font-extrabold" id="policy-updates">
+            Changes to this policy
+          </h2>
+          <p className={paragraphClass}>
+            We may update this policy as our practices or legal requirements change. When we do, we
+            will post the revised policy here and update the “Last updated” date at the top of this
+            page. Please review this page periodically for the latest information. If a change
+            requires notice or consent under applicable law, we will provide that notice or obtain
+            consent as required.
           </p>
         </section>
       </article>
