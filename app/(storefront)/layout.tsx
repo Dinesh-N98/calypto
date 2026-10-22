@@ -7,7 +7,7 @@ export default async function StorefrontLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
+    orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
     select: { name: true, slug: true },
   });
   return <SiteShell categories={categories}>{children}</SiteShell>;

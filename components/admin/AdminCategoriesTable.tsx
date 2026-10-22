@@ -3,11 +3,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, ImagePlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  ExternalLink,
+  GripVertical,
+  ImagePlus,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   createCategory,
   deleteCategory,
+  reorderCategories,
   updateCategory,
 } from "@/app/admin/catalog-actions";
 import { useToast } from "@/components/ToastProvider";
@@ -17,6 +27,7 @@ type CategoryRecord = {
   name: string;
   slug: string;
   image: string | null;
+  displayOrder: number;
   tieredDiscountsEnabled: boolean;
   productCount: number;
 };
@@ -119,9 +130,7 @@ function CategoryDrawer({
 
     startTransition(async () => {
       try {
-        const result = category
-          ? await updateCategory(formData)
-          : await createCategory(formData);
+        const result = category ? await updateCategory(formData) : await createCategory(formData);
         if (result.ok) onComplete(result);
         else {
           setError(result.error);
@@ -366,8 +375,8 @@ function CategoryDeleteDialog({
           Delete category?
         </h2>
         <p className="mt-2 text-sm leading-6 text-[#65695f]">
-          This will permanently remove{" "}
-          <strong className="text-[#161812]">{category.name}</strong> from the catalog.
+          This will permanently remove <strong className="text-[#161812]">{category.name}</strong>{" "}
+          from the catalog.
         </p>
         {error && (
           <p aria-live="assertive" className="mt-3 text-sm text-red-800">
@@ -402,20 +411,73 @@ export function AdminCategoriesTable({ categories }: { categories: CategoryRecor
   const { showToast } = useToast();
   const searchRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
+  const [orderedIds, setOrderedIds] = useState<string[] | null>(null);
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
+  const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
   const [drawerCategory, setDrawerCategory] = useState<CategoryRecord | null | undefined>(
     undefined,
   );
   const [deleteTarget, setDeleteTarget] = useState<CategoryRecord | null>(null);
 
+  const orderedCategories = useMemo(() => {
+    if (!orderedIds) return categories;
+    const indexById = new Map(orderedIds.map((id, index) => [id, index]));
+    return [...categories].sort((first, second) => {
+      const firstIndex = indexById.get(first.id);
+      const secondIndex = indexById.get(second.id);
+      if (firstIndex !== undefined && secondIndex !== undefined) return firstIndex - secondIndex;
+      if (firstIndex !== undefined) return -1;
+      if (secondIndex !== undefined) return 1;
+      return first.displayOrder - second.displayOrder || first.name.localeCompare(second.name);
+    });
+  }, [categories, orderedIds]);
+
   const filteredCategories = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
-    return categories.filter(
+    return orderedCategories.filter(
       (category) =>
         !query ||
         category.name.toLocaleLowerCase().includes(query) ||
         category.slug.toLocaleLowerCase().includes(query),
     );
-  }, [categories, search]);
+  }, [orderedCategories, search]);
+
+  async function moveCategory(sourceId: string, targetId: string) {
+    if (isReordering || search.trim() || sourceId === targetId) return;
+
+    const previousOrder = orderedCategories.map((category) => category.id);
+    const nextOrder = [...previousOrder];
+    const sourceIndex = nextOrder.indexOf(sourceId);
+    const targetIndex = nextOrder.indexOf(targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const [movedCategory] = nextOrder.splice(sourceIndex, 1);
+    nextOrder.splice(targetIndex, 0, movedCategory);
+    setOrderedIds(nextOrder);
+    setIsReordering(true);
+
+    try {
+      const result = await reorderCategories(
+        nextOrder.map((id, displayOrder) => ({ id, displayOrder })),
+      );
+      if (!result.ok) {
+        setOrderedIds(previousOrder);
+        showToast(result.error, "error");
+        return;
+      }
+
+      showToast(result.message);
+      router.refresh();
+    } catch (error) {
+      setOrderedIds(previousOrder);
+      showToast(error instanceof Error ? error.message : "Unable to save category order.", "error");
+    } finally {
+      setIsReordering(false);
+      setDraggedCategoryId(null);
+      setDragOverCategoryId(null);
+    }
+  }
 
   function completeAction(result: ActionResult, close: () => void) {
     if (!result.ok) return;
@@ -433,7 +495,8 @@ export function AdminCategoriesTable({ categories }: { categories: CategoryRecor
           </Link>
           <h1 className="mt-2 text-3xl font-black tracking-[-.04em] sm:text-4xl">Categories</h1>
           <p className="mt-2 text-sm leading-6 text-[#65695f]">
-            Search, organize, and manage your storefront categories.
+            Search, organize, and manage your storefront categories. Drag the grip handle to change
+            storefront order; clear search before reordering.
           </p>
         </div>
         <button
@@ -487,6 +550,9 @@ export function AdminCategoriesTable({ categories }: { categories: CategoryRecor
           <table className="w-full min-w-[920px] border-collapse text-left">
             <thead className="bg-[#f7f8f5] text-[.65rem] uppercase tracking-[.1em] text-[#73786b]">
               <tr>
+                <th className="px-2 py-3 font-bold">
+                  <span className="sr-only">Reorder</span>
+                </th>
                 <th className="px-4 py-3 font-bold">Image</th>
                 <th className="px-4 py-3 font-bold">Category name</th>
                 <th className="px-4 py-3 font-bold">URL slug</th>
@@ -500,9 +566,56 @@ export function AdminCategoriesTable({ categories }: { categories: CategoryRecor
                 const inUse = category.productCount > 0;
                 const deleteMessage =
                   "Reassign or delete all linked products before deleting this category.";
+                const categoryIndex = orderedCategories.findIndex(
+                  (item) => item.id === category.id,
+                );
 
                 return (
-                  <tr className="hover:bg-[#fafbf8]" key={category.id}>
+                  <tr
+                    className={`hover:bg-[#fafbf8] ${dragOverCategoryId === category.id ? "border-t-2 border-[#718126]" : ""} ${draggedCategoryId === category.id ? "opacity-50" : ""}`}
+                    key={category.id}
+                    onDragOver={(event) => {
+                      if (search.trim() || isReordering || !draggedCategoryId) return;
+                      event.preventDefault();
+                      setDragOverCategoryId(category.id);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (draggedCategoryId) void moveCategory(draggedCategoryId, category.id);
+                    }}
+                  >
+                    <td className="px-2 py-3">
+                      <button
+                        aria-label={`Reorder ${category.name}; position ${categoryIndex + 1} of ${orderedCategories.length}. Use arrow keys to move.`}
+                        className="grid h-9 w-9 cursor-grab place-items-center rounded-md text-[#73786b] hover:bg-[#eef2df] hover:text-[#53641d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#718126] active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={isReordering || Boolean(search.trim())}
+                        draggable={!isReordering && !search.trim()}
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", category.id);
+                          setDraggedCategoryId(category.id);
+                        }}
+                        onDragEnd={() => {
+                          setDraggedCategoryId(null);
+                          setDragOverCategoryId(null);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+                          event.preventDefault();
+                          const target =
+                            orderedCategories[categoryIndex + (event.key === "ArrowUp" ? -1 : 1)];
+                          if (target) void moveCategory(category.id, target.id);
+                        }}
+                        title={
+                          search.trim()
+                            ? "Clear the search to reorder categories"
+                            : "Drag to reorder, or use the arrow keys"
+                        }
+                        type="button"
+                      >
+                        <GripVertical aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="relative h-10 w-14 overflow-hidden rounded bg-[#e8e9e4]">
                         {category.image && (
@@ -583,7 +696,7 @@ export function AdminCategoriesTable({ categories }: { categories: CategoryRecor
               })}
               {filteredCategories.length === 0 && (
                 <tr>
-                  <td className="px-4 py-14 text-center" colSpan={5}>
+                  <td className="px-4 py-14 text-center" colSpan={7}>
                     <p className="text-sm font-bold text-[#42463b]">
                       {categories.length === 0
                         ? "No categories yet"

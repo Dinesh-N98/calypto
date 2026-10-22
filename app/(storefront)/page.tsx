@@ -22,7 +22,7 @@ export default async function Home() {
       orderBy: [{ startDate: "asc" }, { createdAt: "desc" }],
     }),
     prisma.category.findMany({
-      orderBy: { name: "asc" },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
       select: {
         name: true,
         slug: true,

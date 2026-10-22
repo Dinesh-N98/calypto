@@ -98,7 +98,7 @@ export default async function ShopPage({
 }) {
   const params = await searchParams;
   const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
+    orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
     select: { id: true, name: true, slug: true },
   });
   const selectedCategory = categories.find((category) => category.slug === params.category);

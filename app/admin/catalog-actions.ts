@@ -227,7 +227,10 @@ export async function createCategory(
   if (category.error) return { ok: false, error: category.error };
 
   try {
-    await prisma.category.create({ data: category.data });
+    const lastCategory = await prisma.category.aggregate({ _max: { displayOrder: true } });
+    await prisma.category.create({
+      data: { ...category.data, displayOrder: (lastCategory._max.displayOrder ?? -1) + 1 },
+    });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
       return { ok: false, error: "A category with this name or slug already exists." };
@@ -237,6 +240,67 @@ export async function createCategory(
 
   revalidateCatalog();
   return { ok: true, message: "Category created." };
+}
+
+export async function reorderCategories(
+  value: unknown,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  await requireAdminPage("/admin/categories");
+
+  if (
+    !Array.isArray(value) ||
+    value.length > 1000 ||
+    !value.every(
+      (item) =>
+        item !== null &&
+        typeof item === "object" &&
+        !Array.isArray(item) &&
+        typeof item.id === "string" &&
+        item.id.length > 0 &&
+        Number.isSafeInteger(item.displayOrder) &&
+        item.displayOrder >= 0,
+    )
+  ) {
+    return { ok: false, error: "The category order is invalid." };
+  }
+
+  const order = value as { id: string; displayOrder: number }[];
+  if (
+    new Set(order.map((item) => item.id)).size !== order.length ||
+    order.some((item, index) => item.displayOrder !== index)
+  ) {
+    return {
+      ok: false,
+      error: "The category order must contain unique IDs and consecutive positions.",
+    };
+  }
+
+  const saved = await prisma.$transaction(async (transaction) => {
+    const existingCategories = await transaction.category.findMany({
+      select: { id: true },
+    });
+    const existingIds = new Set(existingCategories.map((category) => category.id));
+    if (
+      existingIds.size !== order.length ||
+      order.some((category) => !existingIds.has(category.id))
+    ) {
+      return false;
+    }
+
+    for (const category of order) {
+      await transaction.category.update({
+        where: { id: category.id },
+        data: { displayOrder: category.displayOrder },
+      });
+    }
+    return true;
+  });
+
+  if (!saved)
+    return { ok: false, error: "The category list changed. Refresh the page and try again." };
+
+  revalidateCatalog();
+  return { ok: true, message: "Category order saved." };
 }
 
 export async function updateCategory(
@@ -387,7 +451,7 @@ function readProduct(formData: FormData) {
     tieredDiscountsEnabledInput === "" ? null
       : tieredDiscountsEnabledInput === "true" ? true
         : tieredDiscountsEnabledInput === "false" ? false
-          : undefined;
+        : undefined;
   if (tieredDiscountsEnabled === undefined) {
     return { error: "Choose whether quantity discounts are inherited, enabled, or disabled." } as const;
   }
