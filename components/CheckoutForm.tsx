@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { PayPalCheckoutButtons } from "@/components/PayPalCheckoutButtons";
 import type { CheckoutPayload } from "@/lib/checkout/types";
@@ -36,6 +37,26 @@ const emptyAddress: AddressFields = {
   postalCode: "",
   country: "",
 };
+
+function CheckoutLegalNotice() {
+  return (
+    <p className="text-xs leading-5 text-[#c9cbbf]">
+      By placing your order, you agree to Calypto&apos;s{" "}
+      <Link className="text-lime underline underline-offset-4" href="/terms">
+        Terms of Service
+      </Link>
+      ,{" "}
+      <Link className="text-lime underline underline-offset-4" href="/privacy">
+        Privacy Policy
+      </Link>
+      , and{" "}
+      <Link className="text-lime underline underline-offset-4" href="/refund-policy">
+        Refund Policy
+      </Link>
+      .
+    </p>
+  );
+}
 
 export function CheckoutForm({
   items,
@@ -323,20 +344,23 @@ export function CheckoutForm({
           </label>
         )}
         {paymentProvider === "ONEPAY" && (
-          <button
-            className="button-primary inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
-            disabled={isCheckingOut}
-            type="submit"
-          >
-            {isCheckingOut ? (
-              "Opening checkout..."
-            ) : (
-              <>
-                Checkout{" "}
-                <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
-              </>
-            )}
-          </button>
+          <>
+            <button
+              className="button-primary inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
+              disabled={isCheckingOut}
+              type="submit"
+            >
+              {isCheckingOut ? (
+                "Opening checkout..."
+              ) : (
+                <>
+                  Checkout{" "}
+                  <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2} />
+                </>
+              )}
+            </button>
+            <CheckoutLegalNotice />
+          </>
         )}
         {error && paymentProvider === "ONEPAY" && (
           <p className="text-sm text-red-700" role="alert">
@@ -348,6 +372,9 @@ export function CheckoutForm({
         (paypalClientId ? (
           <div className="mt-5">
             <PayPalCheckoutButtons clientId={paypalClientId} createPayload={getPayPalPayload} />
+            <div className="mt-3">
+              <CheckoutLegalNotice />
+            </div>
           </div>
         ) : (
           <p className="mt-5 text-sm text-red-700" role="alert">

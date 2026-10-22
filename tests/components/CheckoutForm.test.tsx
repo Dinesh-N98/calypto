@@ -48,19 +48,21 @@ function renderCheckout({
   addresses = savedAddresses,
   defaultAddress = addresses.find((address) => address.isDefault) ?? addresses[0] ?? null,
   isAuthenticated = true,
+  paymentProvider = "ONEPAY",
 }: {
   currentProfile?: CheckoutProfile | null;
   addresses?: CheckoutAddress[];
   defaultAddress?: CheckoutAddress | null;
   isAuthenticated?: boolean;
+  paymentProvider?: "ONEPAY" | "PAYPAL";
 } = {}) {
   return render(
     <CheckoutForm
       defaultAddress={defaultAddress}
       isAuthenticated={isAuthenticated}
       items={[{ variantId: "variant-1", quantity: 1 }]}
-      paymentProvider="ONEPAY"
-      paypalClientId=""
+      paymentProvider={paymentProvider}
+      paypalClientId={paymentProvider === "PAYPAL" ? "test-client-id" : ""}
       profile={currentProfile}
       savedAddresses={addresses}
     />,
@@ -68,6 +70,32 @@ function renderCheckout({
 }
 
 describe("CheckoutForm", () => {
+  it.each(["ONEPAY", "PAYPAL"] as const)(
+    "shows the legal links beside the %s payment action",
+    (paymentProvider) => {
+      renderCheckout({ paymentProvider });
+
+      expect(screen.getByText(/By placing your order, you agree to Calypto's/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Terms of Service" })).toHaveAttribute(
+        "href",
+        "/terms",
+      );
+      expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+        "href",
+        "/privacy",
+      );
+      expect(screen.getByRole("link", { name: "Refund Policy" })).toHaveAttribute(
+        "href",
+        "/refund-policy",
+      );
+      if (paymentProvider === "ONEPAY") {
+        expect(screen.getByRole("button", { name: /Checkout/ })).toHaveAttribute("type", "submit");
+      } else {
+        expect(screen.getByTestId("paypal-buttons")).toBeInTheDocument();
+      }
+    },
+  );
+
   it("renders server-provided contact details and default address immediately", () => {
     renderCheckout();
 

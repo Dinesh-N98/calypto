@@ -45,6 +45,9 @@ export function Footer({ categories }: { categories: { name: string; slug: strin
           <Link className="text-[.75rem] text-muted" href="/privacy">
             Privacy Policy
           </Link>
+          <Link className="text-[.75rem] text-muted" href="/refund-policy">
+            Refund Policy
+          </Link>
           <CookieSettingsTrigger />
         </div>
         <div className="flex flex-col gap-3">
