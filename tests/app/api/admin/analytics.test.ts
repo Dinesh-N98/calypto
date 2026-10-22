@@ -59,4 +59,24 @@ describe("admin analytics route", () => {
     expect(response.status).toBe(400);
     expect(mocks.getAdminAnalytics).not.toHaveBeenCalled();
   });
+
+  it("logs the underlying GA4 error but returns a safe generic API error", async () => {
+    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.getAdminAnalytics.mockRejectedValueOnce(
+      new Error("3 PERMISSION_DENIED: Service account lacks property access"),
+    );
+
+    const response = await GET(new Request("https://example.test/api/admin/analytics?range=7d"));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: "Unable to load analytics. Verify GA4 service account access and configuration.",
+    });
+    expect(logSpy).toHaveBeenCalledWith(
+      "Unable to fetch admin analytics:",
+      "3 PERMISSION_DENIED: Service account lacks property access",
+      expect.any(Error),
+    );
+    logSpy.mockRestore();
+  });
 });

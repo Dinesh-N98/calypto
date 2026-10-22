@@ -25,7 +25,8 @@ export async function GET(request: Request) {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
-    console.error("Unable to fetch admin analytics.", error);
+    const details = error instanceof Error ? error.message : String(error);
+    console.error("Unable to fetch admin analytics:", details, error);
     return NextResponse.json(
       { error: "Unable to load analytics. Verify GA4 service account access and configuration." },
       { status: 500 },
