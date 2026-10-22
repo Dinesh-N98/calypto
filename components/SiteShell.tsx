@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { CartProvider } from "@/components/CartProvider";
 import { CookieBanner } from "@/components/CookieBanner";
+import { PreviewBanner } from "@/components/PreviewBanner";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { WishlistProvider } from "@/components/WishlistProvider";
@@ -34,6 +35,7 @@ export function SiteShell({
   return (
     <CartProvider>
       <WishlistProvider>
+        <PreviewBanner />
         <Header />
         {children}
         <Footer categories={categories} />

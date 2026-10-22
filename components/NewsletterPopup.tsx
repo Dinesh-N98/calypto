@@ -212,13 +212,13 @@ export function NewsletterPopup() {
   if (popupState === "badge") {
     return (
       <button
-        className="fixed bottom-5 left-5 z-[70] inline-flex items-center gap-2 rounded-full border border-lime/60 bg-ink px-4 py-3 text-sm font-extrabold text-paper shadow-2xl transition hover:-translate-y-0.5 hover:bg-[#171a13] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime motion-reduce:transform-none"
+        className="fixed bottom-5 left-5 z-[70] inline-flex items-center gap-2 rounded-full border border-lime/60 bg-ink px-4 py-3 text-sm font-extrabold text-paper shadow-2xl transition hover:-translate-y-0.5 hover:bg-[#171a13] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime motion-reduce:transform-none max-sm:h-10 max-sm:w-10 max-sm:justify-center max-sm:gap-0 max-sm:p-0"
         type="button"
         onClick={() => setPopupState("modal")}
         aria-label="Reopen newsletter offer: get 15% off"
       >
         <Gift aria-hidden="true" className="h-4 w-4 text-lime" />
-        Get 15% OFF
+        <span className="max-sm:sr-only">Get 15% OFF</span>
       </button>
     );
   }

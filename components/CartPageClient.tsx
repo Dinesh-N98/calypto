@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, LockKeyhole, Tag, Trash2 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import { useCart } from "@/components/CartProvider";
+import { DirectOrderInquiryModal } from "@/components/DirectOrderInquiryModal";
 import {
   CheckoutForm,
   type CheckoutAddress,
@@ -34,6 +35,7 @@ export default function CartPageClient({
   const [directPurchaseQuantity, setDirectPurchaseQuantity] = useState(buyNowQuantity);
   const [paymentProvider, setPaymentProvider] = useState<CheckoutPaymentProvider>("ONEPAY");
   const [isCheckoutStep, setIsCheckoutStep] = useState(false);
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
   const [discountMessage, setDiscountMessage] = useState("");
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
@@ -68,8 +70,7 @@ export default function CartPageClient({
   }
 
   function proceedToCheckout() {
-    setIsCheckoutStep(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setIsInquiryOpen(true);
   }
 
   function returnToCart() {
@@ -77,9 +78,12 @@ export default function CartPageClient({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const closeInquiry = useCallback(() => setIsInquiryOpen(false), []);
+
   return (
     <main className="min-h-[65vh] bg-paper px-4 pb-32 pt-7 text-ink sm:px-6 sm:pt-10 lg:px-8 lg:pb-16">
       <div className="mx-auto max-w-7xl">
+        {isInquiryOpen && <DirectOrderInquiryModal onClose={closeInquiry} />}
         <header className="mb-7 border-b border-[rgba(13,14,12,.14)] pb-5 sm:mb-9 sm:pb-6">
           <p className="text-[.65rem] font-bold uppercase tracking-[.16em] text-olive">
             Calypto / {isCheckoutStep ? "Checkout" : "Your cart"}

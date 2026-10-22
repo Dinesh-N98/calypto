@@ -41,7 +41,7 @@ export function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-50 h-16 border-b bg-ink transition-[height,border-color] duration-300 ${isScrolled ? "border-[rgba(241,240,232,.18)] md:h-[68px]" : "border-transparent md:h-[84px]"}`}
+      className={`sticky top-[var(--preview-banner-height,0px)] z-50 h-16 border-b bg-ink transition-[height,border-color] duration-300 ${isScrolled ? "border-[rgba(241,240,232,.18)] md:h-[68px]" : "border-transparent md:h-[84px]"}`}
     >
       <div className="site-container flex h-full items-center justify-between px-[6vw] md:grid md:grid-cols-[1fr_auto_1fr] md:px-[5vw]">
         <Link

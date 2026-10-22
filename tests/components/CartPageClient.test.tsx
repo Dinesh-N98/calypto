@@ -62,7 +62,7 @@ beforeEach(() => {
 });
 
 describe("CartPageClient", () => {
-  it("keeps delivery fields out of the cart review until checkout is selected", async () => {
+  it("intercepts checkout and opens the direct order inquiry", async () => {
     const user = userEvent.setup();
     const { container } = renderCart();
 
@@ -73,10 +73,18 @@ describe("CartPageClient", () => {
 
     await user.click(screen.getAllByRole("button", { name: "Proceed to checkout" })[0]);
 
-    expect(screen.getByRole("heading", { name: "Delivery & payment" })).toBeInTheDocument();
-    expect(checkoutSection).not.toHaveAttribute("hidden");
-    expect(screen.getByLabelText("First name")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back to cart" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Direct Order Inquiry" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/finalizing our automated payment & shipping integrations/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Send Inquiry via Form" })).toHaveAttribute(
+      "href",
+      "/contact",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Continue Browsing" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(checkoutSection).toHaveAttribute("hidden");
   });
 
   it("does not claim an unsupported promotion has been applied", async () => {
