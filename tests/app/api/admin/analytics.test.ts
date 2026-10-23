@@ -60,7 +60,7 @@ describe("admin analytics route", () => {
     expect(mocks.getAdminAnalytics).not.toHaveBeenCalled();
   });
 
-  it("logs the underlying GA4 error but returns a safe generic API error", async () => {
+  it("logs analytics source errors and returns a structured temporary-unavailable response", async () => {
     const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.getAdminAnalytics.mockRejectedValueOnce(
       new Error("3 PERMISSION_DENIED: Service account lacks property access"),
@@ -68,9 +68,12 @@ describe("admin analytics route", () => {
 
     const response = await GET(new Request("https://example.test/api/admin/analytics?range=7d"));
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await response.json()).toEqual({
-      error: "Unable to load analytics. Verify GA4 service account access and configuration.",
+      error:
+        "Analytics is temporarily unavailable. Verify GA4 service account access and configuration, then try again.",
+      code: "ANALYTICS_UNAVAILABLE",
     });
     expect(logSpy).toHaveBeenCalledWith(
       "Unable to fetch admin analytics:",

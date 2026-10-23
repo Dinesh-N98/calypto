@@ -284,16 +284,17 @@ export function AdminAnalyticsDashboard() {
           cache: "no-store",
           signal: controller.signal,
         });
-        const payload: unknown = await response.json().catch(() => {
-          throw new Error("The analytics service returned an unreadable response.");
-        });
         if (!response.ok) {
+          const payload: unknown = await response.json().catch(() => null);
           throw new Error(
             isRecord(payload) && typeof payload.error === "string"
               ? payload.error
               : "Unable to load analytics right now.",
           );
         }
+        const payload: unknown = await response.json().catch(() => {
+          throw new Error("The analytics service returned an unreadable response.");
+        });
         if (!isAnalyticsData(payload)) {
           throw new Error("The analytics service returned data in an unexpected format.");
         }
