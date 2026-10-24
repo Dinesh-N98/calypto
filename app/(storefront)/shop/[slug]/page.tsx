@@ -74,17 +74,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   if (!product) notFound();
 
-  const reviews = await prisma.review.aggregate({
-    where: { productId: product.id },
-    _avg: { rating: true },
-    _count: { rating: true },
-  });
-
   return (
     <main className="bg-paper px-4 py-6 text-ink sm:px-6 sm:py-8 md:px-[8vw] md:py-12">
       <div className="site-container">
         <ProductDetailExperience
-          averageRating={reviews._avg.rating ?? 0}
           categoryName={product.category.name}
           images={product.images}
           product={{
@@ -101,7 +94,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             tieredDiscountsEnabled:
               product.tieredDiscountsEnabled ?? product.category.tieredDiscountsEnabled,
           }}
-          reviewCount={reviews._count.rating}
           tieredDiscounts={product.tieredDiscounts}
           variants={product.variants}
         />

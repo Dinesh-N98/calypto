@@ -48,11 +48,9 @@ describe("ProductDetailExperience", () => {
     const user = userEvent.setup();
     render(
       <ProductDetailExperience
-        averageRating={0}
         categoryName="Soft Baits"
         images={[]}
         product={product}
-        reviewCount={0}
         tieredDiscounts={[]}
         variants={[
           {
@@ -68,6 +66,12 @@ describe("ProductDetailExperience", () => {
         ]}
       />,
     );
+
+    expect(screen.queryByText("Ratings (0)")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Price per item after applicable quantity discounts"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Informational estimate: 3 monthly installments/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Buy Now" }));
 

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Share2, ShoppingBag, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
 import { DirectOrderInquiryModal } from "@/components/DirectOrderInquiryModal";
 import { QuantitySelector } from "@/components/QuantitySelector";
@@ -40,8 +40,6 @@ type ProductDetailExperienceProps = {
   images: { id: string; url: string; altText: string | null }[];
   variants: Variant[];
   tieredDiscounts: { minQuantity: number; discountPercentage: number }[];
-  averageRating: number;
-  reviewCount: number;
   categoryName: string;
 };
 
@@ -76,8 +74,6 @@ export function ProductDetailExperience({
   images,
   variants,
   tieredDiscounts,
-  averageRating,
-  reviewCount,
   categoryName,
 }: ProductDetailExperienceProps) {
   const { addItem } = useCart();
@@ -138,7 +134,6 @@ export function ProductDetailExperience({
   const applicableTier = [...tieredDiscounts]
     .filter((tier) => quantity >= tier.minQuantity)
     .sort((left, right) => right.minQuantity - left.minQuantity)[0];
-  const installmentCents = Math.ceil(currentUnitPrice / 3);
 
   useEffect(() => {
     if (!product.saleEndsAt) return;
@@ -293,20 +288,6 @@ export function ProductDetailExperience({
             />
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <span aria-label={`${averageRating.toFixed(1)} out of 5 stars`} className="flex text-amber-500">
-            {Array.from({ length: 5 }, (_, index) => (
-              <Star
-                aria-hidden="true"
-                className="h-4 w-4"
-                fill={index < Math.round(averageRating) ? "currentColor" : "none"}
-                key={index}
-              />
-            ))}
-          </span>
-          <span className="font-semibold">{averageRating ? averageRating.toFixed(1) : "New"}</span>
-          <span className="text-[#62665c]">Ratings ({reviewCount})</span>
-        </div>
         <p className="mt-5 text-sm leading-7 text-[#55584e] sm:text-base">{product.description}</p>
 
         {savingPercent > 0 && (
@@ -332,12 +313,6 @@ export function ProductDetailExperience({
             </>
           )}
         </div>
-        <p className="mt-1 text-xs text-[#62665c]">Price per item after applicable quantity discounts</p>
-        <p className="mt-4 rounded-md border border-ink/10 bg-white/60 px-3 py-2 text-sm text-[#55584e] sm:px-4 sm:py-3">
-          Informational estimate: 3 monthly installments from{" "}
-          <strong>{formatPrice(installmentCents)}</strong> per month. Provider terms may vary.
-        </p>
-
         {colors.length > 0 && (
           <fieldset className="mt-6">
             <legend className="mb-2 text-xs font-extrabold uppercase tracking-[.1em]">
