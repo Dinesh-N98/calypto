@@ -60,11 +60,10 @@ describe("admin analytics route", () => {
     expect(mocks.getAdminAnalytics).not.toHaveBeenCalled();
   });
 
-  it("logs analytics source errors and returns a structured temporary-unavailable response", async () => {
+  it("returns a useful access message and logs only a sanitized error code", async () => {
+    const sensitiveDetails = "3 PERMISSION_DENIED: key material must not be logged";
     const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mocks.getAdminAnalytics.mockRejectedValueOnce(
-      new Error("3 PERMISSION_DENIED: Service account lacks property access"),
-    );
+    mocks.getAdminAnalytics.mockRejectedValueOnce(new Error(sensitiveDetails));
 
     const response = await GET(new Request("https://example.test/api/admin/analytics?range=7d"));
 
@@ -72,14 +71,38 @@ describe("admin analytics route", () => {
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await response.json()).toEqual({
       error:
-        "Analytics is temporarily unavailable. Verify GA4 service account access and configuration, then try again.",
-      code: "ANALYTICS_UNAVAILABLE",
+        "The service account cannot read this GA4 property. Add its email as a Viewer in Property access management and confirm the Google Analytics Data API is enabled.",
+      code: "GA_PROPERTY_ACCESS_DENIED",
     });
     expect(logSpy).toHaveBeenCalledWith(
       "Unable to fetch admin analytics:",
-      "3 PERMISSION_DENIED: Service account lacks property access",
-      expect.any(Error),
+      "GA_PROPERTY_ACCESS_DENIED",
     );
+    expect(JSON.stringify(logSpy.mock.calls)).not.toContain(sensitiveDetails);
     logSpy.mockRestore();
+  });
+
+  it.each([
+    [
+      "decoder failures",
+      "error:1E08010C:DECODER routines::unsupported",
+      "GA_PRIVATE_KEY_INVALID",
+      "Google could not decode GA_PRIVATE_KEY.",
+    ],
+    [
+      "JWT failures",
+      "invalid_grant: invalid JWT signature",
+      "GA_SERVICE_ACCOUNT_AUTH_FAILED",
+      "Google rejected the service-account credentials.",
+    ],
+  ])("returns a targeted message for %s", async (_label, details, code, message) => {
+    mocks.getAdminAnalytics.mockRejectedValueOnce(new Error(details));
+
+    const response = await GET(new Request("https://example.test/api/admin/analytics?range=7d"));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.code).toBe(code);
+    expect(body.error).toContain(message);
   });
 });

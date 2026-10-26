@@ -7,6 +7,7 @@ import type {
   AnalyticsRange,
   CurrencyMetric,
 } from "@/lib/analytics-types";
+import { getGaCredentials } from "@/lib/ga-credentials";
 import { prisma } from "@/lib/prisma";
 
 type ReportRow = {
@@ -68,25 +69,16 @@ const topProductLimit = 10;
 let cachedClient: { client: BetaAnalyticsDataClient; property: string } | undefined;
 
 function getClient(): { client: BetaAnalyticsDataClient; property: string } {
-  const propertyId = process.env.GA_PROPERTY_ID;
-  const clientEmail = process.env.GA_CLIENT_EMAIL;
-  const privateKey = process.env.GA_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  if (!propertyId || !clientEmail || !privateKey) {
-    throw new Error(
-      "GA4 Data API is not configured. Set GA_PROPERTY_ID, GA_CLIENT_EMAIL, and GA_PRIVATE_KEY.",
-    );
-  }
-  if (!/^\d+$/.test(propertyId)) {
-    throw new Error("GA_PROPERTY_ID must be a numeric GA4 property ID.");
-  }
-
   if (!cachedClient) {
+    const credentials = getGaCredentials();
     cachedClient = {
       client: new BetaAnalyticsDataClient({
-        credentials: { client_email: clientEmail, private_key: privateKey },
+        credentials: {
+          client_email: credentials.clientEmail,
+          private_key: credentials.privateKey,
+        },
       }),
-      property: `properties/${propertyId}`,
+      property: credentials.property,
     };
   }
   return cachedClient;
