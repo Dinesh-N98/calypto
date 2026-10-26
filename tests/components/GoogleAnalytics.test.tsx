@@ -4,7 +4,7 @@ import { act, render } from "@testing-library/react";
 import { createElement, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConsentAnalytics } from "@/components/ConsentAnalytics";
-import { COOKIE_CONSENT_KEY } from "@/lib/cookieConsent";
+import { saveCookieConsent } from "@/lib/cookieConsent";
 
 const routeMocks = vi.hoisted(() => ({ pathname: "/" }));
 
@@ -27,23 +27,14 @@ vi.mock("next/script", () => ({
 }));
 
 function setConsent(performance: boolean) {
-  const value = JSON.stringify({
-    necessary: true,
-    functional: false,
-    performance,
-    targeting: false,
-    at: Date.now(),
-  });
-  localStorage.setItem(COOKIE_CONSENT_KEY, value);
-  window.dispatchEvent(
-    new StorageEvent("storage", { key: COOKIE_CONSENT_KEY, newValue: value }),
-  );
+  saveCookieConsent({ functional: false, performance, targeting: false });
 }
 
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.stubEnv("NEXT_PUBLIC_GA_MEASUREMENT_ID", "G-TEST12345");
+  vi.stubEnv("NEXT_PUBLIC_GA_DEBUG", "false");
   routeMocks.pathname = "/";
   localStorage.clear();
   window.dataLayer = [];
@@ -55,7 +46,21 @@ afterEach(() => {
 });
 
 describe("consent-gated Google Analytics", () => {
-  it("does not load before consent and mounts GA after performance consent", async () => {
+  it("does not load or send events without performance consent", () => {
+    render(createElement(ConsentAnalytics));
+
+    expect(document.querySelector("#google-analytics")).toBeNull();
+    expect(window.dataLayer).toEqual([]);
+    expect(window.gtag).toBeUndefined();
+  });
+
+  it("sends config and the first storefront page_view after accepting consent", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GA_DEBUG", "true");
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+    document.title = "Storefront title";
+    routeMocks.pathname = "/products/test";
+    window.history.replaceState({}, "", "/products/test?variant=small");
+
     render(createElement(ConsentAnalytics));
 
     expect(document.querySelector("#google-analytics")).toBeNull();
@@ -68,12 +73,52 @@ describe("consent-gated Google Analytics", () => {
       "src",
       "https://www.googletagmanager.com/gtag/js?id=G-TEST12345",
     );
-    expect(
-      window.dataLayer?.some(
-        (entry) => entry[0] === "event" && entry[1] === "page_view",
-      ),
-    ).toBe(true);
+
+    const consentCall = window.dataLayer?.find((entry) => entry[0] === "consent");
+    expect(consentCall?.[2]).toMatchObject({ analytics_storage: "granted" });
+
+    const configCall = window.dataLayer?.find((entry) => entry[0] === "config");
+    expect(configCall).toBeDefined();
+    expect(Object.prototype.toString.call(configCall)).toBe("[object Arguments]");
+    expect(configCall?.[2]).toMatchObject({
+      send_page_view: false,
+      debug_mode: true,
+    });
+
+    const pageViewCall = window.dataLayer?.find(
+      (entry) => entry[0] === "event" && entry[1] === "page_view",
+    );
+    expect(pageViewCall).toBeDefined();
+    expect(Object.prototype.toString.call(pageViewCall)).toBe("[object Arguments]");
+    expect(pageViewCall?.[2]).toMatchObject({
+      page_path: "/products/test?variant=small",
+      page_location: window.location.href,
+      page_title: "Storefront title",
+    });
+    expect(window.dataLayer?.map((entry) => entry[0])).toEqual([
+      "consent",
+      "js",
+      "config",
+      "event",
+    ]);
+    expect(debugSpy.mock.calls).toEqual([
+      ["GA4 config sent."],
+      ["GA4 page_view sent."],
+    ]);
     expect(window["ga-disable-G-TEST12345"]).toBe(false);
+  });
+
+  it("does not load or initialize GA on admin routes", async () => {
+    routeMocks.pathname = "/admin/";
+    render(createElement(ConsentAnalytics));
+
+    await act(async () => {
+      setConsent(true);
+    });
+
+    expect(document.querySelector("#google-analytics")).toBeNull();
+    expect(window.dataLayer).toEqual([]);
+    expect(window.gtag).toBeUndefined();
   });
 
   it("disables tracking and removes the component when consent is withdrawn", async () => {

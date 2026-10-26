@@ -8,7 +8,7 @@ type Gtag = (...args: unknown[]) => void;
 
 declare global {
   interface Window {
-    dataLayer?: unknown[][];
+    dataLayer?: IArguments[];
     gtag?: Gtag;
     [key: `ga-disable-${string}`]: boolean;
   }
@@ -19,6 +19,7 @@ const measurementIdPattern = /^G-[A-Z0-9]+$/;
 export function GoogleAnalytics() {
   const pathname = usePathname();
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const debugEnabled = process.env.NEXT_PUBLIC_GA_DEBUG === "true";
   const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
   const [scriptReady, setScriptReady] = useState(false);
 
@@ -30,9 +31,11 @@ export function GoogleAnalytics() {
     window.dataLayer = window.dataLayer ?? [];
     window.gtag =
       window.gtag ??
-      ((...args: unknown[]) => {
-        window.dataLayer?.push(args);
-      });
+      function gtag() {
+        // gtag.js consumes queued calls as Arguments objects, not arrays.
+        // eslint-disable-next-line prefer-rest-params
+        window.dataLayer?.push(arguments);
+      };
 
     window.gtag("consent", "update", {
       analytics_storage: "granted",
@@ -41,13 +44,17 @@ export function GoogleAnalytics() {
       ad_personalization: "denied",
     });
     window.gtag("js", new Date());
-    window.gtag("config", measurementId, { send_page_view: false });
+    window.gtag("config", measurementId, {
+      send_page_view: false,
+      ...(debugEnabled ? { debug_mode: true } : {}),
+    });
+    if (debugEnabled) console.debug("GA4 config sent.");
 
     return () => {
       window[disableKey] = true;
       window.gtag?.("consent", "update", { analytics_storage: "denied" });
     };
-  }, [isAdminPath, measurementId]);
+  }, [debugEnabled, isAdminPath, measurementId]);
 
   useEffect(() => {
     if (!scriptReady || !measurementId || isAdminPath) return;
@@ -55,8 +62,10 @@ export function GoogleAnalytics() {
     window.gtag?.("event", "page_view", {
       page_path: `${pathname}${window.location.search}`,
       page_location: window.location.href,
+      page_title: document.title,
     });
-  }, [isAdminPath, measurementId, pathname, scriptReady]);
+    if (debugEnabled) console.debug("GA4 page_view sent.");
+  }, [debugEnabled, isAdminPath, measurementId, pathname, scriptReady]);
 
   if (
     !measurementId ||
