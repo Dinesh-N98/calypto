@@ -164,7 +164,7 @@ describe("NewsletterPopup visibility states", () => {
     },
   );
 
-  it("hides the modal and badge after a successful subscription", async () => {
+  it("shows a pending confirmation receipt without marking the visitor subscribed", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal("fetch", fetchMock);
     const view = render(createElement(NewsletterPopup));
@@ -182,16 +182,18 @@ describe("NewsletterPopup visibility states", () => {
       await Promise.resolve();
     });
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Check your inbox to confirm");
+    expect(screen.getByRole("status")).toHaveTextContent("angler@example.com");
+    expect(screen.getByRole("status")).toHaveTextContent("Spam or Promotions");
     expect(screen.queryByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeNull();
     expect(JSON.parse(localStorage.getItem(NEWSLETTER_KEY) ?? "{}")).toMatchObject({
-      status: "subscribed",
+      status: "pending",
     });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/subscribe",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ email: "angler@example.com" }),
+        body: JSON.stringify({ email: "angler@example.com", website: "" }),
       }),
     );
 
@@ -202,6 +204,49 @@ describe("NewsletterPopup visibility states", () => {
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reopen newsletter offer: get 15% off" })).toBeNull();
+  });
+
+  it("posts the honeypot field and shows a retryable rate-limit message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: async () => ({ error: "Rate limited" }),
+      }),
+    );
+    render(createElement(NewsletterPopup));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+
+    const emailInput = screen.getByRole("textbox", { name: "Your email address" });
+    fireEvent.change(emailInput, { target: { value: "angler@example.com" } });
+    await act(async () => {
+      fireEvent.submit(emailInput.closest("form")!);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("wait a few minutes");
+    expect(screen.getByRole("button", { name: /Get my 15% off/ })).toBeEnabled();
+    expect(screen.getByLabelText("Leave this field empty")).toHaveAttribute("name", "website");
+  });
+
+  it("rejects an invalid email before making an API request", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(createElement(NewsletterPopup));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+
+    const emailInput = screen.getByRole("textbox", { name: "Your email address" });
+    fireEvent.change(emailInput, { target: { value: "not-an-email" } });
+    await act(async () => {
+      fireEvent.submit(emailInput.closest("form")!);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("valid email address");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("hides on targeting withdrawal and waits before showing after consent is granted", async () => {
@@ -286,7 +331,7 @@ describe("NewsletterPopup visibility states", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Something went wrong. Please try again.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Network error");
     expect(screen.getByRole("button", { name: /Get my 15% off/ })).toBeEnabled();
     expect(screen.getByRole("dialog", { name: "15% Off" })).toBeInTheDocument();
   });

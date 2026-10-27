@@ -10,7 +10,16 @@ export const metadata: Metadata = {
     "Get in touch with Calypto for order inquiries, soft plastic lure questions, or wholesale partnerships.",
 };
 
-export default function ContactPage() {
+export default async function ContactPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  const { code } = await searchParams;
+  const initialDiscountCode = typeof code === "string" && code.length <= 32
+    ? code.trim().toUpperCase()
+    : "";
+
   return (
     <main className="bg-ink px-4 py-12 text-paper sm:px-6 md:py-16">
       <section className="mx-auto max-w-4xl">
@@ -67,7 +76,7 @@ export default function ContactPage() {
             <p className="mb-5 text-[.65rem] font-bold uppercase tracking-[.15em] text-lime">
               Send a message
             </p>
-            <ContactForm />
+            <ContactForm initialDiscountCode={initialDiscountCode} />
           </Reveal>
         </div>
       </section>

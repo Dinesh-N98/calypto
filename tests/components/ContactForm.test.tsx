@@ -100,6 +100,43 @@ describe("ContactForm", () => {
     expect(screen.getByLabelText("Name")).toHaveValue("");
   });
 
+  it("prefills a query-provided discount and submits it as a structured field", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          message: "Message sent. We'll verify your code and apply it to your order.",
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    render(<ContactForm initialDiscountCode="CREW-01ABCDEF" />);
+
+    expect(screen.getByPlaceholderText("CREW-XXXXXXXX")).toHaveValue("CREW-01ABCDEF");
+    await user.type(screen.getByLabelText("Name"), "Ada Lovelace");
+    await user.type(screen.getByLabelText("Email"), "ada@example.com");
+    await user.type(screen.getByLabelText("Message"), "I have an order inquiry.");
+    await user.click(screen.getByRole("button", { name: "Send message" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/contact",
+        expect.objectContaining({
+          body: JSON.stringify({
+            name: "Ada Lovelace",
+            email: "ada@example.com",
+            message: "I have an order inquiry.",
+            discountCode: "CREW-01ABCDEF",
+          }),
+        }),
+      );
+      expect(toastMocks.showToast).toHaveBeenCalledWith(
+        "Message sent. We'll verify your code and apply it to your order.",
+      );
+    });
+  });
+
   it.each([
     ["#lead-source=cart", "cart"],
     ["#lead-source=buy_now", "buy_now"],

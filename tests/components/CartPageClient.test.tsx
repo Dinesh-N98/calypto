@@ -87,19 +87,25 @@ describe("CartPageClient", () => {
     expect(checkoutSection).toHaveAttribute("hidden");
   });
 
-  it("does not claim an unsupported promotion has been applied", async () => {
+  it("explains manual inquiry redemption without changing cart totals", async () => {
     const user = userEvent.setup();
     renderCart();
     const [codeInput] = screen.getAllByLabelText("Discount code");
 
-    await user.type(codeInput, "SAVE10");
+    await user.type(codeInput, "CREW-01ABCDEF");
     await user.click(screen.getAllByRole("button", { name: "Apply" })[0]);
 
     expect(
       screen.getAllByText(
-        "Discount codes are not available at checkout yet. No discount has been applied.",
+        "Discount codes are applied manually when you send your order inquiry. Add your code in the inquiry form.",
       ),
     ).toHaveLength(2);
     expect(screen.getAllByText("$259.98").length).toBeGreaterThan(1);
+
+    await user.click(screen.getAllByRole("button", { name: "Proceed to checkout" })[0]);
+    expect(screen.getByRole("link", { name: "Send Inquiry via Form" })).toHaveAttribute(
+      "href",
+      "/contact?code=CREW-01ABCDEF#lead-source=cart",
+    );
   });
 });

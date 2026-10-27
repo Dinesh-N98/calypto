@@ -19,6 +19,10 @@ type LeadInteraction = {
 };
 
 export type LeadDetail = LeadRow & {
+  discountCode?: string | null;
+  discountCodeStatus?: "VALID" | "ALREADY_REDEEMED" | "NOT_FOUND" | "INELIGIBLE" | null;
+  discountSubscriberEmail?: string | null;
+  discountPercent?: number | null;
   interactions: LeadInteraction[];
 };
 
@@ -284,6 +288,33 @@ export function LeadDetailDrawer({ lead, onClose, onLeadChange }: LeadDetailDraw
                   <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[#55594f]">
                     {lead.message}
                   </p>
+                </section>
+              )}
+              {lead.discountCode && (
+                <section className="mt-6 rounded-lg border border-[#a3bd32]/40 bg-[#f8f9f0] p-4">
+                  <h3 className="text-sm font-bold text-[#171a14]">Newsletter discount inquiry</h3>
+                  <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="font-semibold text-[#65695f]">Submitted code</dt>
+                      <dd className="mt-1 break-all font-mono">{lead.discountCode}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-[#65695f]">Lookup result</dt>
+                      <dd className="mt-1">{lead.discountCodeStatus ?? "Not checked"}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-[#65695f]">Issued to</dt>
+                      <dd className="mt-1 break-all">{lead.discountSubscriberEmail ?? "Not found"}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-[#65695f]">Discount terms</dt>
+                      <dd className="mt-1">
+                        {lead.discountPercent
+                          ? `${lead.discountPercent}% of product subtotal only; shipping and tax excluded.`
+                          : "No issued discount found."}
+                      </dd>
+                    </div>
+                  </dl>
                 </section>
               )}
 

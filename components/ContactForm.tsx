@@ -9,12 +9,19 @@ import {
   useCustomerProfileAutofill,
   type CustomerProfile,
 } from "@/components/CustomerProfileProvider";
+import {
+  NEWSLETTER_DISCOUNT_CODE_PATTERN,
+  normalizeNewsletterDiscountCode,
+} from "@/lib/newsletter/discount-redemption";
 
-export function ContactForm() {
+export function ContactForm({ initialDiscountCode = "" }: { initialDiscountCode?: string }) {
   const { showToast } = useToast();
   const { items: cartItems } = useCart();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [discountCode, setDiscountCode] = useState(initialDiscountCode);
+  const invalidDiscountCode =
+    Boolean(discountCode.trim()) && !normalizeNewsletterDiscountCode(discountCode);
   const isSubmittingRef = useRef(false);
   const hasTrackedSubmissionRef = useRef(false);
   const resolveContactFields = useCallback(
@@ -40,6 +47,16 @@ export function ContactForm() {
 
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const rawDiscountCode = String(formData.get("discountCode") ?? "").trim();
+    const normalizedDiscountCode = rawDiscountCode
+      ? normalizeNewsletterDiscountCode(rawDiscountCode)
+      : null;
+    if (rawDiscountCode && !normalizedDiscountCode) {
+      setError("Enter a valid discount code in the format CREW-XXXXXXXX.");
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/contact", {
@@ -49,6 +66,7 @@ export function ContactForm() {
           name: formData.get("name"),
           email: formData.get("email"),
           message: formData.get("message"),
+          ...(normalizedDiscountCode ? { discountCode: normalizedDiscountCode } : {}),
         }),
       });
 
@@ -78,8 +96,10 @@ export function ContactForm() {
         }
       }
 
+      const body = (await response.json()) as { message?: string };
       form.reset();
-      showToast("Message sent. We'll be in touch.");
+      setDiscountCode("");
+      showToast(body.message || "Message sent. We'll be in touch.");
     } catch {
       setError("Unable to send your message. Please try again.");
     } finally {
@@ -108,12 +128,41 @@ export function ContactForm() {
         Message
         <textarea className="auth-input min-h-36 resize-y" name="message" required />
       </label>
+      <label className="grid gap-2 text-[.7rem] font-bold uppercase tracking-[.12em]">
+        Discount code (optional)
+        <input
+          aria-invalid={invalidDiscountCode}
+          autoComplete="off"
+          className="auth-input uppercase"
+          maxLength={13}
+          name="discountCode"
+          onChange={(event) => setDiscountCode(event.currentTarget.value.toUpperCase())}
+          pattern={NEWSLETTER_DISCOUNT_CODE_PATTERN.source}
+          placeholder="CREW-XXXXXXXX"
+          type="text"
+          value={discountCode}
+          onInvalid={(event) => {
+            if (invalidDiscountCode) {
+              event.preventDefault();
+              setError("Enter a valid discount code in the format CREW-XXXXXXXX.");
+            }
+          }}
+        />
+        <span className="normal-case tracking-normal text-muted">
+          We&apos;ll verify your code and apply it to your order. Discount applies to product
+          subtotal only, not shipping or tax.
+        </span>
+      </label>
       {profileStatus === "error" && (
         <p className="text-sm text-muted" role="status">
           Saved details could not be loaded. You can still enter your details manually.
         </p>
       )}
-      {error && <p className="text-sm text-[#e89b87]">{error}</p>}
+      {error && (
+        <p aria-live="polite" className="text-sm text-[#e89b87]" role="alert">
+          {error}
+        </p>
+      )}
       <button
         className="auth-button transition-[background-color,transform] duration-300 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none motion-reduce:transition-colors"
         type="submit"

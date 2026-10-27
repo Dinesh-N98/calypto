@@ -3,8 +3,10 @@
 export const GA_READY_EVENT = "calypto-ga-ready";
 
 const purchaseStorageKey = "calypto-ga4-purchases";
+const newsletterConfirmationStorageKey = "calypto-ga4-newsletter-confirmed";
 const maxStoredTransactions = 100;
 const firedTransactions = new Set<string>();
+let newsletterConfirmationFired = false;
 
 export type GaEcommerceItemInput = {
   itemId: string;
@@ -89,7 +91,7 @@ export function trackAddToCart(item: GaEcommerceItemInput, currency: string): bo
   });
 }
 
-export type GaLeadSource = "cart" | "buy_now" | "contact";
+export type GaLeadSource = "cart" | "buy_now" | "contact" | "newsletter";
 
 export function trackGenerateLead(
   source: GaLeadSource,
@@ -106,6 +108,34 @@ export function trackGenerateLead(
   }
 
   return sendEvent("generate_lead", params);
+}
+
+export function trackNewsletterConfirmationOnce(): boolean {
+  if (
+    newsletterConfirmationFired ||
+    typeof window === "undefined" ||
+    typeof window.gtag !== "function"
+  ) {
+    return false;
+  }
+
+  try {
+    if (window.localStorage.getItem(newsletterConfirmationStorageKey) === "true") {
+      newsletterConfirmationFired = true;
+      return false;
+    }
+  } catch {
+    // Keep an in-memory guard when browser storage is unavailable.
+  }
+
+  if (!trackGenerateLead("newsletter")) return false;
+  newsletterConfirmationFired = true;
+  try {
+    window.localStorage.setItem(newsletterConfirmationStorageKey, "true");
+  } catch {
+    // The in-memory guard prevents duplicates until the page is reloaded.
+  }
+  return true;
 }
 
 export function trackBeginCheckout(

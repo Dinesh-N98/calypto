@@ -6,6 +6,7 @@ import {
   trackAddToCart,
   trackBeginCheckout,
   trackGenerateLead,
+  trackNewsletterConfirmationOnce,
   trackPurchase,
   trackViewItem,
   type GaEcommerceItemInput,
@@ -139,6 +140,21 @@ describe("GA4 ecommerce events", () => {
     expect(mockGtag).toHaveBeenCalledWith("event", "generate_lead", {
       lead_source: "contact",
     });
+  });
+
+  it("tracks newsletter confirmation once without sending identifying details", async () => {
+    expect(trackNewsletterConfirmationOnce()).toBe(true);
+    expect(trackNewsletterConfirmationOnce()).toBe(false);
+    expect(mockGtag).toHaveBeenCalledTimes(1);
+    expect(mockGtag).toHaveBeenCalledWith("event", "generate_lead", {
+      lead_source: "newsletter",
+    });
+    expect(JSON.stringify(mockGtag.mock.calls)).not.toMatch(/angler@example|CREW-|token/i);
+
+    vi.resetModules();
+    const { trackNewsletterConfirmationOnce: trackAfterReload } = await import("@/lib/ga-events");
+    expect(trackAfterReload()).toBe(false);
+    expect(mockGtag).toHaveBeenCalledTimes(1);
   });
 
   it("fires a paid purchase once and uses the order item snapshot", () => {

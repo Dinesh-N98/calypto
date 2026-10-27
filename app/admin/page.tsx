@@ -52,6 +52,15 @@ export default function AdminPage() {
             Review customer orders and add shipment tracking details.
           </p>
         </Link>
+        <Link
+          className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
+          href="/admin/newsletter-discounts"
+        >
+          <h2 className="text-base font-bold">Newsletter discounts</h2>
+          <p className="mt-2 text-sm leading-6 text-[#65695f]">
+            Verify subscriber discount codes and record manual redemptions.
+          </p>
+        </Link>
       </div>
     </div>
   );

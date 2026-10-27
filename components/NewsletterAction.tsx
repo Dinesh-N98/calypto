@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getCookieConsent, subscribeCookieConsent } from "@/lib/cookieConsent";
+import { GA_READY_EVENT, trackNewsletterConfirmationOnce } from "@/lib/ga-events";
+import {
+  clearNewsletterPopupPreference,
+  rememberNewsletterSubscribed,
+} from "@/lib/newsletter/popup-storage";
 
 type NewsletterActionProps = {
   action: "confirm" | "unsubscribe";
@@ -18,6 +24,25 @@ type ActionResult = {
 export function NewsletterAction({ action, token }: NewsletterActionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<ActionResult | null>(null);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+
+  useEffect(() => {
+    if (action !== "confirm" || !result?.ok || !result.discountCode) return;
+
+    const trackIfAllowed = () => {
+      if (getCookieConsent()?.performance === true) {
+        trackNewsletterConfirmationOnce();
+      }
+    };
+
+    trackIfAllowed();
+    window.addEventListener(GA_READY_EVENT, trackIfAllowed);
+    const unsubscribe = subscribeCookieConsent(trackIfAllowed);
+    return () => {
+      window.removeEventListener(GA_READY_EVENT, trackIfAllowed);
+      unsubscribe();
+    };
+  }, [action, result]);
 
   async function submit() {
     if (isSubmitting || !token) return;
@@ -33,6 +58,9 @@ export function NewsletterAction({ action, token }: NewsletterActionProps) {
       });
       const body = (await response.json()) as ActionResult;
       setResult(response.ok ? body : { error: body.error });
+      if (response.ok && action === "confirm" && body.ok && body.discountCode) {
+        rememberNewsletterSubscribed();
+      }
     } catch {
       setResult({ error: "Unable to process your request. Please try again." });
     } finally {
@@ -47,10 +75,16 @@ export function NewsletterAction({ action, token }: NewsletterActionProps) {
 
   function prepareResubscribe() {
     if (!result?.error) return;
+    clearNewsletterPopupPreference();
+  }
+
+  async function copyDiscountCode() {
+    if (!result?.discountCode) return;
     try {
-      window.localStorage.removeItem("calypto-newsletter-popup");
-    } catch (error) {
-      console.error("Unable to reset the newsletter signup preference.", error);
+      await navigator.clipboard.writeText(result.discountCode);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
     }
   }
 
@@ -89,6 +123,20 @@ export function NewsletterAction({ action, token }: NewsletterActionProps) {
               <p className="mt-4 inline-block rounded-lg border border-[#ddddd3] bg-white px-5 py-3 font-mono text-xl font-bold tracking-widest">
                 {result.discountCode}
               </p>
+              <button
+                className="ml-3 min-h-11 rounded-lg border border-olive px-4 text-sm font-bold text-olive hover:bg-olive hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
+                onClick={copyDiscountCode}
+                type="button"
+              >
+                {copyStatus === "copied" ? "Copied!" : "Copy code"}
+              </button>
+              {copyStatus !== "idle" && (
+                <p aria-live="polite" className="mt-2 text-sm text-[#55584e]" role="status">
+                  {copyStatus === "copied"
+                    ? "Discount code copied."
+                    : "Could not copy automatically. Select and copy the code above."}
+                </p>
+              )}
               <p className="mt-4 text-sm leading-7 text-[#55584e]">
                 It is for your first order only and applies to the product subtotal, not shipping or
                 tax. Online checkout is not yet available; include this code in your order inquiry

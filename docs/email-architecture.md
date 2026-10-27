@@ -21,6 +21,12 @@ to messages.
 Resend is an application email sender, not a mailbox: replies should route to a
 monitored address such as `support@calyptobait.com`.
 
+Contact-form inquiries are sent to `OWNER_NOTIFICATION_EMAIL` through Resend,
+using `EMAIL_FROM` as the sender and the customer's validated email as `Reply-To`.
+The lead is saved before notification is attempted, so notification delivery
+failures do not prevent inquiry submission. If `OWNER_NOTIFICATION_EMAIL` is
+unset, notification is skipped and a generic warning is logged.
+
 ## Phase 2: Future Growth
 
 | Email address              | Recommended setup      | Purpose                                                                              |
@@ -43,6 +49,9 @@ Google Group instead.
 - Set `EMAIL_FROM` to a verified `calyptobait.com` sender and `EMAIL_REPLY_TO` to
   the monitored reply address. Newsletter emails use double opt-in: the discount
   is issued only after confirmation, and confirmation links expire after 24 hours.
+- Set `OWNER_NOTIFICATION_EMAIL` to the owner's monitored inbox for contact-form
+  inquiry notifications. `APP_BASE_URL` is used to link directly to the lead in
+  the admin CRM.
 - Confirmed subscribers receive one unique first-order discount code. It applies
   to product subtotal only, excludes shipping and tax, and is currently applied
   manually from an order inquiry until online checkout supports redemption.

@@ -64,7 +64,7 @@ export default function CartPageClient({
     event.preventDefault();
     setDiscountMessage(
       discountCode.trim()
-        ? "Discount codes are not available at checkout yet. No discount has been applied."
+        ? "Discount codes are applied manually when you send your order inquiry. Add your code in the inquiry form."
         : "Enter a discount code first.",
     );
   }
@@ -83,7 +83,13 @@ export default function CartPageClient({
   return (
     <main className="min-h-[65vh] bg-paper px-4 pb-32 pt-7 text-ink sm:px-6 sm:pt-10 lg:px-8 lg:pb-16">
       <div className="mx-auto max-w-7xl">
-        {isInquiryOpen && <DirectOrderInquiryModal leadSource="cart" onClose={closeInquiry} />}
+        {isInquiryOpen && (
+          <DirectOrderInquiryModal
+            discountCode={discountCode}
+            leadSource="cart"
+            onClose={closeInquiry}
+          />
+        )}
         <header className="mb-7 border-b border-[rgba(13,14,12,.14)] pb-5 sm:mb-9 sm:pb-6">
           <p className="text-[.65rem] font-bold uppercase tracking-[.16em] text-olive">
             Calypto / {isCheckoutStep ? "Checkout" : "Your cart"}

@@ -7,9 +7,11 @@ import { useEffect, useRef } from "react";
 export function DirectOrderInquiryModal({
   onClose,
   leadSource,
+  discountCode,
 }: {
   onClose: () => void;
   leadSource: "cart" | "buy_now";
+  discountCode?: string;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +70,7 @@ export function DirectOrderInquiryModal({
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
           <Link
             className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#84cc16] px-4 text-center text-sm font-bold text-zinc-950 transition-colors hover:bg-lime-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#84cc16]"
-            href={`/contact#lead-source=${leadSource}`}
+            href={`/contact${discountCode?.trim() ? `?code=${encodeURIComponent(discountCode.trim().toUpperCase())}` : ""}#lead-source=${leadSource}`}
             onClick={onClose}
           >
             Send Inquiry via Form
