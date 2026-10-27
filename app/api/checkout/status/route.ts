@@ -13,25 +13,48 @@ export async function GET(request: Request) {
       id: true,
       paymentProvider: true,
       providerTransactionId: true,
+      providerReference: true,
       totalCents: true,
       currency: true,
       status: true,
+      items: {
+        select: {
+          sku: true,
+          productSlug: true,
+          variantId: true,
+          name: true,
+          priceCents: true,
+          quantity: true,
+        },
+      },
     },
   });
   if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
 
-  if (order.paymentProvider === "PAYPAL") {
-    return Response.json({ status: order.status }, { headers: { "Cache-Control": "no-store" } });
-  }
-  if (order.paymentProvider !== "ONEPAY") {
-    return Response.json({ status: order.status }, { headers: { "Cache-Control": "no-store" } });
-  }
-
+  let status = order.status;
   try {
-    const status = await refreshOnePayOrderStatus(order);
-    return Response.json({ status });
+    if (order.paymentProvider === "ONEPAY") {
+      status = await refreshOnePayOrderStatus(order);
+    }
   } catch (error) {
     console.error("Unable to refresh OnePay order status.", error);
     return Response.json({ error: "Unable to verify payment status right now." }, { status: 502 });
   }
+
+  if (status !== "paid") {
+    return Response.json({ status }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  return Response.json(
+    {
+      status,
+      purchase: {
+        transactionId: order.providerReference,
+        totalCents: order.totalCents,
+        currency: order.currency,
+        items: order.items,
+      },
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

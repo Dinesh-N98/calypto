@@ -4,6 +4,7 @@ import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { buildGaPageUrl } from "@/lib/ga-url";
+import { GA_READY_EVENT } from "@/lib/ga-events";
 
 type Gtag = (...args: unknown[]) => void;
 
@@ -50,11 +51,13 @@ export function GoogleAnalytics() {
       send_page_view: false,
       ...(debugEnabled ? { debug_mode: true } : {}),
     });
+    window.dispatchEvent(new Event(GA_READY_EVENT));
     if (debugEnabled) console.debug("GA4 config sent.");
 
     return () => {
       window[disableKey] = true;
       window.gtag?.("consent", "update", { analytics_storage: "denied" });
+      window.gtag = undefined;
     };
   }, [debugEnabled, isAdminPath, measurementId]);
 

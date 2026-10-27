@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Share2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
 import { DirectOrderInquiryModal } from "@/components/DirectOrderInquiryModal";
@@ -9,6 +9,8 @@ import { QuantitySelector } from "@/components/QuantitySelector";
 import { useToast } from "@/components/ToastProvider";
 import { WishlistButton } from "@/components/WishlistButton";
 import { formatPrice } from "@/lib/currency";
+import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
+import { GA_READY_EVENT, trackAddToCart, trackViewItem } from "@/lib/ga-events";
 import { calculateUnitPriceCents } from "@/lib/product-pricing";
 import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 
@@ -96,6 +98,7 @@ export function ProductDetailExperience({
   });
   const [quantity, setQuantity] = useState(1);
   const [remainingMs, setRemainingMs] = useState(0);
+  const lastViewedProductId = useRef<string | null>(null);
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
   const colors = [...new Set(variants.flatMap((variant) => (variant.color ? [variant.color] : [])))];
   const sizes = [...new Set(variants.flatMap((variant) => (variant.size ? [variant.size] : [])))];
@@ -143,6 +146,37 @@ export function ProductDetailExperience({
     return () => window.clearInterval(timer);
   }, [product.saleEndsAt]);
 
+  useEffect(() => {
+    const sendViewItem = () => {
+      if (lastViewedProductId.current === product.id) return;
+      const sent = trackViewItem(
+        {
+          itemId: selectedVariant?.sku || product.slug,
+          itemName: product.name,
+          itemCategory: categoryName,
+          itemVariant: [selectedVariant?.color, selectedVariant?.size].filter(Boolean).join(" / "),
+          priceCents: currentUnitPrice,
+          quantity: 1,
+        },
+        CHECKOUT_CURRENCY,
+      );
+      if (sent) lastViewedProductId.current = product.id;
+    };
+
+    sendViewItem();
+    window.addEventListener(GA_READY_EVENT, sendViewItem);
+    return () => window.removeEventListener(GA_READY_EVENT, sendViewItem);
+  }, [
+    categoryName,
+    currentUnitPrice,
+    product.id,
+    product.name,
+    product.slug,
+    selectedVariant?.color,
+    selectedVariant?.size,
+    selectedVariant?.sku,
+  ]);
+
   function chooseColor(color: string) {
     const matching = variants.find(
       (variant) => variant.color === color && variant.size === selectedVariant?.size && variant.stock > 0,
@@ -182,6 +216,17 @@ export function ProductDetailExperience({
         imageUrl: selectedVariant.imageUrl ?? gallery[activeImageIndex]?.url ?? product.imageUrl,
       },
       quantity,
+    );
+    trackAddToCart(
+      {
+        itemId: selectedVariant.sku,
+        itemName: product.name,
+        itemCategory: categoryName,
+        itemVariant: variantLabel,
+        priceCents: currentUnitPrice,
+        quantity,
+      },
+      CHECKOUT_CURRENCY,
     );
     showToast(`${product.name}${variantLabel ? ` (${variantLabel})` : ""} added to cart.`);
     if (goToCheckout) {

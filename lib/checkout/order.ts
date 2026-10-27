@@ -1,11 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { auth } from "@/auth";
+import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
 import { prisma } from "@/lib/prisma";
 import { calculateUnitPriceCents } from "@/lib/product-pricing";
 import type { PaymentProvider } from "@prisma/client";
 import type { CheckoutAddress, CheckoutCustomer, CheckoutPayload } from "@/lib/checkout/types";
-
-export const CHECKOUT_CURRENCY = "USD";
 
 type OrderItemSnapshot = {
   variantId: string;

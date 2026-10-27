@@ -6,8 +6,75 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/components/CartProvider";
 import { Reveal } from "@/components/Reveal";
+import { GA_READY_EVENT, trackPurchase, type GaPurchaseInput } from "@/lib/ga-events";
 
 type PaymentStatus = "pending" | "paid" | "cancelled" | "failed";
+type ConfirmedPurchaseOrderItem = {
+  sku: string | null;
+  productSlug: string;
+  variantId: string | null;
+  name: string;
+  priceCents: number;
+  quantity: number;
+};
+
+type ConfirmedPurchaseResponse = {
+  transactionId: string;
+  totalCents: number;
+  currency: string;
+  items: ConfirmedPurchaseOrderItem[];
+};
+type ConfirmedPurchase = Omit<GaPurchaseInput, "status">;
+
+function isConfirmedPurchaseItem(value: unknown): value is ConfirmedPurchaseOrderItem {
+  if (!value || typeof value !== "object") return false;
+  return (
+    "sku" in value &&
+    "productSlug" in value &&
+    "variantId" in value &&
+    "name" in value &&
+    "priceCents" in value &&
+    "quantity" in value &&
+    (typeof value.sku === "string" || value.sku === null) &&
+    typeof value.productSlug === "string" &&
+    (typeof value.variantId === "string" || value.variantId === null) &&
+    typeof value.name === "string" &&
+    typeof value.priceCents === "number" &&
+    Number.isFinite(value.priceCents) &&
+    typeof value.quantity === "number" &&
+    Number.isFinite(value.quantity)
+  );
+}
+
+function isConfirmedPurchase(value: unknown): value is ConfirmedPurchaseResponse {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("transactionId" in value) ||
+    !("totalCents" in value) ||
+    !("currency" in value) ||
+    !("items" in value) ||
+    typeof value.transactionId !== "string" ||
+    typeof value.totalCents !== "number" ||
+    typeof value.currency !== "string" ||
+    !Array.isArray(value.items)
+  ) {
+    return false;
+  }
+
+  if (
+    !Number.isFinite(value.totalCents) ||
+    value.items.length === 0 ||
+    !value.items.every(isConfirmedPurchaseItem)
+  ) {
+    return false;
+  }
+  const itemsTotal = value.items.reduce(
+    (total, item) => total + item.priceCents * item.quantity,
+    0,
+  );
+  return itemsTotal === value.totalCents;
+}
 
 function isPaymentStatus(value: unknown): value is PaymentStatus {
   return value === "pending" || value === "paid" || value === "cancelled" || value === "failed";
@@ -18,6 +85,7 @@ export function CheckoutResult() {
   const reference = searchParams.get("order");
   const { clearCart } = useCart();
   const [status, setStatus] = useState<PaymentStatus | null>(null);
+  const [confirmedPurchase, setConfirmedPurchase] = useState<ConfirmedPurchase | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [checkAgain, setCheckAgain] = useState(0);
@@ -52,7 +120,27 @@ export function CheckoutResult() {
         throw new Error("The server returned an invalid order status.");
 
       setStatus(nextStatus);
-      if (nextStatus === "paid") clearCart();
+      if (nextStatus === "paid") {
+        if (
+          result &&
+          typeof result === "object" &&
+          "purchase" in result &&
+          isConfirmedPurchase(result.purchase)
+        ) {
+          const purchase = result.purchase;
+          setConfirmedPurchase({
+            transactionId: purchase.transactionId,
+            currency: purchase.currency,
+            items: purchase.items.map((item) => ({
+              itemId: item.sku || item.variantId || item.productSlug,
+              itemName: item.name,
+              priceCents: item.priceCents,
+              quantity: item.quantity,
+            })),
+          });
+        }
+        clearCart();
+      }
       return nextStatus;
     } catch (statusError) {
       setError(
@@ -65,6 +153,14 @@ export function CheckoutResult() {
       setIsChecking(false);
     }
   }, [clearCart, reference]);
+
+  useEffect(() => {
+    if (!confirmedPurchase) return;
+    const sendPurchase = () => trackPurchase({ ...confirmedPurchase, status: "paid" });
+    sendPurchase();
+    window.addEventListener(GA_READY_EVENT, sendPurchase);
+    return () => window.removeEventListener(GA_READY_EVENT, sendPurchase);
+  }, [confirmedPurchase]);
 
   useEffect(() => {
     if (!reference) return;
