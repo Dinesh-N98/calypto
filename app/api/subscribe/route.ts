@@ -1,35 +1,184 @@
-import { NextResponse } from "next/server";
+import {
+  applyRateLimit,
+  applyRateLimitByValue,
+  rateLimitResponse,
+  readJsonBody,
+  RequestBodyError,
+} from "@/lib/request-security";
 import { prisma } from "@/lib/prisma";
+import { buildNewsletterUrl, sendNewsletterConfirmationEmail } from "@/lib/newsletter/email";
+import { noStoreJson, withNoStore } from "@/lib/newsletter/http";
+import {
+  NEWSLETTER_CONSENT_TEXT,
+  NEWSLETTER_CONSENT_VERSION,
+  getNewsletterSubscriptionAction,
+  normalizeNewsletterEmail,
+  RESEND_COOLDOWN_MS,
+} from "@/lib/newsletter/subscriptions";
+import { createNewsletterToken, hashNewsletterToken } from "@/lib/newsletter/tokens";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GENERIC_SUCCESS = {
+  ok: true,
+  message: "Check your inbox to confirm your subscription.",
+};
+const SUBSCRIBE_RATE_LIMIT = 10;
+const EMAIL_RATE_LIMIT = 3;
+const RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+}
+
+async function sendConfirmation(email: string, token: string): Promise<void> {
+  try {
+    await sendNewsletterConfirmationEmail({
+      email,
+      confirmationUrl: buildNewsletterUrl("/newsletter/confirm", token),
+    });
+  } catch {
+    console.error("Newsletter confirmation email could not be sent.");
+  }
+}
 
 export async function POST(request: Request) {
+  let ipLimit: Awaited<ReturnType<typeof applyRateLimit>>;
   try {
-    const body = await request.json();
-    const email = typeof body.email === "string" ? body.email.toLowerCase().trim() : "";
+    ipLimit = await applyRateLimit(
+      request,
+      "newsletter-subscribe-ip",
+      SUBSCRIBE_RATE_LIMIT,
+      RATE_LIMIT_WINDOW_SECONDS,
+    );
+  } catch {
+    console.error("Newsletter signup rate limit could not be checked.");
+    return noStoreJson(
+      { error: "Unable to process your signup right now. Please try again." },
+      { status: 500 },
+    );
+  }
+  if (!ipLimit.allowed) return withNoStore(rateLimitResponse(ipLimit));
 
-    if (!email || email.length > 254 || !EMAIL_PATTERN.test(email)) {
-      return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await readJsonBody(request, 4 * 1024);
+  } catch (error) {
+    if (error instanceof RequestBodyError) {
+      return noStoreJson({ error: error.message }, { status: error.status });
     }
+    return noStoreJson({ error: "Invalid request." }, { status: 400 });
+  }
 
-    const existing = await prisma.lead.findFirst({
-      where: { type: "newsletter", email },
-      select: { id: true },
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return noStoreJson({ error: "Invalid request." }, { status: 400 });
+  }
+
+  const payload = body as Record<string, unknown>;
+  if (typeof payload.website === "string" && payload.website.trim()) {
+    return noStoreJson(GENERIC_SUCCESS);
+  }
+
+  const email = normalizeNewsletterEmail(payload.email);
+  if (!email) {
+    return noStoreJson({ error: "Please enter a valid email address." }, { status: 400 });
+  }
+
+  let emailLimit: Awaited<ReturnType<typeof applyRateLimitByValue>>;
+  try {
+    emailLimit = await applyRateLimitByValue(
+      "newsletter-subscribe-email",
+      email,
+      EMAIL_RATE_LIMIT,
+      RATE_LIMIT_WINDOW_SECONDS,
+    );
+  } catch {
+    console.error("Newsletter signup rate limit could not be checked.");
+    return noStoreJson(
+      { error: "Unable to process your signup right now. Please try again." },
+      { status: 500 },
+    );
+  }
+  if (!emailLimit.allowed) return noStoreJson(GENERIC_SUCCESS);
+
+  try {
+    const now = new Date();
+    const existing = await prisma.newsletterSubscription.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        status: true,
+        confirmationSentAt: true,
+      },
     });
+    const action = getNewsletterSubscriptionAction(
+      existing?.status ?? null,
+      existing?.confirmationSentAt ?? null,
+      now,
+    );
+    if (action === "NOOP") return noStoreJson(GENERIC_SUCCESS);
 
-    if (!existing) {
-      await prisma.lead.create({
+    const token = createNewsletterToken();
+    const confirmationTokenHash = hashNewsletterToken(token);
+
+    if (action === "CREATE") {
+      try {
+        await prisma.newsletterSubscription.create({
+          data: {
+            email,
+            status: "PENDING_CONFIRMATION",
+            source: "newsletter-popup",
+            consentText: NEWSLETTER_CONSENT_TEXT,
+            consentVersion: NEWSLETTER_CONSENT_VERSION,
+            consentAt: now,
+            confirmationTokenHash,
+            confirmationSentAt: now,
+          },
+        });
+      } catch (error) {
+        if (isUniqueConstraintError(error)) return noStoreJson(GENERIC_SUCCESS);
+        throw error;
+      }
+    } else if (action === "RESUBSCRIBE") {
+      const updated = await prisma.newsletterSubscription.updateMany({
+        where: { id: existing?.id, status: "UNSUBSCRIBED" },
         data: {
-          type: "newsletter",
-          name: "Newsletter subscriber",
-          email,
-          message: "Popup signup – 15% off first order",
+          status: "PENDING_CONFIRMATION",
+          source: "newsletter-popup",
+          consentText: NEWSLETTER_CONSENT_TEXT,
+          consentVersion: NEWSLETTER_CONSENT_VERSION,
+          consentAt: now,
+          confirmationTokenHash,
+          confirmationSentAt: now,
+          confirmedAt: null,
+          unsubscribedAt: null,
         },
       });
+      if (updated.count === 0) return noStoreJson(GENERIC_SUCCESS);
+    } else {
+      const cooldownCutoff = new Date(now.getTime() - RESEND_COOLDOWN_MS);
+      const updated = await prisma.newsletterSubscription.updateMany({
+        where: {
+          id: existing?.id,
+          status: "PENDING_CONFIRMATION",
+          OR: [{ confirmationSentAt: { lte: cooldownCutoff } }, { confirmationSentAt: null }],
+        },
+        data: {
+          confirmationTokenHash,
+          confirmationSentAt: now,
+          consentText: NEWSLETTER_CONSENT_TEXT,
+          consentVersion: NEWSLETTER_CONSENT_VERSION,
+          consentAt: now,
+        },
+      });
+      if (updated.count === 0) return noStoreJson(GENERIC_SUCCESS);
     }
 
-    return NextResponse.json({ ok: true }, { status: 201 });
+    await sendConfirmation(email, token);
+    return noStoreJson(GENERIC_SUCCESS);
   } catch {
-    return NextResponse.json({ error: "Unable to subscribe right now." }, { status: 500 });
+    console.error("Newsletter signup could not be processed.");
+    return noStoreJson(
+      { error: "Unable to process your signup right now. Please try again." },
+      { status: 500 },
+    );
   }
 }

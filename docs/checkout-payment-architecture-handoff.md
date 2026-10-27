@@ -6,7 +6,7 @@
 
 This is a Next.js App Router storefront backed by Prisma/PostgreSQL. Checkout is initiated from `/cart` and now supports OnePay hosted checkout alongside PayPal Smart Payment Buttons. Both paths create the local order from server-recalculated catalog prices and reserve stock; browser cart prices are display data only.
 
-`STRIPE` remains in the provider enum for historical orders, but new checkouts use OnePay or PayPal. Shared validation, pricing, inventory reservation, and order snapshot creation live in `lib/checkout/order.ts`. PayPal transaction identifiers and webhook deliveries are tracked separately from the order in `PaymentAttempt` and `PaymentWebhookEvent`.
+New checkouts use OnePay or PayPal. Shared validation, pricing, inventory reservation, and order snapshot creation live in `lib/checkout/order.ts`. PayPal transaction identifiers and webhook deliveries are tracked separately from the order in `PaymentAttempt` and `PaymentWebhookEvent`.
 
 | Area | File | Current responsibility |
 |---|---|---|
@@ -25,9 +25,9 @@ This is a Next.js App Router storefront backed by Prisma/PostgreSQL. Checkout is
 | PayPal callback | [`app/api/webhooks/paypal/route.ts`](../app/api/webhooks/paypal/route.ts) | Verifies PayPal transmission signatures, deduplicates event IDs, fetches the linked PayPal order, validates a completed capture, and applies an idempotent paid transition. |
 | Pricing rules | [`lib/product-pricing.ts`](../lib/product-pricing.ts) | Chooses the applicable variant/product sale price and quantity-based discount used by server-side checkout pricing. |
 | Order/payment persistence | [`prisma/schema.prisma`](../prisma/schema.prisma) | Defines provider-neutral `Order`, `PaymentAttempt`, and `PaymentWebhookEvent` models. |
-| Existing/new payment migrations | [`prisma/migrations/20260920000000_add_orders/migration.sql`](../prisma/migrations/20260920000000_add_orders/migration.sql), [`prisma/migrations/20261005000000_add_onepay_payments/migration.sql`](../prisma/migrations/20261005000000_add_onepay_payments/migration.sql), [`prisma/migrations/20261012100000_add_paypal_payment_attempts/migration.sql`](../prisma/migrations/20261012100000_add_paypal_payment_attempts/migration.sql) | Creates original Stripe-shaped order storage, migrates to generic provider fields, then adds PayPal attempts/webhook deduplication and shipping snapshots. |
+| Existing/new payment migrations | [`prisma/migrations/20260920000000_add_orders/migration.sql`](../prisma/migrations/20260920000000_add_orders/migration.sql), [`prisma/migrations/20261005000000_add_onepay_payments/migration.sql`](../prisma/migrations/20261005000000_add_onepay_payments/migration.sql), [`prisma/migrations/20261012100000_add_paypal_payment_attempts/migration.sql`](../prisma/migrations/20261012100000_add_paypal_payment_attempts/migration.sql) | Creates initial order storage, migrates to generic provider fields, then adds PayPal attempts/webhook deduplication and shipping snapshots. |
 | Payment configuration | [`.env.example`](../.env.example) | Documents OnePay credentials and PayPal public client ID, server client credentials, environment, and webhook ID. |
-| Integration behavior notes | [`README.md`](../README.md) | Documents OnePay callback verification, supported return behavior, retained historical Stripe orders, and current limitations. |
+| Integration behavior notes | [`README.md`](../README.md) | Documents OnePay callback verification, supported return behavior, and current limitations. |
 | Order history and fulfillment consumers | [`app/(storefront)/account/orders/page.tsx`](../app/%28storefront%29/account/orders/page.tsx), [`app/admin/orders/page.tsx`](../app/admin/orders/page.tsx), [`app/api/admin/orders/[orderId]/fulfillment/route.ts`](../app/api/admin/orders/%5BorderId%5D/fulfillment/route.ts), [`app/api/account/orders/[orderId]/invoice/route.ts`](../app/api/account/orders/%5BorderId%5D/invoice/route.ts) | Read order/provider-reference/status data, render customer/admin views and invoices, and update fulfillment without changing payment status. |
 
 ### Implemented transaction lifecycle
@@ -121,7 +121,7 @@ The core dual-provider flow below is implemented in this repository. The detaile
 
 ### Provider coexistence
 
-1. OnePay remains available alongside PayPal; existing OnePay verification and historical Stripe records are retained.
+1. OnePay remains available alongside PayPal; existing payment records are retained.
 2. The `PaymentProvider` enum includes `PAYPAL`. Each order has one selected provider; shared pricing, validation, snapshots, and reservation are in `lib/checkout/order.ts`.
 3. Provider-specific calls remain separate in `lib/onepay.ts` and `lib/paypal.ts`; PayPal uses dedicated create/capture endpoints.
 4. The OnePay endpoint contract is preserved. PayPal browser errors do not silently submit a charge through another provider.

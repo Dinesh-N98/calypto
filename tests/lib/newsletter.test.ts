@@ -1,0 +1,116 @@
+import { describe, expect, it, vi } from "vitest";
+import { generateNewsletterDiscountCode } from "@/lib/newsletter/discount-code";
+import {
+  getNewsletterSubscriptionAction,
+  normalizeNewsletterEmail,
+} from "@/lib/newsletter/subscriptions";
+import {
+  createNewsletterToken,
+  hashNewsletterToken,
+  isConfirmationTokenExpired,
+  newsletterTokensMatch,
+} from "@/lib/newsletter/tokens";
+import { renderNewsletterWelcomeEmail, sendNewsletterWelcomeEmail } from "@/lib/newsletter/email";
+
+describe("newsletter utilities", () => {
+  it("normalizes valid email addresses and rejects malformed addresses", () => {
+    expect(normalizeNewsletterEmail("  Angler+Crew@Example.COM ")).toBe("angler+crew@example.com");
+    expect(normalizeNewsletterEmail("first..last@example.com")).toBeNull();
+    expect(normalizeNewsletterEmail("user@localhost")).toBeNull();
+    expect(normalizeNewsletterEmail("user@examKle.com")).toBeNull();
+    expect(normalizeNewsletterEmail("x".repeat(250) + "@example.com")).toBeNull();
+    expect(normalizeNewsletterEmail(null)).toBeNull();
+  });
+
+  it("generates typable unique discount codes from the Crockford alphabet", () => {
+    const codes = Array.from({ length: 100 }, generateNewsletterDiscountCode);
+    expect(codes.every((code) => /^CREW-[0-9A-HJKMNP-TV-Z]{8}$/u.test(code))).toBe(true);
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it("generates 32-byte tokens, hashes them, and compares hashes in constant time", () => {
+    const token = createNewsletterToken();
+    const hash = hashNewsletterToken(token);
+    expect(Buffer.from(token, "base64url")).toHaveLength(32);
+    expect(hash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(newsletterTokensMatch(hash, hash)).toBe(true);
+    expect(newsletterTokensMatch(hash, hashNewsletterToken("different"))).toBe(false);
+    expect(newsletterTokensMatch(hash, "invalid")).toBe(false);
+  });
+
+  it("expires confirmation tokens after 24 hours", () => {
+    const sentAt = new Date("2026-10-27T00:00:00.000Z");
+    expect(isConfirmationTokenExpired(sentAt, new Date("2026-10-27T23:59:59.999Z"))).toBe(false);
+    expect(isConfirmationTokenExpired(sentAt, new Date("2026-10-28T00:00:00.000Z"))).toBe(true);
+    expect(isConfirmationTokenExpired(sentAt, new Date("2026-10-28T00:00:00.001Z"))).toBe(true);
+    expect(isConfirmationTokenExpired(null)).toBe(true);
+  });
+
+  it("chooses subscription actions for each persisted status", () => {
+    const now = new Date("2026-10-27T12:00:00.000Z");
+    expect(getNewsletterSubscriptionAction(null, null, now)).toBe("CREATE");
+    expect(getNewsletterSubscriptionAction("UNSUBSCRIBED", null, now)).toBe("RESUBSCRIBE");
+    expect(getNewsletterSubscriptionAction("CONFIRMED", null, now)).toBe("NOOP");
+    expect(getNewsletterSubscriptionAction("PENDING_CONFIRMATION", now, now)).toBe("NOOP");
+    expect(
+      getNewsletterSubscriptionAction(
+        "PENDING_CONFIRMATION",
+        new Date(now.getTime() - 10 * 60 * 1000),
+        now,
+      ),
+    ).toBe("RESEND");
+  });
+
+  it("HTML-escapes dynamic welcome-email content", () => {
+    const content = renderNewsletterWelcomeEmail(
+      "<script>alert(1)</script>",
+      "https://example.com/?x=1&y=2",
+    );
+    expect(content.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(content.html).toContain("https://example.com/?x=1&amp;y=2");
+    expect(content.text).toContain("https://example.com/?x=1&y=2");
+  });
+
+  it("sends welcome email through Resend with the configured sender, reply-to, and unsubscribe header", async () => {
+    const previous = {
+      EMAIL_FROM: process.env.EMAIL_FROM,
+      EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
+      RESEND_API_KEY: process.env.RESEND_API_KEY,
+    };
+    process.env.EMAIL_FROM = "Calypto <crew@calyptobait.com>";
+    process.env.EMAIL_REPLY_TO = "icalypto@gmail.com";
+    process.env.RESEND_API_KEY = "test-api-key";
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await sendNewsletterWelcomeEmail({
+        email: "angler@example.com",
+        discountCode: "CREW-ABCD1234",
+        unsubscribeUrl: "https://calyptobait.com/newsletter/unsubscribe?token=example",
+      });
+
+      const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+      const payload = JSON.parse(String(request.body)) as {
+        from: string;
+        reply_to: string;
+        headers: Record<string, string>;
+      };
+      expect(payload).toMatchObject({
+        from: "Calypto <crew@calyptobait.com>",
+        reply_to: "icalypto@gmail.com",
+        headers: {
+          "List-Unsubscribe": "<https://calyptobait.com/newsletter/unsubscribe?token=example>",
+        },
+      });
+    } finally {
+      if (previous.EMAIL_FROM === undefined) delete process.env.EMAIL_FROM;
+      else process.env.EMAIL_FROM = previous.EMAIL_FROM;
+      if (previous.EMAIL_REPLY_TO === undefined) delete process.env.EMAIL_REPLY_TO;
+      else process.env.EMAIL_REPLY_TO = previous.EMAIL_REPLY_TO;
+      if (previous.RESEND_API_KEY === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = previous.RESEND_API_KEY;
+      vi.unstubAllGlobals();
+    }
+  });
+});

@@ -214,8 +214,9 @@ export default function PrivacyPolicyPage() {
               To access or delete your account, use Account Settings or email us with your request.
             </li>
             <li>
-              To opt out of newsletter emails, use an unsubscribe option in the message if
-              available, or email us and ask to be removed from the newsletter list.
+              Newsletter subscriptions use double opt-in. We send marketing emails only after you
+              confirm your email address. You can unsubscribe at any time using the link in each
+              newsletter email, or email us and ask to be removed from the list.
             </li>
             <li>
               To change analytics or other optional preferences, use the Cookie Settings control

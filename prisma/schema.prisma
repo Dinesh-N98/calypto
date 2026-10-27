@@ -35,6 +35,12 @@ enum PaymentProvider {
   PAYPAL
 }
 
+enum NewsletterSubscriptionStatus {
+  PENDING_CONFIRMATION
+  CONFIRMED
+  UNSUBSCRIBED
+}
+
 model Product {
   id                     String           @id @default(cuid())
   slug                   String           @unique
@@ -159,6 +165,29 @@ model Lead {
   interactions CrmInteraction[]
 
   @@index([status, updatedAt])
+}
+
+model NewsletterSubscription {
+  id                    String                       @id @default(cuid())
+  email                 String                       @unique
+  status                NewsletterSubscriptionStatus @default(PENDING_CONFIRMATION)
+  source                String
+  consentText           String                       @db.Text
+  consentVersion        String
+  consentAt             DateTime
+  confirmationTokenHash String?                      @unique
+  confirmationSentAt    DateTime?
+  confirmedAt           DateTime?
+  unsubscribeTokenHash  String?                      @unique
+  unsubscribedAt        DateTime?
+  discountCode          String?                      @unique
+  discountPercent       Int                          @default(15)
+  discountRedeemedAt    DateTime?
+  redeemedOrderId       String?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+
+  @@index([status])
 }
 
 model User {

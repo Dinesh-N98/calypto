@@ -39,16 +39,39 @@ export async function applyRateLimit(
   limit: number,
   windowSeconds: number,
 ): Promise<RateLimitResult> {
+  return applyRateLimitWithKey(
+    createHash("sha256")
+      .update(`${scope}:${getClientAddress(request)}`)
+      .digest("hex"),
+    limit,
+    windowSeconds,
+  );
+}
+
+export async function applyRateLimitByValue(
+  scope: string,
+  value: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<RateLimitResult> {
+  return applyRateLimitWithKey(
+    createHash("sha256").update(`${scope}:${value}`).digest("hex"),
+    limit,
+    windowSeconds,
+  );
+}
+
+async function applyRateLimitWithKey(
+  key: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<RateLimitResult> {
   if (!Number.isSafeInteger(limit) || limit < 1) {
     throw new Error("Rate limit must be a positive safe integer.");
   }
   if (!Number.isSafeInteger(windowSeconds) || windowSeconds < 1) {
     throw new Error("Rate limit window must be a positive safe integer.");
   }
-
-  const key = createHash("sha256")
-    .update(`${scope}:${getClientAddress(request)}`)
-    .digest("hex");
   const rows = await prisma.$queryRaw<{ count: number; resetAt: Date }[]>(Prisma.sql`
     INSERT INTO "ApiRateLimitBucket" ("key", "count", "resetAt", "updatedAt")
     VALUES (${key}, 1, CURRENT_TIMESTAMP + (${windowSeconds} * INTERVAL '1 second'), CURRENT_TIMESTAMP)
@@ -96,9 +119,7 @@ export function withRateLimitHeaders(response: Response, result: RateLimitResult
   });
 }
 
-export function rateLimitResponse(
-  result: Extract<RateLimitResult, { allowed: false }>,
-): Response {
+export function rateLimitResponse(result: Extract<RateLimitResult, { allowed: false }>): Response {
   return withRateLimitHeaders(
     Response.json(
       { error: "Too many requests. Please wait before trying again." },

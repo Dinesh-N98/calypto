@@ -25,7 +25,7 @@ ONEPAY_HASH_SALT="..."
 
 Get the App ID, App Token, and Hash Salt from the OnePay merchant dashboard's API Keys section. OnePay documents separate sandbox and live credential pairs. Keep all three values server-side and use the matching pair for each environment. `APP_BASE_URL` must be the public HTTPS origin because OnePay requires an HTTPS transaction return URL; local development therefore needs an HTTPS tunnel. Apply the Prisma migration with `npx prisma migrate deploy` before deploying the new application.
 
-Test with the sandbox credential pair and OnePay's [documented test cards](https://docs.onepay.lk/testing/test-cards) before switching to live credentials. The migration retains historical Stripe orders: their provider is recorded as `STRIPE`, their Stripe session ID remains the provider reference, and their existing USD amounts and paid statuses are preserved.
+Test with the sandbox credential pair and OnePay's [documented test cards](https://docs.onepay.lk/testing/test-cards) before switching to live credentials. Payment-provider migrations preserve existing order references, USD amounts, and paid statuses.
 
 The documented status API returns a boolean `status` (`true` means paid); it does not document distinct cancellation or failure values. Consequently, an unverified callback or a false status remains pending rather than being mislabeled cancelled or failed. A checkout request explicitly rejected by OnePay is recorded as failed. The OnePay callback documentation does not specify a callback signature or callback secret, so the callback endpoint does not trust callback status fields and only triggers the authenticated status lookup.
 
