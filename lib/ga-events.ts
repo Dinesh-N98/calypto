@@ -11,6 +11,7 @@ export type GaEcommerceItemInput = {
   itemName: string;
   itemCategory?: string | null;
   itemVariant?: string | null;
+  itemListName?: string | null;
   priceCents: number;
   quantity: number;
 };
@@ -27,6 +28,7 @@ type GaEcommerceItem = {
   item_name: string;
   item_category?: string;
   item_variant?: string;
+  item_list_name?: string;
   price: number;
   quantity: number;
 };
@@ -49,6 +51,7 @@ function mapItems(items: GaEcommerceItemInput[]): GaEcommerceItem[] {
     item_name: item.itemName,
     ...(item.itemCategory ? { item_category: item.itemCategory } : {}),
     ...(item.itemVariant ? { item_variant: item.itemVariant } : {}),
+    ...(item.itemListName ? { item_list_name: item.itemListName } : {}),
     price: toMajorUnits(item.priceCents),
     quantity: item.quantity,
   }));
