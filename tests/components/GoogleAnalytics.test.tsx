@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, render } from "@testing-library/react";
-import { createElement, useEffect } from "react";
+import { createElement, StrictMode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConsentAnalytics } from "@/components/ConsentAnalytics";
 import { saveCookieConsent } from "@/lib/cookieConsent";
@@ -91,8 +91,8 @@ describe("consent-gated Google Analytics", () => {
     expect(pageViewCall).toBeDefined();
     expect(Object.prototype.toString.call(pageViewCall)).toBe("[object Arguments]");
     expect(pageViewCall?.[2]).toMatchObject({
-      page_path: "/products/test?variant=small",
-      page_location: window.location.href,
+      page_path: "/products/test",
+      page_location: "http://localhost:3000/products/test",
       page_title: "Storefront title",
     });
     expect(window.dataLayer?.map((entry) => entry[0])).toEqual([
@@ -106,6 +106,43 @@ describe("consent-gated Google Analytics", () => {
       ["GA4 page_view sent."],
     ]);
     expect(window["ga-disable-G-TEST12345"]).toBe(false);
+  });
+
+  it("sends one page_view per pathname under StrictMode and sanitizes order queries", async () => {
+    routeMocks.pathname = "/checkout/success";
+    window.history.replaceState({}, "", "/checkout/success?order=private-test-value");
+    const { rerender } = render(
+      createElement(StrictMode, null, createElement(ConsentAnalytics)),
+    );
+
+    await act(async () => {
+      setConsent(true);
+    });
+
+    const pageViews = () =>
+      window.dataLayer?.filter((entry) => entry[0] === "event" && entry[1] === "page_view") ??
+      [];
+    expect(pageViews()).toHaveLength(1);
+    expect(pageViews()[0]?.[2]).toMatchObject({
+      page_path: "/checkout/success",
+      page_location: "http://localhost:3000/checkout/success",
+    });
+    expect(JSON.stringify(pageViews())).not.toContain("private-test-value");
+
+    routeMocks.pathname = "/shop";
+    window.history.replaceState(
+      {},
+      "",
+      "/shop?utm_source=x&utm_campaign=y&order=1",
+    );
+    rerender(createElement(StrictMode, null, createElement(ConsentAnalytics)));
+
+    expect(pageViews()).toHaveLength(2);
+    expect(pageViews()[1]?.[2]).toMatchObject({
+      page_path: "/shop?utm_source=x&utm_campaign=y",
+      page_location:
+        "http://localhost:3000/shop?utm_source=x&utm_campaign=y",
+    });
   });
 
   it("does not load or initialize GA on admin routes", async () => {

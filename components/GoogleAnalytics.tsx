@@ -2,7 +2,8 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { buildGaPageUrl } from "@/lib/ga-url";
 
 type Gtag = (...args: unknown[]) => void;
 
@@ -22,6 +23,7 @@ export function GoogleAnalytics() {
   const debugEnabled = process.env.NEXT_PUBLIC_GA_DEBUG === "true";
   const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
   const [scriptReady, setScriptReady] = useState(false);
+  const lastSentPathname = useRef<string | null>(null);
 
   useEffect(() => {
     if (!measurementId || !measurementIdPattern.test(measurementId) || isAdminPath) return;
@@ -58,10 +60,18 @@ export function GoogleAnalytics() {
 
   useEffect(() => {
     if (!scriptReady || !measurementId || isAdminPath) return;
+    if (lastSentPathname.current === pathname) return;
+
+    lastSentPathname.current = pathname;
+    const { pagePath, pageLocation } = buildGaPageUrl(
+      window.location.origin,
+      pathname,
+      window.location.search,
+    );
 
     window.gtag?.("event", "page_view", {
-      page_path: `${pathname}${window.location.search}`,
-      page_location: window.location.href,
+      page_path: pagePath,
+      page_location: pageLocation,
       page_title: document.title,
     });
     if (debugEnabled) console.debug("GA4 page_view sent.");
