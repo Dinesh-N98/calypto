@@ -1,7 +1,10 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useRef, useState } from "react";
+import { useCart } from "@/components/CartProvider";
 import { useToast } from "@/components/ToastProvider";
+import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
+import { trackGenerateLead, type GaLeadSource } from "@/lib/ga-events";
 import {
   useCustomerProfileAutofill,
   type CustomerProfile,
@@ -9,8 +12,11 @@ import {
 
 export function ContactForm() {
   const { showToast } = useToast();
+  const { items: cartItems } = useCart();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const hasTrackedSubmissionRef = useRef(false);
   const resolveContactFields = useCallback(
     (profile: CustomerProfile) => ({
       name: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.name || "",
@@ -26,6 +32,9 @@ export function ContactForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    hasTrackedSubmissionRef.current = false;
     setError("");
     setIsSubmitting(true);
 
@@ -49,13 +58,40 @@ export function ContactForm() {
         return;
       }
 
+      if (!hasTrackedSubmissionRef.current) {
+        hasTrackedSubmissionRef.current = true;
+        const source = leadSourceFromHash(window.location.hash);
+        if (source === "contact") {
+          trackGenerateLead(source);
+        } else {
+          trackGenerateLead(
+            source,
+            cartItems.map((item) => ({
+              itemId: item.sku,
+              itemName: item.name,
+              itemVariant: item.variantLabel,
+              priceCents: item.priceCents,
+              quantity: item.quantity,
+            })),
+            CHECKOUT_CURRENCY,
+          );
+        }
+      }
+
       form.reset();
       showToast("Message sent. We'll be in touch.");
     } catch {
       setError("Unable to send your message. Please try again.");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
+  }
+
+  function leadSourceFromHash(hash: string): GaLeadSource {
+    if (hash === "#lead-source=cart") return "cart";
+    if (hash === "#lead-source=buy_now") return "buy_now";
+    return "contact";
   }
 
   return (

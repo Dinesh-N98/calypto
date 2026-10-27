@@ -79,7 +79,7 @@ describe("CartPageClient", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Send Inquiry via Form" })).toHaveAttribute(
       "href",
-      "/contact",
+      "/contact#lead-source=cart",
     );
 
     await user.click(screen.getByRole("button", { name: "Continue Browsing" }));

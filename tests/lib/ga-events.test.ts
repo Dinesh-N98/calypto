@@ -5,6 +5,7 @@ import {
   toMajorUnits,
   trackAddToCart,
   trackBeginCheckout,
+  trackGenerateLead,
   trackPurchase,
   trackViewItem,
   type GaEcommerceItemInput,
@@ -34,6 +35,8 @@ describe("GA4 ecommerce events", () => {
 
     expect(trackViewItem(item, "USD")).toBe(false);
     expect(trackAddToCart(item, "USD")).toBe(false);
+    expect(trackGenerateLead("contact")).toBe(false);
+    expect(trackGenerateLead("cart", [item], "USD")).toBe(false);
     expect(trackBeginCheckout([item], "USD")).toBe(false);
     expect(
       trackPurchase({
@@ -103,6 +106,39 @@ describe("GA4 ecommerce events", () => {
         ],
       }),
     );
+  });
+
+  it("includes commerce data for cart and Buy Now lead events", () => {
+    expect(trackGenerateLead("cart", [item], "USD")).toBe(true);
+    expect(mockGtag).toHaveBeenLastCalledWith("event", "generate_lead", {
+      lead_source: "cart",
+      currency: "USD",
+      value: 24,
+      items: [
+        {
+          item_id: "SHAD-01",
+          item_name: "River Shad",
+          item_category: "Soft Baits",
+          item_variant: "Green / 4 in",
+          price: 12,
+          quantity: 2,
+        },
+      ],
+    });
+
+    expect(trackGenerateLead("buy_now", [item], "USD")).toBe(true);
+    expect(mockGtag).toHaveBeenLastCalledWith(
+      "event",
+      "generate_lead",
+      expect.objectContaining({ lead_source: "buy_now", currency: "USD", value: 24 }),
+    );
+  });
+
+  it("emits only lead_source for an ordinary contact submission", () => {
+    expect(trackGenerateLead("contact")).toBe(true);
+    expect(mockGtag).toHaveBeenCalledWith("event", "generate_lead", {
+      lead_source: "contact",
+    });
   });
 
   it("fires a paid purchase once and uses the order item snapshot", () => {

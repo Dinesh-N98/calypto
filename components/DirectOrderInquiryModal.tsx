@@ -4,7 +4,13 @@ import Link from "next/link";
 import { ArrowUpRight, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
-export function DirectOrderInquiryModal({ onClose }: { onClose: () => void }) {
+export function DirectOrderInquiryModal({
+  onClose,
+  leadSource,
+}: {
+  onClose: () => void;
+  leadSource: "cart" | "buy_now";
+}) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,7 +68,7 @@ export function DirectOrderInquiryModal({ onClose }: { onClose: () => void }) {
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
           <Link
             className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#84cc16] px-4 text-center text-sm font-bold text-zinc-950 transition-colors hover:bg-lime-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#84cc16]"
-            href="/contact"
+            href={`/contact#lead-source=${leadSource}`}
             onClick={onClose}
           >
             Send Inquiry via Form

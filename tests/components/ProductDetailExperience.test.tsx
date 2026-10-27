@@ -102,6 +102,10 @@ describe("ProductDetailExperience", () => {
       }),
     );
     expect(screen.getByRole("dialog", { name: "Direct Order Inquiry" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Send Inquiry via Form" })).toHaveAttribute(
+      "href",
+      "/contact#lead-source=buy_now",
+    );
   });
 
   it("sends one view_item per product id under StrictMode and waits for consent", () => {

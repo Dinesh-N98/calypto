@@ -250,7 +250,7 @@ export function ProductDetailExperience({
 
   return (
     <section className="grid w-full min-w-0 grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] lg:gap-12">
-      {isInquiryOpen && <DirectOrderInquiryModal onClose={closeInquiry} />}
+      {isInquiryOpen && <DirectOrderInquiryModal leadSource="buy_now" onClose={closeInquiry} />}
       <div className="min-w-0">
         <div className="relative aspect-square overflow-hidden rounded-sm bg-[#f0f0e8]">
           <Image

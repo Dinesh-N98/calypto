@@ -63,7 +63,7 @@ function eventValue(items: GaEcommerceItem[]): number {
 }
 
 function sendEvent(
-  eventName: "view_item" | "add_to_cart" | "begin_checkout" | "purchase",
+  eventName: "view_item" | "add_to_cart" | "begin_checkout" | "purchase" | "generate_lead",
   params: Record<string, unknown>,
 ): boolean {
   if (typeof window === "undefined" || typeof window.gtag !== "function") return false;
@@ -87,6 +87,25 @@ export function trackAddToCart(item: GaEcommerceItemInput, currency: string): bo
     value: eventValue(items),
     items,
   });
+}
+
+export type GaLeadSource = "cart" | "buy_now" | "contact";
+
+export function trackGenerateLead(
+  source: GaLeadSource,
+  items?: GaEcommerceItemInput[],
+  currency?: string,
+): boolean {
+  const params: Record<string, unknown> = { lead_source: source };
+
+  if (items && currency) {
+    const gaItems = mapItems(items);
+    params.currency = currency;
+    params.value = eventValue(gaItems);
+    params.items = gaItems;
+  }
+
+  return sendEvent("generate_lead", params);
 }
 
 export function trackBeginCheckout(
