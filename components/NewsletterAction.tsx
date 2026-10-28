@@ -120,16 +120,18 @@ export function NewsletterAction({ action, token }: NewsletterActionProps) {
           <p className="text-sm leading-7 text-[#55584e]">{successMessage}</p>
           {action === "confirm" && result.discountCode && (
             <>
-              <p className="mt-4 inline-block rounded-lg border border-[#ddddd3] bg-white px-5 py-3 font-mono text-xl font-bold tracking-widest">
-                {result.discountCode}
-              </p>
-              <button
-                className="ml-3 min-h-11 rounded-lg border border-olive px-4 text-sm font-bold text-olive hover:bg-olive hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
-                onClick={copyDiscountCode}
-                type="button"
-              >
-                {copyStatus === "copied" ? "Copied!" : "Copy code"}
-              </button>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <p className="min-w-[15rem] select-all rounded-lg border border-[#c8cbbb] bg-white px-5 py-3 font-mono text-xl font-bold tracking-widest text-[#171a14] shadow-sm">
+                  {result.discountCode}
+                </p>
+                <button
+                  className="min-h-11 rounded-lg border border-[#a3bd32] bg-[#171a14] px-4 text-sm font-bold text-[#e8edcf] transition-colors hover:border-[#c1d36a] hover:bg-[#718126] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a3bd32]"
+                  onClick={copyDiscountCode}
+                  type="button"
+                >
+                  {copyStatus === "copied" ? "Copied!" : "Copy code"}
+                </button>
+              </div>
               {copyStatus !== "idle" && (
                 <p aria-live="polite" className="mt-2 text-sm text-[#55584e]" role="status">
                   {copyStatus === "copied"

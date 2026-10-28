@@ -46,7 +46,9 @@ describe("NewsletterAction confirmation", () => {
     render(createElement(NewsletterAction, { action: "confirm", token: "secret-token" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm my subscription" }));
 
-    expect(await screen.findByText("CREW-ABCDEFGH")).toBeInTheDocument();
+    const discountCode = await screen.findByText("CREW-ABCDEFGH");
+    expect(discountCode).toBeInTheDocument();
+    expect(discountCode.className).toContain("text-[#171a14]");
     expect(
       screen.getByText(/first order only and applies to the product subtotal, not shipping or tax/i),
     ).toBeInTheDocument();

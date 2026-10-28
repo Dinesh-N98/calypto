@@ -1,4 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+
+const resendSend = vi.hoisted(() => vi.fn());
+vi.mock("resend", () => ({
+  Resend: class {
+    emails = { send: resendSend };
+  },
+}));
 import { generateNewsletterDiscountCode } from "@/lib/newsletter/discount-code";
 import {
   getNewsletterSubscriptionAction,
@@ -80,8 +87,7 @@ describe("newsletter utilities", () => {
     process.env.EMAIL_FROM = "Calypto <crew@calyptobait.com>";
     process.env.EMAIL_REPLY_TO = "icalypto@gmail.com";
     process.env.RESEND_API_KEY = "test-api-key";
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal("fetch", fetchMock);
+    resendSend.mockResolvedValue({ data: { id: "email_123" }, error: null });
 
     try {
       await sendNewsletterWelcomeEmail({
@@ -90,19 +96,13 @@ describe("newsletter utilities", () => {
         unsubscribeUrl: "https://calyptobait.com/newsletter/unsubscribe?token=example",
       });
 
-      const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
-      const payload = JSON.parse(String(request.body)) as {
-        from: string;
-        reply_to: string;
-        headers: Record<string, string>;
-      };
-      expect(payload).toMatchObject({
+      expect(resendSend).toHaveBeenCalledWith(expect.objectContaining({
         from: "Calypto <crew@calyptobait.com>",
-        reply_to: "icalypto@gmail.com",
+        replyTo: "icalypto@gmail.com",
         headers: {
           "List-Unsubscribe": "<https://calyptobait.com/newsletter/unsubscribe?token=example>",
         },
-      });
+      }));
     } finally {
       if (previous.EMAIL_FROM === undefined) delete process.env.EMAIL_FROM;
       else process.env.EMAIL_FROM = previous.EMAIL_FROM;

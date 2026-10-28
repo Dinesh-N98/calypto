@@ -1,4 +1,4 @@
-const RESEND_EMAILS_URL = "https://api.resend.com/emails";
+import { Resend } from "resend";
 
 export type NewsletterEmail = {
   email: string;
@@ -83,29 +83,28 @@ async function sendNewsletterMessage(options: {
     throw new Error("Newsletter email configuration is incomplete.");
   }
 
-  const response = await fetch(RESEND_EMAILS_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      reply_to: replyTo,
-      to: [options.to],
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-      ...(options.unsubscribeUrl
-        ? { headers: { "List-Unsubscribe": `<${options.unsubscribeUrl}>` } }
-        : {}),
-    }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
+  if (/\r\n/u.test(from) || /\r\n/u.test(replyTo)) {
+    throw new Error("Newsletter email sender configuration is invalid.");
+  }
+
+  const resend = new Resend(apiKey);
+  const { data, error } = await resend.emails.send({
+    from,
+    replyTo,
+    to: [options.to],
+    subject: options.subject,
+    html: options.html,
+    text: options.text,
+    ...(options.unsubscribeUrl
+      ? { headers: { "List-Unsubscribe": `<${options.unsubscribeUrl}>` } }
+      : {}),
   });
 
-  if (!response.ok) {
-    throw new Error(`Resend newsletter API returned HTTP ${response.status}.`);
+  if (error) {
+    throw new Error(`Resend newsletter API failed: ${error.message}`);
+  }
+  if (!data?.id) {
+    throw new Error("Resend newsletter API returned no email id.");
   }
 }
 

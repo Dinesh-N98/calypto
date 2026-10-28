@@ -124,18 +124,19 @@ describe("newsletter subscribe and confirmation APIs", () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it("keeps a saved signup and returns generic success when Resend is unavailable", async () => {
+  it("keeps the signup saved and reports provider failure instead of a false success", async () => {
     mocks.findUnique.mockResolvedValue(null);
     mocks.sendConfirmation.mockRejectedValue(new Error("provider failure"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const response = await subscribe(request("/api/subscribe", { email: "angler@example.com" }));
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ok: true });
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ error: expect.any(String) });
     expect(mocks.create).toHaveBeenCalledOnce();
-    expect(consoleError).toHaveBeenCalledWith("Newsletter confirmation email could not be sent.");
-    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("angler@example.com");
+    const logged = JSON.stringify(consoleError.mock.calls);
+    expect(logged).toContain("provider failure");
+    expect(logged).not.toContain("angler@example.com");
     consoleError.mockRestore();
   });
 

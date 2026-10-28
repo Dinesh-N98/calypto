@@ -35,8 +35,12 @@ async function sendConfirmation(email: string, token: string): Promise<void> {
       email,
       confirmationUrl: buildNewsletterUrl("/newsletter/confirm", token),
     });
-  } catch {
-    console.error("Newsletter confirmation email could not be sent.");
+  } catch (error) {
+    console.error("Newsletter confirmation email could not be sent.", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   }
 }
 
@@ -174,8 +178,11 @@ export async function POST(request: Request) {
 
     await sendConfirmation(email, token);
     return noStoreJson(GENERIC_SUCCESS);
-  } catch {
-    console.error("Newsletter signup could not be processed.");
+  } catch (error) {
+    console.error("Newsletter signup could not be processed.", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return noStoreJson(
       { error: "Unable to process your signup right now. Please try again." },
       { status: 500 },
