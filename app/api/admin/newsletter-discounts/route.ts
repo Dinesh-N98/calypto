@@ -106,8 +106,8 @@ export async function GET(request: Request) {
   const where = search
     ? {
         OR: [
-          { email: { contains: search, mode: "insensitive" } },
-          { discountCode: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" as const } },
+          { discountCode: { contains: search, mode: "insensitive" as const } },
         ],
       }
     : {};
@@ -128,9 +128,6 @@ export async function GET(request: Request) {
           discountRedeemedAt: true,
           redeemedOrderId: true,
           createdAt: true,
-          redemption: {
-            select: { orderReference: true },
-          },
         },
       }),
       prisma.newsletterSubscription.count({ where }),
@@ -147,8 +144,7 @@ export async function GET(request: Request) {
           createdAt: subscription.createdAt.toISOString(),
           subscribedAt: subscription.createdAt.toISOString(),
           redemptionDate: subscription.discountRedeemedAt,
-          orderReference:
-            subscription.redeemedOrderId ?? subscription.redemption?.orderReference ?? null,
+          orderReference: subscription.redeemedOrderId,
         })),
         page,
         limit: safeLimit,

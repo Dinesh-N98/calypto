@@ -49,3 +49,6 @@ next-env.d.ts
 /private/
 .vscode/
 .neon
+
+# DHL API Samples & Docs
+docs/dhl-samples/

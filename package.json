@@ -24,6 +24,7 @@
     "@prisma/client": "^6.19.3",
     "aos": "^2.3.4",
     "bcrypt": "^6.0.0",
+    "fast-xml-parser": "^5.11.2",
     "framer-motion": "^14.5.0",
     "lucide-react": "^1.49.0",
     "next": "16.4.0",

@@ -7,6 +7,7 @@ import {
   updateCrmLeadNotes,
   updateCrmLeadStatus,
 } from "@/lib/actions/crm";
+import type { NewsletterDiscountLookupStatus } from "@/lib/newsletter/discount-redemption";
 import { isLeadStatus, leadStatuses, type LeadRow, type LeadStatus } from "./LeadTableRowActions";
 
 type LeadInteraction = {
@@ -20,7 +21,7 @@ type LeadInteraction = {
 
 export type LeadDetail = LeadRow & {
   discountCode?: string | null;
-  discountCodeStatus?: "VALID" | "ALREADY_REDEEMED" | "NOT_FOUND" | "INELIGIBLE" | null;
+  discountCodeStatus?: NewsletterDiscountLookupStatus | null;
   discountSubscriberEmail?: string | null;
   discountPercent?: number | null;
   interactions: LeadInteraction[];
