@@ -292,6 +292,13 @@ model Order {
   carrier               String?
   trackingNumber        String?
   trackingUrl           String?
+  dhlTrackingNumber     String?          @unique
+  dhlShipmentIdentificationNumber String?
+  shippingLabelUrl      String?
+  commercialInvoiceUrl  String?
+  shippingLabelData     String?          @db.Text
+  commercialInvoiceData String?          @db.Text
+  dhlRawResponse        Json?
   items                 OrderItem[]
   paymentAttempts       PaymentAttempt[]
   crmInteractions       CrmInteraction[]

@@ -25,6 +25,10 @@ type OrderDetails = AdminOrderFulfillment & {
   shippingState: string | null;
   shippingPostalCode: string | null;
   shippingCountry: string | null;
+  dhlTrackingNumber: string | null;
+  dhlShipmentIdentificationNumber: string | null;
+  shippingLabelUrl: string | null;
+  commercialInvoiceUrl: string | null;
   items: { id: string; name: string; quantity: number; priceCents: number; sku: string | null }[];
 };
 
@@ -77,6 +81,7 @@ export function OrderDetailsSheet({
   } | null>(null);
   const [trackingOrder, setTrackingOrder] = useState<AdminOrderFulfillment | null>(null);
   const [updatingStatus, startStatusUpdate] = useTransition();
+  const [creatingShipment, setCreatingShipment] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const hasCurrentResult = orderResult?.id === orderId;
   const order = hasCurrentResult ? orderResult.order : null;
@@ -128,6 +133,61 @@ export function OrderDetailsSheet({
     return () => controller.abort();
   }, [orderId]);
 
+  async function createDhlShipment() {
+    if (!order) return;
+    setCreatingShipment(true);
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.id)}/shipment`, {
+        method: "POST",
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          isObject(result) && typeof result.error === "string"
+            ? result.error
+            : "Unable to generate the DHL shipment.",
+        );
+      }
+      if (!isObject(result) || typeof result.dhlTrackingNumber !== "string") {
+        throw new Error("DHL returned an invalid shipment response.");
+      }
+      const dhlTrackingNumber = result.dhlTrackingNumber;
+      setOrderResult((current) =>
+        current?.id === order.id && current.order
+          ? {
+              ...current,
+              order: {
+                ...current.order,
+                dhlTrackingNumber,
+                dhlShipmentIdentificationNumber:
+                  typeof result.dhlShipmentIdentificationNumber === "string"
+                    ? result.dhlShipmentIdentificationNumber
+                    : null,
+                shippingLabelUrl:
+                  typeof result.shippingLabelUrl === "string" ? result.shippingLabelUrl : null,
+                commercialInvoiceUrl:
+                  typeof result.commercialInvoiceUrl === "string"
+                    ? result.commercialInvoiceUrl
+                    : null,
+                trackingNumber: dhlTrackingNumber,
+                carrier: "DHL",
+              },
+            }
+          : current,
+      );
+      showToast("DHL waybill and shipping label generated.");
+    } catch (shipmentError) {
+      showToast(
+        shipmentError instanceof Error
+          ? shipmentError.message
+          : "Unable to generate the DHL shipment.",
+        "error",
+      );
+    } finally {
+      setCreatingShipment(false);
+    }
+  }
+
   function updateFulfillmentStatus(status: string) {
     if (!order) return;
     startStatusUpdate(async () => {
@@ -153,10 +213,7 @@ export function OrderDetailsSheet({
         }
         setOrderResult((current) =>
           current?.id === order.id && current.order
-            ? {
-                ...current,
-                order: { ...current.order, fulfillmentStatus: status },
-              }
+            ? { ...current, order: { ...current.order, fulfillmentStatus: status } }
             : current,
         );
         showToast("Fulfillment status updated.");
@@ -324,6 +381,11 @@ export function OrderDetailsSheet({
                   ) : (
                     <p className="mt-2 text-sm text-[#65695f]">Tracking not added.</p>
                   )}
+                  {order.dhlTrackingNumber && (
+                    <p className="mt-1 text-xs text-[#65695f]">
+                      DHL AWB: {order.dhlTrackingNumber}
+                    </p>
+                  )}
                   <button
                     className="mt-3 min-h-10 rounded-lg border border-black/15 px-3 text-xs font-bold hover:bg-stone-50"
                     onClick={() => setTrackingOrder(order)}
@@ -349,6 +411,36 @@ export function OrderDetailsSheet({
                     target="_blank"
                   >
                     Track shipment
+                  </a>
+                )}
+                {!order.dhlTrackingNumber && order.status === "paid" && (
+                  <button
+                    className="inline-flex min-h-10 items-center rounded-lg bg-[#718126] px-4 text-xs font-bold text-white hover:bg-[#5f6d1f] disabled:opacity-60"
+                    disabled={creatingShipment}
+                    onClick={createDhlShipment}
+                    type="button"
+                  >
+                    {creatingShipment ? "Generating DHL label…" : "Generate DHL waybill & label"}
+                  </button>
+                )}
+                {order.shippingLabelUrl && (
+                  <a
+                    className="inline-flex min-h-10 items-center rounded-lg border border-black/15 px-4 text-xs font-bold hover:bg-stone-50"
+                    href={order.shippingLabelUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Download DHL label
+                  </a>
+                )}
+                {order.commercialInvoiceUrl && (
+                  <a
+                    className="inline-flex min-h-10 items-center rounded-lg border border-black/15 px-4 text-xs font-bold hover:bg-stone-50"
+                    href={order.commercialInvoiceUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Download commercial invoice
                   </a>
                 )}
               </footer>

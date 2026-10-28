@@ -7,6 +7,8 @@ export type DhlConfig = {
   baseUrl: string;
   shipperCountry: string;
   shipperCity: string;
+  shipperPhone: string;
+  shipperEmail: string;
   endpoints: {
     rate: string;
     shipment: string;
@@ -45,6 +47,8 @@ export function getDhlConfig(environment: Environment = process.env): DhlConfig 
   const accountNumber = required(environment, "DHL_ACCOUNT_NUMBER");
   const shipperCountry = (environment.DHL_SHIPPER_COUNTRY ?? "LK").trim().toUpperCase();
   const shipperCity = (environment.DHL_SHIPPER_CITY ?? "Colombo 02").trim();
+  const shipperPhone = (environment.DHL_SHIPPER_PHONE ?? "").trim();
+  const shipperEmail = (environment.DHL_SHIPPER_EMAIL ?? "").trim();
 
   if (!/^[A-Z]{2}$/.test(shipperCountry)) {
     throw new Error("DHL_SHIPPER_COUNTRY must be a two-letter ISO country code.");
@@ -58,6 +62,8 @@ export function getDhlConfig(environment: Environment = process.env): DhlConfig 
     baseUrl,
     shipperCountry,
     shipperCity,
+    shipperPhone,
+    shipperEmail,
     endpoints: {
       rate: `${baseUrl}/expressRateBook`,
       shipment: `${baseUrl}/expressRateBook`,
