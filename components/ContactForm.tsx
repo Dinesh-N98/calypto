@@ -149,8 +149,8 @@ export function ContactForm({ initialDiscountCode = "" }: { initialDiscountCode?
           }}
         />
         <span className="normal-case tracking-normal text-muted">
-          We&apos;ll verify your code and apply it to your order. Discount applies to product
-          subtotal only, not shipping or tax.
+          We&apos;ll verify your code and apply it to your order. The code must match the subscriber
+          email used here. It applies to product subtotal only, not shipping or tax.
         </span>
       </label>
       {profileStatus === "error" && (

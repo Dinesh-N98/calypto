@@ -90,7 +90,13 @@ export async function POST(request: Request) {
           discountRedeemedAt: true,
         },
       });
-      discountCodeStatus = getNewsletterDiscountLookupStatus(subscription);
+      discountCodeStatus = getNewsletterDiscountLookupStatus(subscription, email);
+      if (discountCodeStatus === "EMAIL_MISMATCH") {
+        return noStoreJson(
+          { error: "This discount code is tied to a different email address." },
+          400,
+        );
+      }
       discountSubscriberEmail = subscription?.email ?? null;
       discountPercent = subscription?.discountPercent ?? null;
     }

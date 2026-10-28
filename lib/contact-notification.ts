@@ -69,17 +69,14 @@ export function renderContactInquiryNotification(
           details.discountPercent <= 100
             ? details.discountPercent
             : 15,
-        emailDiffers:
-          Boolean(details.discountSubscriberEmail) &&
-          details.email.toLowerCase() !== details.discountSubscriberEmail?.toLowerCase(),
       }
     : null;
 
   const discountHtml = discountDetails
-    ? `<section><h2>Newsletter discount code</h2><p><strong>Code:</strong> ${escapeHtml(discountDetails.code)}</p><p><strong>Lookup status:</strong> ${escapeHtml(discountDetails.status)}</p><p><strong>Issued to:</strong> ${escapeHtml(discountDetails.issuedTo)}</p>${discountDetails.emailDiffers ? "<p><strong>Warning:</strong> Inquiry email differs from the email the code was issued to. Verify identity before applying.</p>" : ""}<p><strong>Rate:</strong> ${discountDetails.percent}%</p><p>Product subtotal only, not shipping/tax; first order only; verify before redeeming.</p></section>`
+    ? `<section><h2>Newsletter discount code</h2><p><strong>Code:</strong> ${escapeHtml(discountDetails.code)}</p><p><strong>Lookup status:</strong> ${escapeHtml(discountDetails.status)}</p><p><strong>Issued to:</strong> ${escapeHtml(discountDetails.issuedTo)}</p><p><strong>Rate:</strong> ${discountDetails.percent}%</p><p>Product subtotal only, not shipping/tax; first order only; verify before redeeming.</p></section>`
     : "";
   const discountText = discountDetails
-    ? `\n\nNewsletter discount code\nCode: ${discountDetails.code}\nLookup status: ${discountDetails.status}\nIssued to: ${discountDetails.issuedTo}\n${discountDetails.emailDiffers ? "WARNING: Inquiry email differs from the email the code was issued to. Verify identity before applying.\n" : ""}Rate: ${discountDetails.percent}%\nProduct subtotal only, not shipping/tax; first order only; verify before redeeming.`
+    ? `\n\nNewsletter discount code\nCode: ${discountDetails.code}\nLookup status: ${discountDetails.status}\nIssued to: ${discountDetails.issuedTo}\nRate: ${discountDetails.percent}%\nProduct subtotal only, not shipping/tax; first order only; verify before redeeming.`
     : "";
 
   return {

@@ -7,6 +7,7 @@ import {
   NEWSLETTER_DISCOUNT_ELIGIBLE_STATUSES,
   normalizeNewsletterDiscountCode,
 } from "@/lib/newsletter/discount-redemption";
+import { normalizeNewsletterEmail } from "@/lib/newsletter/subscriptions";
 import {
   applyRateLimit,
   rateLimitResponse,
@@ -110,10 +111,11 @@ export async function POST(request: Request) {
 
   if (!isRecord(body)) return noStoreJson({ error: "Redemption details are invalid." }, 400);
   const code = normalizeNewsletterDiscountCode(body.code);
+  const usageEmail = normalizeNewsletterEmail(body.email);
   const orderReference =
     typeof body.orderReference === "string" ? body.orderReference.trim() : "";
   const note = typeof body.note === "string" ? body.note.trim() : "";
-  if (!code || orderReference.length > 191 || note.length > 2_000) {
+  if (!code || !usageEmail || orderReference.length > 191 || note.length > 2_000) {
     return noStoreJson({ error: "Redemption details are invalid." }, 400);
   }
 
@@ -132,7 +134,7 @@ export async function POST(request: Request) {
       });
       if (!subscription) return { lookupStatus: "NOT_FOUND" as const };
 
-      const lookupStatus = getNewsletterDiscountLookupStatus(subscription);
+      const lookupStatus = getNewsletterDiscountLookupStatus(subscription, usageEmail);
       if (lookupStatus !== "VALID") return { lookupStatus };
 
       const redeemedAt = new Date();

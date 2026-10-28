@@ -142,11 +142,14 @@ export function NewsletterAction({ action, token }: NewsletterActionProps) {
                     : "Could not copy automatically. Select and copy the code above."}
                 </p>
               )}
-              <p className="mt-4 text-sm leading-7 text-[#55584e]">
-                It is for your first order only and applies to the product subtotal, not shipping or
-                tax. Online checkout is not yet available; include this code in your order inquiry
-                and we will apply it manually.
-              </p>
+              <div className="mx-auto mt-4 max-w-md rounded-lg border border-[#a3bd32]/25 bg-[#171a14] px-4 py-3 text-sm leading-7 text-[#b8baae]">
+                <p>15% off your first order (applies to product subtotal only, excluding shipping and tax).</p>
+                <p className="mt-1">Single-use only and strictly tied to your subscribed email address.</p>
+                <p className="mt-1">
+                  Online checkout is not yet available; include this code in your order inquiry and
+                  we will apply it manually.
+                </p>
+              </div>
             </>
           )}
         </section>

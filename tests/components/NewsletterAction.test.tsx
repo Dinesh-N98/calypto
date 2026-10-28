@@ -55,7 +55,12 @@ describe("NewsletterAction confirmation", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/first order only and applies to the product subtotal, not shipping or tax/i),
+      screen.getByText(
+        "15% off your first order (applies to product subtotal only, excluding shipping and tax).",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Single-use only and strictly tied to your subscribed email address."),
     ).toBeInTheDocument();
     expect(screen.getByText(/include this code in your order inquiry/i)).toBeInTheDocument();
 

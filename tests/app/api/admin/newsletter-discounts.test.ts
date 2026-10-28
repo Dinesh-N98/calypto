@@ -109,6 +109,7 @@ describe("admin newsletter discount routes", () => {
     const response = await POST(
       request("/api/admin/newsletter-discounts", "POST", {
         code: " crew-01abcdef ",
+        email: "subscriber@example.com",
         orderReference: "CAL-ORDER-001",
         note: "Manual first-order discount.",
       }),
@@ -140,6 +141,23 @@ describe("admin newsletter discount routes", () => {
     });
   });
 
+  it("rejects manual redemption when the customer email differs", async () => {
+    const response = await POST(
+      request("/api/admin/newsletter-discounts", "POST", {
+        code: "CREW-01ABCDEF",
+        email: "different@example.com",
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      redeemed: false,
+      lookupStatus: "EMAIL_MISMATCH",
+    });
+    expect(mocks.updateMany).not.toHaveBeenCalled();
+    expect(mocks.createRedemption).not.toHaveBeenCalled();
+  });
+
   it("rejects a repeated redemption without creating a second audit record", async () => {
     const redeemedAt = new Date();
     mocks.findUnique
@@ -149,10 +167,16 @@ describe("admin newsletter discount routes", () => {
     mocks.updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
 
     const first = await POST(
-      request("/api/admin/newsletter-discounts", "POST", { code: "CREW-01ABCDEF" }),
+      request("/api/admin/newsletter-discounts", "POST", {
+        code: "CREW-01ABCDEF",
+        email: "subscriber@example.com",
+      }),
     );
     const second = await POST(
-      request("/api/admin/newsletter-discounts", "POST", { code: "CREW-01ABCDEF" }),
+      request("/api/admin/newsletter-discounts", "POST", {
+        code: "CREW-01ABCDEF",
+        email: "subscriber@example.com",
+      }),
     );
 
     expect(first.status).toBe(200);

@@ -77,9 +77,8 @@ describe("contact inquiry notification", () => {
     expect(rendered.subject).toContain("Bcc: attacker@example.com");
     expect(rendered.html).toContain("&lt;script&gt;");
     expect(rendered.html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
-    expect(rendered.html).toContain(
-      "Inquiry email differs from the email the code was issued to.",
-    );
+    expect(rendered.html).not.toContain("Inquiry email differs");
+    expect(rendered.html).not.toContain("Warning:");
     expect(rendered.html).not.toContain("<img src=x");
     expect(rendered.html).not.toContain("<script>");
   });

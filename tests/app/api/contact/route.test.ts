@@ -59,7 +59,7 @@ describe("contact inquiry discount verification", () => {
     const response = await POST(
       request({
         name: "Angler",
-        email: "customer@example.com",
+        email: "subscriber@example.com",
         message: "I would like to order.",
         discountCode: " crew-01abcdef ",
       }),
@@ -87,7 +87,7 @@ describe("contact inquiry discount verification", () => {
     expect(mocks.sendNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         leadId: "lead-1",
-        email: "customer@example.com",
+        email: "subscriber@example.com",
         discountCode: "CREW-01ABCDEF",
         discountCodeStatus: "VALID",
         discountSubscriberEmail: "subscriber@example.com",
@@ -115,6 +115,32 @@ describe("contact inquiry discount verification", () => {
       }),
       select: { id: true, createdAt: true },
     });
+  });
+
+  it("rejects cross-email discount code usage before creating a lead", async () => {
+    mocks.findUnique.mockResolvedValue({
+      id: "subscription-1",
+      email: "usera@example.com",
+      status: "CONFIRMED",
+      discountPercent: 15,
+      discountRedeemedAt: null,
+    });
+
+    const response = await POST(
+      request({
+        name: "Angler",
+        email: "userb@example.com",
+        message: "I would like to use this code.",
+        discountCode: "CREW-01ABCDEF",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "This discount code is tied to a different email address.",
+    });
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.sendNotification).not.toHaveBeenCalled();
   });
 
   it("rate-limits public inquiry code lookup attempts", async () => {

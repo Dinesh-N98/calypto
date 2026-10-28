@@ -46,6 +46,7 @@ enum NewsletterDiscountLookupStatus {
   ALREADY_REDEEMED
   NOT_FOUND
   INELIGIBLE
+  EMAIL_MISMATCH
 }
 
 model Product {

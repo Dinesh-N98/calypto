@@ -11,7 +11,12 @@ type DiscountLookup = {
   email: string;
   status: string;
   discountPercent: number;
-  lookupStatus: "VALID" | "ALREADY_REDEEMED" | "NOT_FOUND" | "INELIGIBLE";
+  lookupStatus:
+    | "VALID"
+    | "ALREADY_REDEEMED"
+    | "NOT_FOUND"
+    | "INELIGIBLE"
+    | "EMAIL_MISMATCH";
   redeemedAt: string | null;
   orderReference: string | null;
   redemption: {
@@ -34,6 +39,7 @@ export function NewsletterDiscountManager() {
   const [searched, setSearched] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [orderReference, setOrderReference] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -76,7 +82,7 @@ export function NewsletterDiscountManager() {
 
   async function markRedeemed() {
     const normalized = normalizeNewsletterDiscountCode(code);
-    if (!normalized || !confirming || lookup?.lookupStatus !== "VALID") return;
+    if (!normalized || !confirming || !customerEmail.trim() || lookup?.lookupStatus !== "VALID") return;
     setBusy(true);
     setFeedback("");
     try {
@@ -85,6 +91,7 @@ export function NewsletterDiscountManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: normalized,
+          email: customerEmail.trim(),
           orderReference: orderReference.trim(),
           note: note.trim(),
         }),
@@ -99,7 +106,9 @@ export function NewsletterDiscountManager() {
         setFeedback(
           body.lookupStatus === "ALREADY_REDEEMED"
             ? "This code has already been redeemed. Refresh the lookup for its audit details."
-            : body.error ?? "Unable to mark this code as redeemed.",
+            : body.lookupStatus === "EMAIL_MISMATCH"
+              ? "This discount code is tied to a different email address."
+              : body.error ?? "Unable to mark this code as redeemed.",
         );
         setConfirming(false);
         return;
@@ -120,6 +129,7 @@ export function NewsletterDiscountManager() {
         ALREADY_REDEEMED: "Already redeemed",
         NOT_FOUND: "Not found",
         INELIGIBLE: "Not eligible",
+        EMAIL_MISMATCH: "Email does not match subscriber",
       }[lookup.lookupStatus]
     : searched
       ? "Not found"
@@ -197,6 +207,17 @@ export function NewsletterDiscountManager() {
               {lookup.lookupStatus === "VALID" && (
                 <div className="mt-5 border-t border-black/10 pt-4">
                   <label className="grid gap-2 text-sm font-semibold">
+                    Customer email used for the order
+                    <input
+                      className="min-h-10 rounded-md border border-black/20 px-3 font-normal"
+                      maxLength={254}
+                      onChange={(event) => setCustomerEmail(event.currentTarget.value)}
+                      required
+                      type="email"
+                      value={customerEmail}
+                    />
+                  </label>
+                  <label className="mt-3 grid gap-2 text-sm font-semibold">
                     Order reference / ID (optional)
                     <input
                       className="min-h-10 rounded-md border border-black/20 px-3 font-normal"
@@ -230,7 +251,7 @@ export function NewsletterDiscountManager() {
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button
                           className="min-h-11 rounded-md bg-[#718126] px-4 text-sm font-bold text-white disabled:opacity-60"
-                          disabled={busy}
+                          disabled={busy || !customerEmail.trim()}
                           onClick={markRedeemed}
                           type="button"
                         >

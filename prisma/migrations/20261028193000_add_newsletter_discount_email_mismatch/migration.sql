@@ -1,0 +1,1 @@
+ALTER TYPE "NewsletterDiscountLookupStatus" ADD VALUE IF NOT EXISTS 'EMAIL_MISMATCH';

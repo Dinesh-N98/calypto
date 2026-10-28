@@ -82,6 +82,25 @@ describe("newsletter utilities", () => {
     expect(content.text).not.toMatch(/CREW-[0-9A-HJKMNP-TV-Z]{8}/u);
   });
 
+  it("includes clear discount terms and manual-inquiry instructions in welcome emails", () => {
+    const content = renderNewsletterWelcomeEmail(
+      "CREW-ABCD1234",
+      "https://calyptobait.com/newsletter/unsubscribe?token=example",
+    );
+    expect(content.html).toContain(
+      "15% off your first order. Applies to product subtotal only (excludes shipping and tax). Single-use only and tied to this email address.",
+    );
+    expect(content.html).toContain(
+      "Online checkout is not yet available; include this code in your order inquiry and we will apply it manually.",
+    );
+    expect(content.text).toContain(
+      "15% off your first order. Applies to product subtotal only (excludes shipping and tax). Single-use only and tied to this email address.",
+    );
+    expect(content.text).toContain(
+      "Online checkout is not yet available; include this code in your order inquiry and we will apply it manually.",
+    );
+  });
+
   it("HTML-escapes dynamic welcome-email content", () => {
     const content = renderNewsletterWelcomeEmail(
       "<script>alert(1)</script>",

@@ -34,4 +34,27 @@ describe("newsletter discount redemption rules", () => {
     ).toBe("ALREADY_REDEEMED");
     expect(getNewsletterDiscountLookupStatus(null)).toBe("NOT_FOUND");
   });
+
+  it("rejects a code when the usage email differs from the subscriber email", () => {
+    expect(
+      getNewsletterDiscountLookupStatus(
+        {
+          email: "usera@example.com",
+          status: "CONFIRMED",
+          discountRedeemedAt: null,
+        },
+        "userb@example.com",
+      ),
+    ).toBe("EMAIL_MISMATCH");
+    expect(
+      getNewsletterDiscountLookupStatus(
+        {
+          email: "UserA@Example.com",
+          status: "CONFIRMED",
+          discountRedeemedAt: null,
+        },
+        "usera@example.com",
+      ),
+    ).toBe("VALID");
+  });
 });
