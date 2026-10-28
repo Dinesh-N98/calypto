@@ -17,7 +17,11 @@ import {
   isConfirmationTokenExpired,
   newsletterTokensMatch,
 } from "@/lib/newsletter/tokens";
-import { renderNewsletterWelcomeEmail, sendNewsletterWelcomeEmail } from "@/lib/newsletter/email";
+import {
+  renderNewsletterConfirmationEmail,
+  renderNewsletterWelcomeEmail,
+  sendNewsletterWelcomeEmail,
+} from "@/lib/newsletter/email";
 
 describe("newsletter utilities", () => {
   it("normalizes valid email addresses and rejects malformed addresses", () => {
@@ -68,6 +72,16 @@ describe("newsletter utilities", () => {
     ).toBe("RESEND");
   });
 
+  it("keeps discount codes out of the initial confirmation email", () => {
+    const content = renderNewsletterConfirmationEmail(
+      "https://calyptobait.com/newsletter/confirm?token=example",
+    );
+    expect(content.html).toContain("Confirm my subscription");
+    expect(content.html).not.toMatch(/CREW-[0-9A-HJKMNP-TV-Z]{8}/u);
+    expect(content.text).toContain("Confirm here:");
+    expect(content.text).not.toMatch(/CREW-[0-9A-HJKMNP-TV-Z]{8}/u);
+  });
+
   it("HTML-escapes dynamic welcome-email content", () => {
     const content = renderNewsletterWelcomeEmail(
       "<script>alert(1)</script>",
@@ -76,6 +90,46 @@ describe("newsletter utilities", () => {
     expect(content.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(content.html).toContain("https://example.com/?x=1&amp;y=2");
     expect(content.text).toContain("https://example.com/?x=1&y=2");
+  });
+
+  it("reports Resend welcome-email provider errors with provider details", async () => {
+    const previous = {
+      EMAIL_FROM: process.env.EMAIL_FROM,
+      EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
+      RESEND_API_KEY: process.env.RESEND_API_KEY,
+    };
+    process.env.EMAIL_FROM = "Calypto <crew@calyptobait.com>";
+    process.env.EMAIL_REPLY_TO = "icalypto@gmail.com";
+    process.env.RESEND_API_KEY = "test-api-key";
+    resendSend.mockResolvedValue({
+      data: null,
+      error: {
+        name: "validation_error",
+        message: "The from address is invalid",
+        statusCode: 422,
+        code: "validation_error",
+      },
+    });
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      await expect(sendNewsletterWelcomeEmail({
+        email: "angler@example.com",
+        discountCode: "CREW-ABCD1234",
+        unsubscribeUrl: "https://calyptobait.com/newsletter/unsubscribe?token=example",
+      })).rejects.toThrow(/422.*The from address is invalid/u);
+      expect(JSON.stringify(consoleError.mock.calls)).toContain("422");
+      expect(JSON.stringify(consoleError.mock.calls)).toContain("validation_error");
+    } finally {
+      consoleError.mockRestore();
+      if (previous.EMAIL_FROM === undefined) delete process.env.EMAIL_FROM;
+      else process.env.EMAIL_FROM = previous.EMAIL_FROM;
+      if (previous.EMAIL_REPLY_TO === undefined) delete process.env.EMAIL_REPLY_TO;
+      else process.env.EMAIL_REPLY_TO = previous.EMAIL_REPLY_TO;
+      if (previous.RESEND_API_KEY === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = previous.RESEND_API_KEY;
+      vi.unstubAllGlobals();
+    }
   });
 
   it("sends welcome email through Resend with the configured sender, reply-to, and unsubscribe header", async () => {
@@ -99,6 +153,8 @@ describe("newsletter utilities", () => {
       expect(resendSend).toHaveBeenCalledWith(expect.objectContaining({
         from: "Calypto <crew@calyptobait.com>",
         replyTo: "icalypto@gmail.com",
+        html: expect.stringContaining("CREW-ABCD1234"),
+        text: expect.stringContaining("CREW-ABCD1234"),
         headers: {
           "List-Unsubscribe": "<https://calyptobait.com/newsletter/unsubscribe?token=example>",
         },

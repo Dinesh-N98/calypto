@@ -81,7 +81,13 @@ describe("newsletter subscribe and confirmation APIs", () => {
       consentText: expect.any(String),
     });
     expect(saved.confirmationTokenHash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(saved.discountCode).toMatch(/^CREW-[0-9A-HJKMNP-TV-Z]{8}$/u);
     expect(JSON.stringify(saved)).not.toContain("token=");
+    expect(mocks.sendConfirmation).toHaveBeenCalledWith(expect.objectContaining({
+      email: "angler@example.com",
+      confirmationUrl: expect.any(String),
+    }));
+    expect(JSON.stringify(mocks.sendConfirmation.mock.calls)).not.toContain(saved.discountCode);
     expect(mocks.sendConfirmation).toHaveBeenCalledOnce();
     expect(mocks.applyRateLimitByValue).toHaveBeenCalledWith(
       "newsletter-subscribe-email",
@@ -137,6 +143,42 @@ describe("newsletter subscribe and confirmation APIs", () => {
     const logged = JSON.stringify(consoleError.mock.calls);
     expect(logged).toContain("provider failure");
     expect(logged).not.toContain("angler@example.com");
+    consoleError.mockRestore();
+  });
+
+  it("logs a welcome-email failure without breaking confirmation", async () => {
+    const token = "W".repeat(43);
+    const tokenHash = hashNewsletterToken(token);
+    mocks.findUnique.mockResolvedValueOnce({
+      id: "subscription-welcome-failure",
+      email: "angler@example.com",
+      status: "PENDING_CONFIRMATION",
+      confirmationTokenHash: tokenHash,
+      confirmationSentAt: new Date(),
+      confirmedAt: null,
+      discountCode: "CREW-WELCOME1",
+      unsubscribeTokenHash: null,
+    });
+    mocks.transaction.mockImplementation(async (callback) =>
+      callback({
+        newsletterSubscription: {
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findUnique: vi.fn().mockResolvedValue({
+            status: "CONFIRMED",
+            discountCode: "CREW-WELCOME1",
+          }),
+        },
+      }),
+    );
+    mocks.sendWelcome.mockRejectedValue(new Error("provider failure with HTTP 422"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await confirm(request("/api/subscribe/confirm", { token }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, discountCode: "CREW-WELCOME1" });
+    expect(mocks.sendWelcome).toHaveBeenCalledOnce();
+    expect(JSON.stringify(consoleError.mock.calls)).toContain("provider failure with HTTP 422");
     consoleError.mockRestore();
   });
 

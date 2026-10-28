@@ -117,11 +117,11 @@ export function NewsletterAction({ action, token }: NewsletterActionProps) {
       )}
       {result?.ok && (
         <section aria-live="polite" className="mt-6">
-          <p className="text-sm leading-7 text-[#55584e]">{successMessage}</p>
+          <p className="text-sm leading-7 text-[#b8baae]">{successMessage}</p>
           {action === "confirm" && result.discountCode && (
             <>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                <p className="min-w-[15rem] select-all rounded-lg border border-[#c8cbbb] bg-white px-5 py-3 font-mono text-xl font-bold tracking-widest text-[#171a14] shadow-sm">
+                <p className="min-w-[15rem] max-w-full select-all rounded-lg border border-[#c8cbbb] bg-white px-5 py-3 font-mono text-xl font-bold tracking-widest text-[#171a14] shadow-sm">
                   {result.discountCode}
                 </p>
                 <button
@@ -132,8 +132,11 @@ export function NewsletterAction({ action, token }: NewsletterActionProps) {
                   {copyStatus === "copied" ? "Copied!" : "Copy code"}
                 </button>
               </div>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#b8baae]">
+                A copy of your discount code has been sent to your inbox for easy access anytime.
+              </p>
               {copyStatus !== "idle" && (
-                <p aria-live="polite" className="mt-2 text-sm text-[#55584e]" role="status">
+                <p aria-live="polite" className="mt-2 text-sm text-[#b8baae]" role="status">
                   {copyStatus === "copied"
                     ? "Discount code copied."
                     : "Could not copy automatically. Select and copy the code above."}

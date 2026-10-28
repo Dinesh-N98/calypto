@@ -145,8 +145,12 @@ export async function POST(request: Request) {
                 discountCode: result.current.discountCode,
                 unsubscribeUrl,
               });
-            } catch {
-              console.error("Newsletter welcome email could not be sent.");
+            } catch (error) {
+              console.error("Newsletter welcome email could not be sent.", {
+                name: error instanceof Error ? error.name : typeof error,
+                message: error instanceof Error ? error.message : String(error),
+                discountCode: result.current.discountCode,
+              });
             }
           }
           return noStoreJson({ ok: true, discountCode: result.current.discountCode });
@@ -159,8 +163,11 @@ export async function POST(request: Request) {
         if (!isUniqueConstraintError(error) || attempt === 4) throw error;
       }
     }
-  } catch {
-    console.error("Newsletter confirmation could not be processed.");
+  } catch (error) {
+    console.error("Newsletter confirmation could not be processed.", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return noStoreJson(
       { error: "Unable to confirm this subscription right now. Please try again." },
       { status: 500 },

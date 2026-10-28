@@ -52,8 +52,8 @@ export function renderNewsletterConfirmationEmail(confirmationUrl: string): {
 } {
   const escapedUrl = escapeHtml(confirmationUrl);
   return {
-    html: `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#171a14"><main style="max-width:560px;margin:32px auto;padding:24px"><h1>Confirm your Calypto subscription</h1><p>Confirm your email to receive Calypto offers, new designs, and fishing tips. Your 15% first-order code will be available after confirmation.</p><p><a href="${escapedUrl}" style="display:inline-block;padding:12px 18px;background:#718126;color:#fff;text-decoration:none">Confirm my subscription</a></p><p>If you did not request this, you can ignore this email.</p></main></body></html>`,
-    text: `Confirm your Calypto subscription\n\nConfirm your email to receive Calypto offers, new designs, and fishing tips. Your 15% first-order code will be available after confirmation.\n\nConfirm here: ${confirmationUrl}\n\nIf you did not request this, you can ignore this email.`,
+    html: `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#171a14"><main style="max-width:560px;margin:32px auto;padding:24px"><h1>Confirm your Calypto subscription</h1><p>Confirm your email to receive Calypto offers, new designs, and fishing tips.</p><p><a href="${escapedUrl}" style="display:inline-block;padding:12px 18px;background:#718126;color:#fff;text-decoration:none;border-radius:6px">Confirm my subscription</a></p><p>If you did not request this, you can ignore this email.</p></main></body></html>`,
+    text: `Confirm your Calypto subscription\n\nConfirm your email to receive Calypto offers, new designs, and fishing tips.\n\nConfirm here: ${confirmationUrl}\n\nIf you did not request this, you can ignore this email.`,
   };
 }
 
@@ -64,7 +64,7 @@ export function renderNewsletterWelcomeEmail(
   const escapedCode = escapeHtml(discountCode);
   const escapedUnsubscribeUrl = escapeHtml(unsubscribeUrl);
   return {
-    html: `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#171a14"><main style="max-width:560px;margin:32px auto;padding:24px"><h1>Welcome to the Calypto crew</h1><p>Your first-order discount code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:2px">${escapedCode}</p><p>It is valid for your first order only and applies to the product subtotal, not shipping or tax. Online checkout is not yet available; include this code in your order inquiry and we will apply it manually.</p><p>Thanks for joining us. You can <a href="${escapedUnsubscribeUrl}">unsubscribe anytime</a>.</p></main></body></html>`,
+    html: `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#171a14"><main style="max-width:560px;margin:32px auto;padding:24px"><h1>Welcome to the Calypto crew</h1><p>Thanks for confirming your subscription. Your first-order discount is 15% off.</p><p>Your discount code:</p><p style="display:inline-block;margin:8px 0;padding:14px 18px;border-radius:6px;background:#f1f0e8;border:1px solid #c8cbbb;color:#171a14;font-size:24px;font-weight:bold;letter-spacing:2px">${escapedCode}</p><p>It is valid for your first order only and applies to the product subtotal, not shipping or tax. Online checkout is not yet available; include this code in your order inquiry and we will apply it manually.</p><p>Thanks for joining us. You can <a href="${escapedUnsubscribeUrl}">unsubscribe anytime</a>.</p></main></body></html>`,
     text: `Welcome to the Calypto crew\n\nYour first-order discount code is ${discountCode}.\n\nIt is valid for your first order only and applies to the product subtotal, not shipping or tax. Online checkout is not yet available; include this code in your order inquiry and we will apply it manually.\n\nUnsubscribe anytime: ${unsubscribeUrl}`,
   };
 }
@@ -101,11 +101,30 @@ async function sendNewsletterMessage(options: {
   });
 
   if (error) {
-    throw new Error(`Resend newsletter API failed: ${error.message}`);
+    const providerError = error as Error & {
+      statusCode?: number;
+      code?: string;
+    };
+    console.error("Resend newsletter API rejected an email.", {
+      subject: options.subject,
+      name: providerError.name ?? "ResendError",
+      message: providerError.message ?? String(error),
+      statusCode: providerError.statusCode,
+      code: providerError.code,
+    });
+    throw new Error(
+      `Resend newsletter API failed${providerError.statusCode ? ` (HTTP ${providerError.statusCode})` : ""}: ${providerError.message ?? String(error)}`,
+    );
   }
   if (!data?.id) {
+    console.error("Resend newsletter API returned no email id.", { subject: options.subject });
     throw new Error("Resend newsletter API returned no email id.");
   }
+
+  console.info("Resend newsletter email sent.", {
+    subject: options.subject,
+    emailId: data.id,
+  });
 }
 
 export async function sendNewsletterConfirmationEmail(details: NewsletterEmail): Promise<void> {

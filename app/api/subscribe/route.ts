@@ -7,6 +7,7 @@ import {
 } from "@/lib/request-security";
 import { prisma } from "@/lib/prisma";
 import { buildNewsletterUrl, sendNewsletterConfirmationEmail } from "@/lib/newsletter/email";
+import { generateNewsletterDiscountCode } from "@/lib/newsletter/discount-code";
 import { noStoreJson, withNoStore } from "@/lib/newsletter/http";
 import {
   NEWSLETTER_CONSENT_TEXT,
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
         id: true,
         status: true,
         confirmationSentAt: true,
+        discountCode: true,
       },
     });
     const action = getNewsletterSubscriptionAction(
@@ -124,23 +126,34 @@ export async function POST(request: Request) {
     const confirmationTokenHash = hashNewsletterToken(token);
 
     if (action === "CREATE") {
-      try {
-        await prisma.newsletterSubscription.create({
-          data: {
-            email,
-            status: "PENDING_CONFIRMATION",
-            source: "newsletter-popup",
-            consentText: NEWSLETTER_CONSENT_TEXT,
-            consentVersion: NEWSLETTER_CONSENT_VERSION,
-            consentAt: now,
-            confirmationTokenHash,
-            confirmationSentAt: now,
-          },
-        });
-      } catch (error) {
-        if (isUniqueConstraintError(error)) return noStoreJson(GENERIC_SUCCESS);
-        throw error;
+      let created = false;
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        try {
+          await prisma.newsletterSubscription.create({
+            data: {
+              email,
+              status: "PENDING_CONFIRMATION",
+              source: "newsletter-popup",
+              consentText: NEWSLETTER_CONSENT_TEXT,
+              consentVersion: NEWSLETTER_CONSENT_VERSION,
+              consentAt: now,
+              confirmationTokenHash,
+              confirmationSentAt: now,
+              discountCode: generateNewsletterDiscountCode(),
+            },
+          });
+          created = true;
+          break;
+        } catch (error) {
+          if (!isUniqueConstraintError(error)) throw error;
+          const existingAfterCollision = await prisma.newsletterSubscription.findUnique({
+            where: { email },
+            select: { id: true },
+          });
+          if (existingAfterCollision) return noStoreJson(GENERIC_SUCCESS);
+        }
       }
+      if (!created) throw new Error("Unable to allocate a unique newsletter discount code.");
     } else if (action === "RESUBSCRIBE") {
       const updated = await prisma.newsletterSubscription.updateMany({
         where: { id: existing?.id, status: "UNSUBSCRIBED" },
@@ -154,6 +167,7 @@ export async function POST(request: Request) {
           confirmationSentAt: now,
           confirmedAt: null,
           unsubscribedAt: null,
+          discountCode: existing?.discountCode ?? generateNewsletterDiscountCode(),
         },
       });
       if (updated.count === 0) return noStoreJson(GENERIC_SUCCESS);
@@ -168,6 +182,7 @@ export async function POST(request: Request) {
         data: {
           confirmationTokenHash,
           confirmationSentAt: now,
+          discountCode: existing?.discountCode ?? generateNewsletterDiscountCode(),
           consentText: NEWSLETTER_CONSENT_TEXT,
           consentVersion: NEWSLETTER_CONSENT_VERSION,
           consentAt: now,

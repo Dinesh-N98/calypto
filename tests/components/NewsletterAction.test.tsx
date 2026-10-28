@@ -50,6 +50,11 @@ describe("NewsletterAction confirmation", () => {
     expect(discountCode).toBeInTheDocument();
     expect(discountCode.className).toContain("text-[#171a14]");
     expect(
+      screen.getByText(
+        "A copy of your discount code has been sent to your inbox for easy access anytime.",
+      ),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/first order only and applies to the product subtotal, not shipping or tax/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/include this code in your order inquiry/i)).toBeInTheDocument();
