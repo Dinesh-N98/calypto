@@ -9,6 +9,12 @@ export type DhlConfig = {
   shipperCity: string;
   shipperPhone: string;
   shipperEmail: string;
+  defaultPackage: {
+    weightKg: number;
+    lengthCm: number;
+    widthCm: number;
+    heightCm: number;
+  };
   endpoints: {
     rate: string;
     shipment: string;
@@ -22,6 +28,15 @@ type Environment = Record<string, string | undefined>;
 function required(environment: Environment, name: string): string {
   const value = environment[name]?.trim();
   if (!value) throw new Error(`${name} is required for DHL integration.`);
+  return value;
+}
+
+function positiveNumber(environment: Environment, name: string, fallback: number): number {
+  const raw = environment[name];
+  const value = raw === undefined || raw.trim() === "" ? fallback : Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${name} must be a positive number.`);
+  }
   return value;
 }
 
@@ -64,6 +79,12 @@ export function getDhlConfig(environment: Environment = process.env): DhlConfig 
     shipperCity,
     shipperPhone,
     shipperEmail,
+    defaultPackage: {
+      weightKg: positiveNumber(environment, "DHL_DEFAULT_PACKAGE_WEIGHT_KG", 0.5),
+      lengthCm: positiveNumber(environment, "DHL_DEFAULT_PACKAGE_LENGTH_CM", 3),
+      widthCm: positiveNumber(environment, "DHL_DEFAULT_PACKAGE_WIDTH_CM", 2),
+      heightCm: positiveNumber(environment, "DHL_DEFAULT_PACKAGE_HEIGHT_CM", 1),
+    },
     endpoints: {
       rate: `${baseUrl}/expressRateBook`,
       shipment: `${baseUrl}/expressRateBook`,

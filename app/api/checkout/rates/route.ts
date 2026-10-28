@@ -1,4 +1,6 @@
 import { getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
+import { getDhlConfig } from "@/lib/config/dhl";
+import { prisma } from "@/lib/prisma";
 import {
   applyRateLimit,
   rateLimitResponse,
@@ -27,6 +29,39 @@ function parsePackages(value: unknown): DhlPackage[] | null {
       : null;
   });
   return packages.every((item): item is DhlPackage => item !== null) ? packages : null;
+}
+
+async function packagesForItems(value: unknown): Promise<DhlPackage[] | null> {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 100) return null;
+  const quantities = new Map<string, number>();
+  for (const item of value) {
+    const quantity = isObject(item) ? item.quantity : undefined;
+    if (
+      !isObject(item) ||
+      typeof item.variantId !== "string" ||
+      typeof quantity !== "number" ||
+      !Number.isSafeInteger(quantity) ||
+      quantity < 1
+    ) return null;
+    quantities.set(item.variantId, (quantities.get(item.variantId) ?? 0) + quantity);
+  }
+  const ids = [...quantities.keys()].filter((id) => !id.startsWith("legacy:"));
+  const variants = await prisma.productVariant.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, weightKg: true, lengthCm: true, widthCm: true, heightCm: true },
+  });
+  const config = getDhlConfig();
+  if (variants.length !== quantities.size) return null;
+  return [{
+    weightKg: variants.reduce(
+      (sum, variant) =>
+        sum + (variant.weightKg ?? config.defaultPackage.weightKg) * (quantities.get(variant.id) ?? 0),
+      0,
+    ),
+    lengthCm: Math.max(...variants.map((variant) => variant.lengthCm ?? config.defaultPackage.lengthCm)),
+    widthCm: Math.max(...variants.map((variant) => variant.widthCm ?? config.defaultPackage.widthCm)),
+    heightCm: Math.max(...variants.map((variant) => variant.heightCm ?? config.defaultPackage.heightCm)),
+  }];
 }
 
 export async function POST(request: Request) {
@@ -62,7 +97,9 @@ export async function POST(request: Request) {
   ) {
     return respond(NextResponse.json({ error: "The recipient address is invalid." }, { status: 400 }));
   }
-  const packages = parsePackages(body.packages);
+  const packages = body.packages !== undefined
+    ? parsePackages(body.packages)
+    : await packagesForItems(body.items);
   if (!packages) {
     return respond(NextResponse.json({ error: "At least one valid package is required." }, { status: 400 }));
   }

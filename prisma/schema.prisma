@@ -85,6 +85,10 @@ model ProductVariant {
   size               String?
   color              String?
   imageUrl           String?
+  weightKg           Float?
+  lengthCm           Float?
+  widthCm            Float?
+  heightCm           Float?
   createdAt          DateTime @default(now())
 
   @@index([productId, stock])
@@ -286,6 +290,8 @@ model Order {
   providerReference     String           @unique
   providerTransactionId String?          @unique
   totalCents            Int
+  shippingCents         Int              @default(0)
+  shippingServiceCode   String?
   currency              String
   status                String           @default("pending")
   fulfillmentStatus     String?
@@ -299,6 +305,8 @@ model Order {
   shippingLabelData     String?          @db.Text
   commercialInvoiceData String?          @db.Text
   dhlRawResponse        Json?
+  dhlPickupConfirmationNumber String?
+  dhlPickupRawResponse  Json?
   items                 OrderItem[]
   paymentAttempts       PaymentAttempt[]
   crmInteractions       CrmInteraction[]

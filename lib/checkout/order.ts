@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
 import { prisma } from "@/lib/prisma";
 import { calculateUnitPriceCents } from "@/lib/product-pricing";
+import { getDhlConfig } from "@/lib/config/dhl";
+import { getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
 import type { PaymentProvider } from "@prisma/client";
 import type { CheckoutAddress, CheckoutCustomer, CheckoutPayload } from "@/lib/checkout/types";
 
@@ -14,6 +16,19 @@ type OrderItemSnapshot = {
   priceCents: number;
   quantity: number;
 };
+
+type PackageVariant = {
+  quantity: number;
+  weightKg: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+};
+
+function isDomesticDestination(country: string): boolean {
+  const normalized = country.trim().toUpperCase();
+  return normalized === "LK" || normalized === "SRI LANKA";
+}
 
 export class CheckoutInputError extends Error {
   constructor(
@@ -129,7 +144,15 @@ export function parseCheckoutPayload(value: unknown): CheckoutPayload {
   if (!address || typeof value.saveAddress !== "boolean") {
     throw new CheckoutInputError("Enter a valid delivery address.");
   }
-  return { items, customer, address, saveAddress: value.saveAddress };
+  const shippingServiceCode =
+    value.shippingServiceCode === undefined
+      ? undefined
+      : typeof value.shippingServiceCode === "string" && /^[A-Za-z0-9_-]{1,30}$/u.test(value.shippingServiceCode)
+        ? value.shippingServiceCode
+        : (() => {
+            throw new CheckoutInputError("The selected shipping service is invalid.");
+          })();
+  return { items, customer, address, saveAddress: value.saveAddress, shippingServiceCode };
 }
 
 export async function createPendingCheckoutOrder({
@@ -169,6 +192,10 @@ export async function createPendingCheckoutOrder({
       stock: true,
       size: true,
       color: true,
+      weightKg: true,
+      lengthCm: true,
+      widthCm: true,
+      heightCm: true,
       product: {
         select: {
           slug: true,
@@ -241,6 +268,56 @@ export async function createPendingCheckoutOrder({
     throw new CheckoutInputError("The order total is invalid.");
   }
 
+  let shippingCents = 0;
+  let shippingServiceCode: string | null = null;
+  if (!isDomesticDestination(payload.address.country)) {
+    const config = getDhlConfig();
+    const packageVariants: PackageVariant[] = resolvedItems
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .map(({ variant, quantity }) => ({
+        quantity,
+        weightKg: variant.weightKg,
+        lengthCm: variant.lengthCm,
+        widthCm: variant.widthCm,
+        heightCm: variant.heightCm,
+      }));
+    const packages: DhlPackage[] = [{
+      weightKg: packageVariants.reduce(
+        (sum, item) => sum + (item.weightKg ?? config.defaultPackage.weightKg) * item.quantity,
+        0,
+      ),
+      lengthCm: Math.max(...packageVariants.map((item) => item.lengthCm ?? config.defaultPackage.lengthCm)),
+      widthCm: Math.max(...packageVariants.map((item) => item.widthCm ?? config.defaultPackage.widthCm)),
+      heightCm: Math.max(...packageVariants.map((item) => item.heightCm ?? config.defaultPackage.heightCm)),
+    }];
+    let rates: Awaited<ReturnType<typeof getDHLRates>>;
+    try {
+      rates = await getDHLRates({
+        recipient: {
+          streetLines: [payload.address.streetAddress, payload.address.aptSuite].filter(Boolean).join(", "),
+          city: payload.address.city,
+          postalCode: payload.address.postalCode,
+          countryCode: payload.address.country.toUpperCase(),
+          stateOrProvinceCode: payload.address.state || undefined,
+        },
+        packages,
+      });
+    } catch (error) {
+      console.error("Unable to calculate DHL checkout rate.", error);
+      throw new CheckoutInputError("International shipping rates are temporarily unavailable.", 503);
+    }
+    const selected = payload.shippingServiceCode
+      ? rates.find((rate) => rate.serviceCode === payload.shippingServiceCode)
+      : rates[0];
+    if (!selected) throw new CheckoutInputError("The selected DHL shipping service is unavailable.", 409);
+    if (selected.currency !== CHECKOUT_CURRENCY || !Number.isFinite(selected.amount) || selected.amount <= 0) {
+      throw new CheckoutInputError("DHL returned a currency that cannot be charged at checkout.", 502);
+    }
+    shippingCents = Math.ceil(selected.amount * 100);
+    shippingServiceCode = selected.serviceCode ?? null;
+  }
+  const grandTotalCents = totalCents + shippingCents;
+
   const session = await auth();
   const userId = session?.user?.id ?? null;
   const reference = `CAL-${randomUUID().replaceAll("-", "").toUpperCase()}`;
@@ -288,7 +365,9 @@ export async function createPendingCheckoutOrder({
         shippingState: payload.address.state,
         shippingPostalCode: payload.address.postalCode,
         shippingCountry: payload.address.country,
-        totalCents,
+        totalCents: grandTotalCents,
+        shippingCents,
+        shippingServiceCode,
         status: "pending",
         items: {
           create: orderItems.map((item) => ({
@@ -301,7 +380,15 @@ export async function createPendingCheckoutOrder({
           })),
         },
       },
-      select: { id: true, providerReference: true, totalCents: true, currency: true, userId: true },
+      select: {
+        id: true,
+        providerReference: true,
+        totalCents: true,
+        shippingCents: true,
+        shippingServiceCode: true,
+        currency: true,
+        userId: true,
+      },
     });
 
     if (idempotencyKey) {

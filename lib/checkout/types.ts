@@ -19,4 +19,5 @@ export type CheckoutPayload = {
   customer: CheckoutCustomer;
   address: CheckoutAddress;
   saveAddress: boolean;
+  shippingServiceCode?: string;
 };

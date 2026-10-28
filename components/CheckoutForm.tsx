@@ -25,6 +25,7 @@ export type CheckoutAddress = {
 };
 
 type CheckoutItem = { variantId: string; quantity: number };
+type DhlRateOption = { serviceCode?: string; serviceName?: string; currency: string; amount: number };
 type AddressFields = Omit<CheckoutAddress, "id" | "isDefault">;
 type ContactFields = { firstName: string; lastName: string; email: string; phone: string };
 export type CheckoutPaymentProvider = "ONEPAY" | "PAYPAL";
@@ -76,6 +77,9 @@ export function CheckoutForm({
   paypalClientId: string;
 }) {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [dhlRates, setDhlRates] = useState<DhlRateOption[]>([]);
+  const [selectedDhlRate, setSelectedDhlRate] = useState("");
+  const [loadingDhlRates, setLoadingDhlRates] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState(() => defaultAddress?.id ?? "new");
   const [addressFields, setAddressFields] = useState<AddressFields>(() =>
@@ -131,8 +135,9 @@ export function CheckoutForm({
       },
       saveAddress:
         isAuthenticated && selectedAddressId === "new" && formData.get("saveAddress") === "on",
+      shippingServiceCode: selectedDhlRate || undefined,
     }),
-    [isAuthenticated, items, selectedAddressId],
+    [isAuthenticated, items, selectedAddressId, selectedDhlRate],
   );
 
   const getPayPalPayload = useCallback(() => {
@@ -158,6 +163,47 @@ export function CheckoutForm({
     const nextFields = { ...addressFields, [field]: value };
     setAddressDrafts((drafts) => ({ ...drafts, [selectedAddressId]: nextFields }));
     setAddressFields(nextFields);
+    if (field === "country") {
+      setDhlRates([]);
+      setSelectedDhlRate("");
+    }
+  }
+
+  async function loadDhlRates() {
+    const form = formElementRef.current;
+    if (!form || !form.reportValidity()) return;
+    setLoadingDhlRates(true);
+    setError(null);
+    try {
+      const payload = buildCheckoutPayload(new FormData(form));
+      const response = await fetch("/api/checkout/rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items, recipient: {
+          streetLines: payload.address.streetAddress,
+          city: payload.address.city,
+          postalCode: payload.address.postalCode,
+          countryCode: payload.address.country,
+          stateOrProvinceCode: payload.address.state,
+        } }),
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !result || typeof result !== "object" || !("rates" in result) || !Array.isArray(result.rates)) {
+        throw new Error(
+          result && typeof result === "object" && "error" in result && typeof result.error === "string"
+            ? result.error
+            : "Unable to calculate DHL shipping rates.",
+        );
+      }
+      const rates = result.rates as DhlRateOption[];
+      if (!rates.length) throw new Error("DHL returned no shipping options.");
+      setDhlRates(rates);
+      setSelectedDhlRate(rates[0].serviceCode ?? "");
+    } catch (rateError) {
+      setError(rateError instanceof Error ? rateError.message : "Unable to calculate DHL shipping rates.");
+    } finally {
+      setLoadingDhlRates(false);
+    }
   }
 
   function updateContactField(field: keyof ContactFields, value: string) {
@@ -343,6 +389,32 @@ export function CheckoutForm({
             Save this address to my account for future orders
           </label>
         )}
+        <div className="grid gap-2 border-t border-black/10 pt-4">
+          <button
+            className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
+            disabled={loadingDhlRates}
+            onClick={() => void loadDhlRates()}
+            type="button"
+          >
+            {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
+          </button>
+          {dhlRates.length > 0 && (
+            <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+              Shipping option
+              <select
+                className="auth-input"
+                onChange={(event) => setSelectedDhlRate(event.currentTarget.value)}
+                value={selectedDhlRate}
+              >
+                {dhlRates.map((rate, index) => (
+                  <option key={`${rate.serviceCode ?? "dhl"}-${index}`} value={rate.serviceCode ?? ""}>
+                    {rate.serviceName ?? rate.serviceCode ?? "DHL Express"} — {rate.currency} {rate.amount.toFixed(2)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
         {paymentProvider === "ONEPAY" && (
           <>
             <button

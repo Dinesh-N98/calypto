@@ -33,12 +33,31 @@ type ReorderResponse = {
   unavailable: string[];
 };
 
+type TrackingResult = {
+  status: string;
+  estimatedDeliveryDate?: string;
+  events: {
+    timestamp?: string;
+    status?: string;
+    description?: string;
+    location?: string;
+  }[];
+};
+
+function isTrackingResult(value: unknown): value is TrackingResult {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.status === "string" && Array.isArray(record.events);
+}
+
 export function AccountOrderList({ orders }: { orders: AccountOrder[] }) {
   const [selectedOrder, setSelectedOrder] = useState<AccountOrder | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusOrderId, setStatusOrderId] = useState<string | null>(null);
   const [trackingMessage, setTrackingMessage] = useState("");
   const [isReordering, setIsReordering] = useState(false);
+  const [trackingResult, setTrackingResult] = useState<TrackingResult | null>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { addItem } = useCart();
 
@@ -47,6 +66,31 @@ export function AccountOrderList({ orders }: { orders: AccountOrder[] }) {
     if (!dialog) return;
     if (selectedOrder && !dialog.open) dialog.showModal();
     if (!selectedOrder && dialog.open) dialog.close();
+  }, [selectedOrder]);
+
+  useEffect(() => {
+    const awb = selectedOrder?.trackingNumber;
+    if (!awb || selectedOrder?.carrier?.toUpperCase() !== "DHL") {
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`/api/shipping/track/${encodeURIComponent(awb)}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const result: unknown = await response.json().catch(() => null);
+        if (!response.ok) throw new Error("Unable to load current DHL tracking.");
+        if (!isTrackingResult(result)) {
+          throw new Error("DHL tracking response was invalid.");
+        }
+        setTrackingResult(result);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof Error && error.name === "AbortError")) setTrackingResult(null);
+      })
+      .finally(() => setTrackingLoading(false));
+    return () => controller.abort();
   }, [selectedOrder]);
 
   async function reorder(order: AccountOrder, showInlineFeedback = false) {
@@ -108,6 +152,8 @@ export function AccountOrderList({ orders }: { orders: AccountOrder[] }) {
                 className="grid min-h-11 w-full gap-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive sm:grid-cols-[1fr_auto] sm:items-center"
                 onClick={() => {
                   setSelectedOrder(order);
+                  setTrackingLoading(Boolean(order.trackingNumber && order.carrier?.toUpperCase() === "DHL"));
+                  setTrackingResult(null);
                   setStatusMessage("");
                   setStatusOrderId(null);
                   setTrackingMessage("");
@@ -226,6 +272,39 @@ export function AccountOrderList({ orders }: { orders: AccountOrder[] }) {
                 <p className="mt-2 min-h-5 text-sm text-olive" role="status" aria-live="polite" aria-atomic="true">
                   {trackingMessage}
                 </p>
+                {trackingLoading && <p className="mt-3 text-sm text-[#55584e]">Loading live DHL tracking…</p>}
+                {trackingResult && (
+                  <section className="mt-4 border-t border-ink/10 pt-4" aria-label="DHL tracking timeline">
+                    <div className="flex flex-wrap justify-between gap-2 text-sm">
+                      <strong>{trackingResult.status}</strong>
+                      {trackingResult.estimatedDeliveryDate && (
+                        <span className="text-[#55584e]">
+                          Estimated delivery: {trackingResult.estimatedDeliveryDate}
+                        </span>
+                      )}
+                    </div>
+                    {trackingResult.events.length > 0 && (
+                      <ol className="mt-3 space-y-3 border-l border-ink/20 pl-4">
+                        {trackingResult.events.map((event, index) => (
+                          <li className="relative text-sm" key={`${event.timestamp ?? "event"}-${index}`}>
+                            <span className="absolute -left-[1.3rem] top-1 h-2 w-2 rounded-full bg-olive" />
+                            <p className="font-semibold">{event.status ?? event.description ?? "Shipment update"}</p>
+                            {(event.description || event.location) && (
+                              <p className="mt-1 text-[#55584e]">
+                                {[event.description, event.location].filter(Boolean).join(" · ")}
+                              </p>
+                            )}
+                            {event.timestamp && (
+                              <time className="mt-1 block text-xs text-[#77796e]" dateTime={event.timestamp}>
+                                {event.timestamp}
+                              </time>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </section>
+                )}
               </section>
             )}
             {isSafeTrackingUrl(selectedOrder.trackingUrl) && (

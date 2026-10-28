@@ -29,6 +29,7 @@ type OrderDetails = AdminOrderFulfillment & {
   dhlShipmentIdentificationNumber: string | null;
   shippingLabelUrl: string | null;
   commercialInvoiceUrl: string | null;
+  dhlPickupConfirmationNumber: string | null;
   items: { id: string; name: string; quantity: number; priceCents: number; sku: string | null }[];
 };
 
@@ -82,6 +83,7 @@ export function OrderDetailsSheet({
   const [trackingOrder, setTrackingOrder] = useState<AdminOrderFulfillment | null>(null);
   const [updatingStatus, startStatusUpdate] = useTransition();
   const [creatingShipment, setCreatingShipment] = useState(false);
+  const [schedulingPickup, setSchedulingPickup] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const hasCurrentResult = orderResult?.id === orderId;
   const order = hasCurrentResult ? orderResult.order : null;
@@ -148,6 +150,7 @@ export function OrderDetailsSheet({
             : "Unable to generate the DHL shipment.",
         );
       }
+
       if (!isObject(result) || typeof result.dhlTrackingNumber !== "string") {
         throw new Error("DHL returned an invalid shipment response.");
       }
@@ -185,6 +188,41 @@ export function OrderDetailsSheet({
       );
     } finally {
       setCreatingShipment(false);
+    }
+  }
+
+  async function scheduleDhlPickup() {
+    if (!order) return;
+    setSchedulingPickup(true);
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.id)}/pickup`, {
+        method: "POST",
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isObject(result) || typeof result.confirmationNumber !== "string") {
+        throw new Error(
+          isObject(result) && typeof result.error === "string"
+            ? result.error
+            : "Unable to schedule the DHL pickup.",
+        );
+      }
+      const confirmationNumber = result.confirmationNumber;
+      setOrderResult((current) =>
+        current?.id === order.id && current.order
+          ? {
+              ...current,
+              order: { ...current.order, dhlPickupConfirmationNumber: confirmationNumber },
+            }
+          : current,
+      );
+      showToast("DHL pickup scheduled.");
+    } catch (pickupError) {
+      showToast(
+        pickupError instanceof Error ? pickupError.message : "Unable to schedule the DHL pickup.",
+        "error",
+      );
+    } finally {
+      setSchedulingPickup(false);
     }
   }
 
@@ -442,6 +480,21 @@ export function OrderDetailsSheet({
                   >
                     Download commercial invoice
                   </a>
+                )}
+                {order.dhlTrackingNumber && !order.dhlPickupConfirmationNumber && (
+                  <button
+                    className="inline-flex min-h-10 items-center rounded-lg border border-black/15 px-4 text-xs font-bold hover:bg-stone-50 disabled:opacity-60"
+                    disabled={schedulingPickup}
+                    onClick={() => void scheduleDhlPickup()}
+                    type="button"
+                  >
+                    {schedulingPickup ? "Scheduling pickup…" : "Schedule DHL pickup"}
+                  </button>
+                )}
+                {order.dhlPickupConfirmationNumber && (
+                  <span className="inline-flex min-h-10 items-center border border-black/10 bg-[#f5f6f2] px-4 text-xs font-bold">
+                    Pickup confirmation: {order.dhlPickupConfirmationNumber}
+                  </span>
                 )}
               </footer>
             </div>

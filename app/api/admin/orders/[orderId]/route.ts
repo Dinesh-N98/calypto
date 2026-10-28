@@ -35,6 +35,7 @@ export async function GET(
         dhlShipmentIdentificationNumber: true,
         shippingLabelUrl: true,
         commercialInvoiceUrl: true,
+        dhlPickupConfirmationNumber: true,
         shippingName: true,
         shippingLine1: true,
         shippingLine2: true,
