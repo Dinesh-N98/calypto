@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   applyRateLimit: vi.fn(),
   rateLimitResponse: vi.fn(),
   findUnique: vi.fn(),
+  findMany: vi.fn(),
+  count: vi.fn(),
   updateMany: vi.fn(),
   createRedemption: vi.fn(),
   transaction: vi.fn(),
@@ -21,7 +23,11 @@ vi.mock("@/lib/request-security", () => ({
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    newsletterSubscription: { findUnique: mocks.findUnique },
+    newsletterSubscription: {
+      findUnique: mocks.findUnique,
+      findMany: mocks.findMany,
+      count: mocks.count,
+    },
     $transaction: mocks.transaction,
   },
 }));
@@ -56,6 +62,20 @@ beforeEach(() => {
   mocks.applyRateLimit.mockResolvedValue(allowed);
   mocks.rateLimitResponse.mockReturnValue(Response.json({ error: "Rate limited" }, { status: 429 }));
   mocks.findUnique.mockResolvedValue(subscription);
+  mocks.findMany.mockResolvedValue([
+    {
+      id: "subscription-1",
+      email: "subscriber@example.com",
+      status: "CONFIRMED",
+      discountCode: "CREW-01ABCDEF",
+      discountPercent: 15,
+      discountRedeemedAt: null,
+      redeemedOrderId: null,
+      createdAt: new Date(),
+      redemption: null,
+    },
+  ]);
+  mocks.count.mockResolvedValue(1);
   mocks.updateMany.mockResolvedValue({ count: 1 });
   mocks.createRedemption.mockResolvedValue({ id: "redemption-1" });
   mocks.transaction.mockImplementation(async (callback) =>
@@ -103,6 +123,31 @@ describe("admin newsletter discount routes", () => {
       discountPercent: 15,
       lookupStatus: "VALID",
     });
+  });
+
+  it("returns a paginated subscriber list when no single code is provided", async () => {
+    const response = await GET(
+      request("/api/admin/newsletter-discounts?page=1&limit=10&search=subscriber"),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.subscribers).toHaveLength(1);
+    expect(body.subscribers[0]).toMatchObject({
+      email: "subscriber@example.com",
+      code: "CREW-01ABCDEF",
+      subscriptionStatus: "CONFIRMED",
+      codeStatus: "AVAILABLE",
+      createdAt: expect.any(String),
+      subscribedAt: expect.any(String),
+    });
+    expect(mocks.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: 10,
+      }),
+    );
   });
 
   it("atomically marks a code redeemed and records the acting admin", async () => {

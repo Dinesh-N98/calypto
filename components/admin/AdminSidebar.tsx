@@ -5,6 +5,7 @@ import {
   Box,
   ChartNoAxesCombined,
   LayoutDashboard,
+  Mail,
   MessageSquare,
   Percent,
   ShoppingCart,
@@ -26,6 +27,7 @@ const navigationItems = [
   { label: "Products", href: "/admin/products", icon: Box },
   { label: "Categories", href: "/admin/categories", icon: Tags },
   { label: "Promotions", href: "/admin/promotions", icon: Percent },
+  { label: "Newsletter", href: "/admin/newsletter-discounts", icon: Mail },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { label: "Analytics", href: "/admin/analytics", icon: ChartNoAxesCombined },
   {

@@ -36,59 +36,130 @@ export async function GET(request: Request) {
   const rateLimit = await applyRateLimit(request, "admin-newsletter-discount-lookup", 30, 600);
   if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
-  const code = normalizeNewsletterDiscountCode(new URL(request.url).searchParams.get("code"));
-  if (!code) return noStoreJson({ error: "Enter a valid discount code." }, 400);
+  const url = new URL(request.url);
+  const code = normalizeNewsletterDiscountCode(url.searchParams.get("code"));
+  const search = url.searchParams.get("search")?.trim() ?? "";
+  const pageParam = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
+  const limitParam = Number.parseInt(url.searchParams.get("limit") ?? "10", 10);
 
-  try {
-    const subscription = await prisma.newsletterSubscription.findUnique({
-      where: { discountCode: code },
-      select: {
-        id: true,
-        email: true,
-        status: true,
-        discountCode: true,
-        discountPercent: true,
-        discountRedeemedAt: true,
-        redeemedOrderId: true,
-        redemption: {
-          select: {
-            redeemedAt: true,
-            redeemedBy: { select: { name: true, email: true } },
-            orderReference: true,
-            note: true,
+  if (!code && !url.searchParams.has("page") && !url.searchParams.has("limit") && !search) {
+    return noStoreJson({ error: "Enter a valid discount code." }, 400);
+  }
+
+  if (code) {
+    try {
+      const subscription = await prisma.newsletterSubscription.findUnique({
+        where: { discountCode: code },
+        select: {
+          id: true,
+          email: true,
+          status: true,
+          discountCode: true,
+          discountPercent: true,
+          discountRedeemedAt: true,
+          redeemedOrderId: true,
+          redemption: {
+            select: {
+              redeemedAt: true,
+              redeemedBy: { select: { name: true, email: true } },
+              orderReference: true,
+              note: true,
+            },
           },
         },
-      },
-    });
+      });
+
+      return noStoreJson(
+        {
+          subscription: subscription
+            ? {
+                code: subscription.discountCode,
+                email: subscription.email,
+                status: subscription.status,
+                discountPercent: subscription.discountPercent,
+                lookupStatus: getNewsletterDiscountLookupStatus(subscription),
+                redeemedAt: subscription.discountRedeemedAt,
+                orderReference:
+                  subscription.redemption?.orderReference ?? subscription.redeemedOrderId,
+                redemption: subscription.redemption
+                  ? {
+                      redeemedAt: subscription.redemption.redeemedAt,
+                      redeemedBy: subscription.redemption.redeemedBy.name ??
+                        subscription.redemption.redeemedBy.email,
+                      note: subscription.redemption.note,
+                    }
+                  : null,
+              }
+            : null,
+        },
+        200,
+      );
+    } catch {
+      console.error("Unable to look up newsletter discount.");
+      return noStoreJson({ error: "Unable to look up this code." }, 500);
+    }
+  }
+
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 10;
+  const safeLimit = Math.min(limit, 100);
+  const where = search
+    ? {
+        OR: [
+          { email: { contains: search, mode: "insensitive" } },
+          { discountCode: { contains: search, mode: "insensitive" } },
+        ],
+      }
+    : {};
+
+  try {
+    const [subscribers, total] = await Promise.all([
+      prisma.newsletterSubscription.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * safeLimit,
+        take: safeLimit,
+        select: {
+          id: true,
+          email: true,
+          status: true,
+          discountCode: true,
+          discountPercent: true,
+          discountRedeemedAt: true,
+          redeemedOrderId: true,
+          createdAt: true,
+          redemption: {
+            select: { orderReference: true },
+          },
+        },
+      }),
+      prisma.newsletterSubscription.count({ where }),
+    ]);
 
     return noStoreJson(
       {
-        subscription: subscription
-          ? {
-              code: subscription.discountCode,
-              email: subscription.email,
-              status: subscription.status,
-              discountPercent: subscription.discountPercent,
-              lookupStatus: getNewsletterDiscountLookupStatus(subscription),
-              redeemedAt: subscription.discountRedeemedAt,
-              orderReference:
-                subscription.redemption?.orderReference ?? subscription.redeemedOrderId,
-              redemption: subscription.redemption
-                ? {
-                    redeemedAt: subscription.redemption.redeemedAt,
-                    redeemedBy: subscription.redemption.redeemedBy.name ??
-                      subscription.redemption.redeemedBy.email,
-                    note: subscription.redemption.note,
-                  }
-                : null,
-            }
-          : null,
+        subscribers: subscribers.map((subscription) => ({
+          id: subscription.id,
+          email: subscription.email,
+          code: subscription.discountCode,
+          subscriptionStatus: subscription.status,
+          codeStatus: subscription.discountRedeemedAt ? "REDEEMED" : "AVAILABLE",
+          createdAt: subscription.createdAt.toISOString(),
+          subscribedAt: subscription.createdAt.toISOString(),
+          redemptionDate: subscription.discountRedeemedAt,
+          orderReference:
+            subscription.redeemedOrderId ?? subscription.redemption?.orderReference ?? null,
+        })),
+        page,
+        limit: safeLimit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / safeLimit)),
       },
       200,
     );
   } catch {
-    console.error("Unable to look up newsletter discount.");
-    return noStoreJson({ error: "Unable to look up this code." }, 500);
+    console.error("Unable to list newsletter subscribers.");
+    return noStoreJson({ error: "Unable to load subscribers." }, 500);
   }
 }
 
