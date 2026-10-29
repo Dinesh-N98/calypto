@@ -62,7 +62,7 @@ beforeEach(() => {
 });
 
 describe("CartPageClient", () => {
-  it("intercepts checkout and opens the direct order inquiry", async () => {
+  it("routes checkout directly to the automated checkout page", async () => {
     const user = userEvent.setup();
     const { container } = renderCart();
 
@@ -71,20 +71,9 @@ describe("CartPageClient", () => {
     const checkoutSection = container.querySelector('section[aria-label="Delivery and payment"]');
     expect(checkoutSection).toHaveAttribute("hidden");
 
-    await user.click(screen.getAllByRole("button", { name: "Proceed to checkout" })[0]);
-
-    expect(screen.getByRole("dialog", { name: "Direct Order Inquiry" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/finalizing our automated payment & shipping integrations/i),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Send Inquiry via Form" })).toHaveAttribute(
-      "href",
-      "/contact#lead-source=cart",
-    );
-
-    await user.click(screen.getByRole("button", { name: "Continue Browsing" }));
+    const checkoutLinks = screen.getAllByRole("link", { name: "Proceed to checkout" });
+    expect(checkoutLinks[0]).toHaveAttribute("href", "/checkout");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(checkoutSection).toHaveAttribute("hidden");
   });
 
   it("explains manual inquiry redemption without changing cart totals", async () => {
@@ -102,10 +91,9 @@ describe("CartPageClient", () => {
     ).toHaveLength(2);
     expect(screen.getAllByText("$259.98").length).toBeGreaterThan(1);
 
-    await user.click(screen.getAllByRole("button", { name: "Proceed to checkout" })[0]);
-    expect(screen.getByRole("link", { name: "Send Inquiry via Form" })).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: "Proceed to checkout" })[0]).toHaveAttribute(
       "href",
-      "/contact?code=CREW-01ABCDEF#lead-source=cart",
+      "/checkout",
     );
   });
 });

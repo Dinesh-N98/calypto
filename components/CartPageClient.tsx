@@ -3,9 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, LockKeyhole, Tag, Trash2 } from "lucide-react";
-import { useCallback, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useCart } from "@/components/CartProvider";
-import { DirectOrderInquiryModal } from "@/components/DirectOrderInquiryModal";
 import {
   CheckoutForm,
   type CheckoutAddress,
@@ -23,6 +22,7 @@ export default function CartPageClient({
   isAuthenticated,
   buyNowVariantId,
   buyNowQuantity,
+  startAtCheckout = false,
 }: {
   savedAddresses: CheckoutAddress[];
   defaultAddress: CheckoutAddress | null;
@@ -30,12 +30,12 @@ export default function CartPageClient({
   isAuthenticated: boolean;
   buyNowVariantId?: string;
   buyNowQuantity: number;
+  startAtCheckout?: boolean;
 }) {
   const { items, updateQuantity, removeItem } = useCart();
   const [directPurchaseQuantity, setDirectPurchaseQuantity] = useState(buyNowQuantity);
   const [paymentProvider, setPaymentProvider] = useState<CheckoutPaymentProvider>("ONEPAY");
-  const [isCheckoutStep, setIsCheckoutStep] = useState(false);
-  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
+  const [isCheckoutStep, setIsCheckoutStep] = useState(startAtCheckout);
   const [discountCode, setDiscountCode] = useState("");
   const [discountMessage, setDiscountMessage] = useState("");
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
@@ -69,27 +69,17 @@ export default function CartPageClient({
     );
   }
 
-  function proceedToCheckout() {
-    setIsInquiryOpen(true);
-  }
-
   function returnToCart() {
     setIsCheckoutStep(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
-
-  const closeInquiry = useCallback(() => setIsInquiryOpen(false), []);
+  const checkoutHref = buyNowVariantId
+    ? `/checkout?buyNow=${encodeURIComponent(buyNowVariantId)}&quantity=${directPurchaseQuantity}`
+    : "/checkout";
 
   return (
     <main className="min-h-[65vh] bg-paper px-4 pb-32 pt-7 text-ink sm:px-6 sm:pt-10 lg:px-8 lg:pb-16">
       <div className="mx-auto max-w-7xl">
-        {isInquiryOpen && (
-          <DirectOrderInquiryModal
-            discountCode={discountCode}
-            leadSource="cart"
-            onClose={closeInquiry}
-          />
-        )}
         <header className="mb-7 border-b border-[rgba(13,14,12,.14)] pb-5 sm:mb-9 sm:pb-6">
           <p className="text-[.65rem] font-bold uppercase tracking-[.16em] text-olive">
             Calypto / {isCheckoutStep ? "Checkout" : "Your cart"}
@@ -222,7 +212,7 @@ export default function CartPageClient({
                   className="sticky top-24 hidden rounded-2xl border border-[#ddddd3] bg-white p-5 sm:p-6 lg:block"
                 >
                   <OrderSummary
-                    onProceed={proceedToCheckout}
+                    checkoutHref={checkoutHref}
                     subtotalCents={subtotalCents}
                     discountCode={discountCode}
                     discountInputId="desktop-discount-code"
@@ -355,14 +345,13 @@ export default function CartPageClient({
                     </p>
                     <p className="truncate text-lg font-bold">{formatPrice(subtotalCents)}</p>
                   </div>
-                  <button
+                  <Link
                     className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-olive px-4 text-sm font-bold text-white transition-colors hover:bg-[#56651f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:flex-none sm:px-6"
-                    onClick={proceedToCheckout}
-                    type="button"
+                    href={checkoutHref}
                   >
                     Proceed to checkout
                     <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
-                  </button>
+                  </Link>
                 </div>
               </div>
             )}
@@ -374,7 +363,7 @@ export default function CartPageClient({
 }
 
 function OrderSummary({
-  onProceed,
+  checkoutHref,
   subtotalCents,
   discountCode,
   discountInputId,
@@ -382,7 +371,7 @@ function OrderSummary({
   onApplyDiscount,
   discountMessage,
 }: {
-  onProceed: () => void;
+  checkoutHref: string;
   subtotalCents: number;
   discountCode: string;
   discountInputId: string;
@@ -405,14 +394,13 @@ function OrderSummary({
         onApply={onApplyDiscount}
         message={discountMessage}
       />
-      <button
+      <Link
         className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-olive px-4 text-sm font-bold text-white transition-colors hover:bg-[#56651f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-        onClick={onProceed}
-        type="button"
+        href={checkoutHref}
       >
         Proceed to checkout
         <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
-      </button>
+      </Link>
       <p className="mt-3 text-center text-xs text-[#62665b]">
         Shipping and taxes are calculated at checkout.
       </p>

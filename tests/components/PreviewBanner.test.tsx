@@ -14,10 +14,10 @@ describe("PreviewBanner", () => {
     const user = userEvent.setup();
     render(<PreviewBanner />);
 
-    expect(await screen.findByText("Calypto Preview - Early Access")).toBeInTheDocument();
+    expect(await screen.findByText("Calypto Sandbox Checkout")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Online checkout is coming soon. Custom craft & wholesale inquiries are open.",
+        "Sandbox payment and DHL shipping testing are currently active.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -26,7 +26,7 @@ describe("PreviewBanner", () => {
 
     await user.click(screen.getByRole("button", { name: "Dismiss announcement" }));
 
-    expect(screen.queryByText("Calypto Preview — Early Access")).not.toBeInTheDocument();
+    expect(screen.queryByText("Calypto Sandbox Checkout")).not.toBeInTheDocument();
     await waitFor(() =>
       expect(window.sessionStorage.getItem("calypto-preview-banner-dismissed")).toBe("true"),
     );

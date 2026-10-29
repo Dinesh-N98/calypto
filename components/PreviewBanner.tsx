@@ -69,10 +69,10 @@ export function PreviewBanner() {
           </span>
           <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
             <strong className="font-semibold text-zinc-100">
-              Calypto Preview - Early Access
+              Calypto Sandbox Checkout
             </strong>
             <span className="text-zinc-400">
-              Online checkout is coming soon. Custom craft &amp; wholesale inquiries are open.
+              Sandbox payment and DHL shipping testing are currently active.
             </span>
             <Link
               className="inline-flex min-h-7 shrink-0 items-center rounded-full bg-[#84cc16] px-3 py-1 text-xs font-semibold text-zinc-950 transition-all hover:bg-[#71b113] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#84cc16]/50"
