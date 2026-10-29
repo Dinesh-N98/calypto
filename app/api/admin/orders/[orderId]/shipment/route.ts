@@ -4,7 +4,7 @@ import { requireAdminRequest } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-type RouteContext = { params: Promise<{ id: string }> };
+type RouteContext = { params: Promise<{ orderId: string }> };
 
 function trackingUrl(awb: string): string {
   return `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${encodeURIComponent(awb)}`;
@@ -29,8 +29,8 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Cross-origin updates are not allowed." }, { status: 403 });
   }
 
-  const { id } = await params;
-  if (!id || id.length > 191) return NextResponse.json({ error: "Order ID is invalid." }, { status: 400 });
+  const { orderId } = await params;
+  if (!orderId || orderId.length > 191) return NextResponse.json({ error: "Order ID is invalid." }, { status: 400 });
 
   try {
     const config = getDhlConfig();
@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       );
     }
     const order = await prisma.order.findUnique({
-      where: { id },
+      where: { id: orderId },
       include: { items: { orderBy: { id: "asc" } } },
     });
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
@@ -109,7 +109,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
 
     const updated = await prisma.order.update({
-      where: { id },
+      where: { id: orderId },
       data: {
         carrier: "DHL",
         trackingNumber: shipment.trackingNumber,
@@ -117,10 +117,10 @@ export async function POST(request: Request, { params }: RouteContext) {
         dhlTrackingNumber: shipment.trackingNumber,
         dhlShipmentIdentificationNumber: shipment.shipmentIdentificationNumber,
         shippingLabelUrl: shipment.shippingLabelData
-          ? `/api/admin/orders/${encodeURIComponent(id)}/shipment?document=label`
+          ? `/api/admin/orders/${encodeURIComponent(orderId)}/shipment?document=label`
           : null,
         commercialInvoiceUrl: shipment.commercialInvoiceData
-          ? `/api/admin/orders/${encodeURIComponent(id)}/shipment?document=invoice`
+          ? `/api/admin/orders/${encodeURIComponent(orderId)}/shipment?document=invoice`
           : null,
         shippingLabelData: shipment.shippingLabelData ?? null,
         commercialInvoiceData: shipment.commercialInvoiceData ?? null,
@@ -144,13 +144,13 @@ export async function POST(request: Request, { params }: RouteContext) {
 export async function GET(request: Request, { params }: RouteContext) {
   const authorization = await requireAdminRequest();
   if (!authorization.ok) return authorization.response;
-  const { id } = await params;
+  const { orderId } = await params;
   const document = new URL(request.url).searchParams.get("document");
   if (document !== "label" && document !== "invoice") {
     return NextResponse.json({ error: "Document type is invalid." }, { status: 400 });
   }
   const order = await prisma.order.findUnique({
-    where: { id },
+    where: { id: orderId },
     select: { shippingLabelData: true, commercialInvoiceData: true },
   });
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });

@@ -4,7 +4,7 @@ import { requireAdminRequest } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-type RouteContext = { params: Promise<{ id: string }> };
+type RouteContext = { params: Promise<{ orderId: string }> };
 
 function nextBusinessDay(): Date {
   const date = new Date();
@@ -21,8 +21,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (origin && origin !== new URL(request.url).origin) {
     return NextResponse.json({ error: "Cross-origin updates are not allowed." }, { status: 403 });
   }
-  const { id } = await params;
-  if (!id || id.length > 191) return NextResponse.json({ error: "Order ID is invalid." }, { status: 400 });
+  const { orderId } = await params;
+  if (!orderId || orderId.length > 191) return NextResponse.json({ error: "Order ID is invalid." }, { status: 400 });
 
   try {
     const config = getDhlConfig();
@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       );
     }
     const order = await prisma.order.findUnique({
-      where: { id },
+      where: { id: orderId },
       include: { items: { orderBy: { id: "asc" } } },
     });
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
@@ -72,7 +72,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       }],
     });
     await prisma.order.update({
-      where: { id },
+      where: { id: orderId },
       data: {
         dhlPickupConfirmationNumber: pickup.confirmationNumber,
         dhlPickupRawResponse: JSON.parse(JSON.stringify(pickup.rawResponse)),
