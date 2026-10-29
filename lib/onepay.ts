@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export const ONEPAY_CURRENCY = "USD";
 const ONEPAY_API_URL = "https://api.onepay.lk";
+const ONEPAY_REQUEST_TIMEOUT_MS = 15_000;
 
 type OnePayConfig = {
   appId: string;
@@ -20,8 +21,12 @@ type CustomerDetails = {
 type JsonObject = Record<string, unknown>;
 
 export class OnePayApiError extends Error {
-  constructor(public readonly status: number) {
-    super(`OnePay returned HTTP ${status}.`);
+  constructor(
+    public readonly status: number,
+    message = `OnePay returned HTTP ${status}.`,
+    options?: { cause?: unknown },
+  ) {
+    super(message, options);
     this.name = "OnePayApiError";
   }
 }
@@ -31,9 +36,9 @@ function isJsonObject(value: unknown): value is JsonObject {
 }
 
 function getOnePayConfig(): OnePayConfig {
-  const appId = process.env.ONEPAY_APP_ID;
-  const appToken = process.env.ONEPAY_APP_TOKEN;
-  const hashSalt = process.env.ONEPAY_HASH_SALT;
+  const appId = process.env.ONEPAY_APP_ID?.trim();
+  const appToken = process.env.ONEPAY_APP_TOKEN?.trim();
+  const hashSalt = process.env.ONEPAY_HASH_SALT?.trim();
   if (!appId || !appToken || !hashSalt) {
     throw new Error("ONEPAY_APP_ID, ONEPAY_APP_TOKEN, and ONEPAY_HASH_SALT are required.");
   }
@@ -45,22 +50,57 @@ export function assertOnePayConfigured(): void {
 }
 
 async function postOnePay(path: string, body: JsonObject): Promise<unknown> {
-  const config = getOnePayConfig();
-  const response = await fetch(`${ONEPAY_API_URL}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: config.appToken,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ app_id: config.appId, ...body }),
-    cache: "no-store",
+  let config: OnePayConfig;
+  try {
+    config = getOnePayConfig();
+  } catch (error) {
+    throw new OnePayApiError(500, "OnePay credentials are missing or invalid.", { cause: error });
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ONEPAY_REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${ONEPAY_API_URL}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: config.appToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ app_id: config.appId, ...body }),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    throw new OnePayApiError(
+      502,
+      error instanceof DOMException && error.name === "AbortError"
+        ? "OnePay request timed out."
+        : "Unable to reach OnePay.",
+      { cause: error },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const responseText = await response.text().catch((error) => {
+    throw new OnePayApiError(502, "Unable to read the OnePay response.", { cause: error });
   });
+  if (!response.ok) {
+    throw new OnePayApiError(
+      response.status,
+      `OnePay returned HTTP ${response.status}.`,
+    );
+  }
 
-  if (!response.ok) throw new OnePayApiError(response.status);
-
-  const result: unknown = await response.json().catch(() => null);
+  let result: unknown;
+  try {
+    result = JSON.parse(responseText);
+  } catch (error) {
+    throw new OnePayApiError(502, "OnePay returned invalid JSON.", { cause: error });
+  }
   if (!isJsonObject(result)) {
-    throw new Error("OnePay returned an invalid JSON response.");
+    throw new OnePayApiError(502, "OnePay returned an invalid JSON object.");
   }
   return result;
 }
