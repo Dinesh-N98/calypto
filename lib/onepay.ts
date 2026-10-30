@@ -25,14 +25,37 @@ export class OnePayApiError extends Error {
     public readonly status: number,
     message = `OnePay returned HTTP ${status}.`,
     options?: { cause?: unknown },
+    public readonly responseBody?: unknown,
   ) {
     super(message, options);
     this.name = "OnePayApiError";
   }
 }
 
+const SENSITIVE_RESPONSE_KEYS = /token|secret|salt|password|authorization|api[_-]?key/i;
+
 function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function redactSensitiveResponse(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSensitiveResponse);
+  if (!isJsonObject(value)) return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      SENSITIVE_RESPONSE_KEYS.test(key) ? "[REDACTED]" : redactSensitiveResponse(entry),
+    ]),
+  );
+}
+
+function getOnePayErrorMessage(value: unknown, fallback: string): string {
+  if (!isJsonObject(value)) return fallback;
+  for (const key of ["message", "error", "error_message", "status_message", "detail"]) {
+    if (typeof value[key] === "string" && value[key].trim()) return value[key].trim();
+  }
+  return fallback;
 }
 
 function getOnePayConfig(): OnePayConfig {
@@ -86,19 +109,33 @@ async function postOnePay(path: string, body: JsonObject): Promise<unknown> {
   const responseText = await response.text().catch((error) => {
     throw new OnePayApiError(502, "Unable to read the OnePay response.", { cause: error });
   });
+  let responseBody: unknown = responseText;
+  try {
+    responseBody = JSON.parse(responseText);
+  } catch {
+    // Keep the response text for diagnostics when OnePay does not return JSON.
+  }
   if (!response.ok) {
+    const message = getOnePayErrorMessage(
+      responseBody,
+      `OnePay returned HTTP ${response.status}.`,
+    );
+    console.error("OnePay rejected API request.", {
+      status: response.status,
+      body: redactSensitiveResponse(responseBody),
+    });
     throw new OnePayApiError(
       response.status,
-      `OnePay returned HTTP ${response.status}.`,
+      message,
+      undefined,
+      redactSensitiveResponse(responseBody),
     );
   }
 
-  let result: unknown;
-  try {
-    result = JSON.parse(responseText);
-  } catch (error) {
-    throw new OnePayApiError(502, "OnePay returned invalid JSON.", { cause: error });
+  if (typeof responseBody === "string") {
+    throw new OnePayApiError(502, "OnePay returned invalid JSON.");
   }
+  const result = responseBody;
   if (!isJsonObject(result)) {
     throw new OnePayApiError(502, "OnePay returned an invalid JSON object.");
   }
