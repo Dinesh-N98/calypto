@@ -86,6 +86,23 @@ describe("DHL SOAP client", () => {
     })).rejects.toMatchObject({ details: { kind: "http", status: 503 } });
     expect(new DhlApiError("x", { kind: "api" })).toBeInstanceOf(Error);
   });
+
+  it("logs bounded raw SOAP responses for upstream failures", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = "<Envelope><Body><Fault><faultstring>Invalid account</faultstring></Fault></Body></Envelope>";
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(response, { status: 500 }));
+
+    await expect(createDhlClient(config, fetcher).request({
+      endpoint: "https://example.test",
+      body: "<Request/>",
+      parse: () => true,
+    })).rejects.toBeInstanceOf(DhlApiError);
+
+    expect(errorSpy).toHaveBeenCalledWith("DHL SOAP fault received.", expect.objectContaining({
+      response,
+    }));
+    errorSpy.mockRestore();
+  });
 });
 
 describe("DHL rate request", () => {

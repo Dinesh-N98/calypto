@@ -100,7 +100,14 @@ export async function getDHLRates(
   request: DhlRateRequest,
   fetcher?: typeof fetch,
 ): Promise<DhlRate[]> {
-  const config = getDhlConfig();
+  let config: ReturnType<typeof getDhlConfig>;
+  try {
+    config = getDhlConfig();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "DHL configuration is invalid.";
+    console.error("DHL rate configuration is invalid.", { message });
+    throw new DhlApiError(message, { kind: "configuration" }, { cause: error });
+  }
   const client = createDhlClient(config, fetcher);
   return client.request({
     endpoint: config.endpoints.rate,

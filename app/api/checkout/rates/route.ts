@@ -132,14 +132,20 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Unable to calculate DHL checkout rates.", error);
     const message = error instanceof Error ? error.message : "Unknown DHL integration error.";
-    const status =
+    const kind =
       error && typeof error === "object" && "details" in error &&
-      error.details && typeof error.details === "object" &&
-      "kind" in error.details && error.details.kind === "configuration"
-        ? 503
-        : 502;
+      error.details && typeof error.details === "object" && "kind" in error.details
+        ? error.details.kind
+        : undefined;
+    const status =
+      kind === "configuration" ? 503
+        : kind === "network" ? 504
+          : 502;
     return respond(NextResponse.json(
-      { error: `DHL rates are temporarily unavailable: ${message}` },
+      {
+        error: `DHL rates are temporarily unavailable: ${message}`,
+        kind: kind ?? "unknown",
+      },
       { status },
     ));
   }

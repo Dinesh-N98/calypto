@@ -11,6 +11,7 @@ const parser = new XMLParser({
   parseTagValue: false,
 });
 const DHL_REQUEST_TIMEOUT_MS = 15_000;
+const DHL_RESPONSE_LOG_LIMIT = 4_000;
 
 export class DhlApiError extends Error {
   constructor(
@@ -52,6 +53,12 @@ function text(value: unknown): string | undefined {
     if (typeof record[key] === "string") return record[key];
   }
   return undefined;
+}
+
+function responseExcerpt(value: string): string {
+  return value.length <= DHL_RESPONSE_LOG_LIMIT
+    ? value
+    : `${value.slice(0, DHL_RESPONSE_LOG_LIMIT)}...[truncated]`;
 }
 
 export function parseDhlXml(xml: string): ParsedXml {
@@ -138,6 +145,11 @@ export function createDhlClient(
       try {
         parsed = parseDhlXml(responseXml);
       } catch (error) {
+        console.error("DHL returned an unparseable SOAP response.", {
+          endpoint,
+          status: response.status,
+          response: responseExcerpt(responseXml),
+        });
         if (!response.ok) {
           throw new DhlApiError(`DHL returned HTTP ${response.status}.`, {
             kind: "http",
@@ -153,6 +165,7 @@ export function createDhlClient(
           status: response.status,
           code: fault.code,
           message: fault.message,
+          response: responseExcerpt(responseXml),
         });
         throw new DhlApiError(fault.message, {
           kind: "soap",
@@ -164,6 +177,7 @@ export function createDhlClient(
         console.error("DHL SOAP endpoint returned an HTTP error.", {
           endpoint,
           status: response.status,
+          response: responseExcerpt(responseXml),
         });
         throw new DhlApiError(`DHL returned HTTP ${response.status}.`, {
           kind: "http",
@@ -175,6 +189,12 @@ export function createDhlClient(
         return parse(parsed);
       } catch (error) {
         if (error instanceof DhlApiError) throw error;
+        console.error("DHL SOAP response did not contain usable rate/shipment data.", {
+          endpoint,
+          status: response.status,
+          response: responseExcerpt(responseXml),
+          message: error instanceof Error ? error.message : "Unknown parser error.",
+        });
         throw new DhlApiError("DHL returned an invalid response.", { kind: "parse" });
       }
     },
