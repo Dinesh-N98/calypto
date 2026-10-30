@@ -7,6 +7,7 @@ import { getDhlConfig } from "@/lib/config/dhl";
 import { buildDhlPackage, getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
 import type { PaymentProvider } from "@prisma/client";
 import type { CheckoutAddress, CheckoutCustomer, CheckoutPayload } from "@/lib/checkout/types";
+import { isDhlCountryCode, normalizeCountryCode } from "@/lib/checkout/international";
 
 type OrderItemSnapshot = {
   variantId: string;
@@ -80,11 +81,13 @@ function parseAddress(value: unknown): CheckoutAddress | null {
     city: 100,
     state: 100,
     postalCode: 30,
+    addressLine3: 70,
     country: 100,
   } as const;
   const address: CheckoutAddress = {
     streetAddress: "",
     aptSuite: "",
+    addressLine3: "",
     city: "",
     state: "",
     postalCode: "",
@@ -93,6 +96,7 @@ function parseAddress(value: unknown): CheckoutAddress | null {
   const fields: (keyof CheckoutAddress)[] = [
     "streetAddress",
     "aptSuite",
+    "addressLine3",
     "city",
     "state",
     "postalCode",
@@ -143,6 +147,10 @@ export function parseCheckoutPayload(value: unknown): CheckoutPayload {
   const address = parseAddress(value.address);
   if (!address || typeof value.saveAddress !== "boolean") {
     throw new CheckoutInputError("Enter a valid delivery address.");
+  }
+  address.country = normalizeCountryCode(address.country);
+  if (!isDhlCountryCode(address.country)) {
+    throw new CheckoutInputError("Choose a supported two-letter destination country.");
   }
   const shippingServiceCode =
     value.shippingServiceCode === undefined
@@ -291,10 +299,14 @@ export async function createPendingCheckoutOrder({
     try {
       rates = await getDHLRates({
         recipient: {
-          streetLines: [payload.address.streetAddress, payload.address.aptSuite].filter(Boolean).join(", "),
+          streetLines: [
+            payload.address.streetAddress,
+            payload.address.aptSuite,
+            payload.address.addressLine3,
+          ].filter((line): line is string => Boolean(line)),
           city: payload.address.city,
           postalCode: payload.address.postalCode,
-          countryCode: payload.address.country.toUpperCase(),
+          countryCode: normalizeCountryCode(payload.address.country),
           stateOrProvinceCode: payload.address.state || undefined,
         },
         packages,

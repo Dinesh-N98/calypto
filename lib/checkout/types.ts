@@ -8,6 +8,7 @@ export type CheckoutCustomer = {
 export type CheckoutAddress = {
   streetAddress: string;
   aptSuite: string;
+  addressLine3?: string;
   city: string;
   state: string;
   postalCode: string;

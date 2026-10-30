@@ -9,6 +9,7 @@ import {
   withRateLimitHeaders,
 } from "@/lib/request-security";
 import { NextResponse } from "next/server";
+import { isDhlCountryCode, normalizeCountryCode } from "@/lib/checkout/international";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -82,13 +83,19 @@ export async function POST(request: Request) {
     return respond(NextResponse.json({ error: "A recipient address is required." }, { status: 400 }));
   }
   const recipient = body.recipient;
-  const stringFields = ["streetLines", "city", "postalCode", "countryCode"];
-  const streetLines = typeof recipient.streetLines === "string" ? recipient.streetLines.trim() : "";
+  const streetLines = Array.isArray(recipient.streetLines)
+    ? recipient.streetLines.filter((line): line is string => typeof line === "string").map((line) => line.trim())
+    : typeof recipient.streetLines === "string" ? [recipient.streetLines.trim()] : [];
   const city = typeof recipient.city === "string" ? recipient.city.trim() : "";
   const postalCode = typeof recipient.postalCode === "string" ? recipient.postalCode.trim() : "";
   const countryCode = typeof recipient.countryCode === "string" ? recipient.countryCode.trim() : "";
   if (
-    stringFields.some((field) => typeof recipient[field] !== "string" || !recipient[field].trim()) ||
+    streetLines.length < 1 ||
+    streetLines.length > 3 ||
+    streetLines.some((line) => !line || line.length > 70) ||
+    typeof recipient.city !== "string" || !recipient.city.trim() || recipient.city.trim().length > 100 ||
+    typeof recipient.postalCode !== "string" || !recipient.postalCode.trim() || recipient.postalCode.trim().length > 30 ||
+    typeof recipient.countryCode !== "string" || !isDhlCountryCode(recipient.countryCode) ||
     (recipient.stateOrProvinceCode !== undefined &&
       typeof recipient.stateOrProvinceCode !== "string")
   ) {
@@ -116,7 +123,7 @@ export async function POST(request: Request) {
         streetLines,
         city,
         postalCode,
-        countryCode: countryCode.toUpperCase(),
+        countryCode: normalizeCountryCode(countryCode),
         stateOrProvinceCode: recipient.stateOrProvinceCode?.trim(),
       },
       packages,

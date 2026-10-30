@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { PayPalCheckoutButtons } from "@/components/PayPalCheckoutButtons";
 import type { CheckoutPayload } from "@/lib/checkout/types";
+import {
+  DHL_COUNTRIES,
+  PHONE_COUNTRY_CODES,
+  normalizeCountryCode,
+} from "@/lib/checkout/international";
 
 export type CheckoutProfile = {
   firstName: string | null;
@@ -17,6 +22,7 @@ export type CheckoutAddress = {
   id: string;
   line1: string;
   line2: string | null;
+  line3?: string | null;
   city: string;
   state: string | null;
   postalCode: string;
@@ -25,7 +31,13 @@ export type CheckoutAddress = {
 };
 
 type CheckoutItem = { variantId: string; quantity: number };
-type DhlRateOption = { serviceCode?: string; serviceName?: string; currency: string; amount: number };
+type DhlRateOption = {
+  serviceCode?: string;
+  serviceName?: string;
+  currency: string;
+  amount: number;
+  transitDays?: number;
+};
 type AddressFields = Omit<CheckoutAddress, "id" | "isDefault">;
 type ContactFields = { firstName: string; lastName: string; email: string; phone: string };
 export type CheckoutPaymentProvider = "ONEPAY" | "PAYPAL";
@@ -38,6 +50,7 @@ function isDomesticDestination(country: string): boolean {
 const emptyAddress: AddressFields = {
   line1: "",
   line2: "",
+  line3: "",
   city: "",
   state: "",
   postalCode: "",
@@ -86,6 +99,7 @@ export function CheckoutForm({
   const [selectedDhlRate, setSelectedDhlRate] = useState("");
   const [dhlQuoteItemsKey, setDhlQuoteItemsKey] = useState("");
   const [loadingDhlRates, setLoadingDhlRates] = useState(false);
+  const [phoneCountryCode, setPhoneCountryCode] = useState(() => getPhoneCountryCode(profile?.phone));
   const [error, setError] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState(() => defaultAddress?.id ?? "new");
   const [addressFields, setAddressFields] = useState<AddressFields>(() =>
@@ -153,7 +167,8 @@ export function CheckoutForm({
         city: String(formData.get("city") ?? ""),
         state: String(formData.get("state") ?? ""),
         postalCode: String(formData.get("postalCode") ?? ""),
-        country: String(formData.get("country") ?? ""),
+        country: normalizeCountryCode(String(formData.get("country") ?? "")),
+        addressLine3: String(formData.get("addressLine3") ?? ""),
       },
       saveAddress:
         isAuthenticated && selectedAddressId === "new" && formData.get("saveAddress") === "on",
@@ -204,10 +219,12 @@ export function CheckoutForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items, recipient: {
-          streetLines: payload.address.streetAddress,
+          streetLines: [payload.address.streetAddress, payload.address.aptSuite, payload.address.addressLine3]
+            .map((line) => line?.trim())
+            .filter((line): line is string => Boolean(line)),
           city: payload.address.city,
           postalCode: payload.address.postalCode,
-          countryCode: payload.address.country,
+          countryCode: normalizeCountryCode(payload.address.country),
           stateOrProvinceCode: payload.address.state,
         } }),
       });
@@ -329,9 +346,32 @@ export function CheckoutForm({
             value={contactFields.email}
           />
         </label>
-        <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
-          Phone number (E.164, e.g. +94771234567)
-          <input
+        <div className="grid gap-2">
+          <p className="text-[.65rem] font-bold uppercase tracking-[.1em]">Phone number (E.164, e.g. +94771234567)</p>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,11rem)_1fr]">
+            <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+              Calling code
+              <select
+                aria-label="Calling code"
+                className="auth-input"
+                onChange={(event) => {
+                  const nextCode = event.currentTarget.value;
+                  setPhoneCountryCode(nextCode);
+                  setContactFields((fields) => ({
+                    ...fields,
+                    phone: fields.phone.replace(/^\+[1-9]\d{0,3}/u, nextCode),
+                  }));
+                }}
+                value={phoneCountryCode}
+              >
+                {PHONE_COUNTRY_CODES.map(([code, name]) => (
+                  <option key={code} value={code}>{code} — {name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+              Phone number (E.164)
+              <input
             autoComplete="tel"
             className="auth-input"
             name="phone"
@@ -341,8 +381,10 @@ export function CheckoutForm({
             required
             type="tel"
             value={contactFields.phone}
-          />
-        </label>
+              />
+            </label>
+          </div>
+        </div>
         {isAuthenticated && savedAddresses.length > 0 && (
           <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
             Delivery address
@@ -386,6 +428,17 @@ export function CheckoutForm({
           />
         </label>
         <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+          Address line 3 (optional)
+          <input
+            autoComplete="address-line3"
+            className="auth-input"
+            maxLength={70}
+            name="addressLine3"
+            onChange={(event) => updateAddressField("line3", event.currentTarget.value)}
+            value={addressFields.line3 ?? ""}
+          />
+        </label>
+        <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
           City
           <input
             autoComplete="address-level2"
@@ -422,18 +475,20 @@ export function CheckoutForm({
           />
         </label>
         <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
-          {paymentProvider === "PAYPAL" ? "Country code (2 letters)" : "Country"}
-          <input
-            autoComplete={paymentProvider === "PAYPAL" ? "off" : "country-name"}
+          Country / destination
+          <select
+            autoComplete="country"
             className="auth-input"
-            maxLength={paymentProvider === "PAYPAL" ? 2 : 100}
             name="country"
             onChange={(event) => updateAddressField("country", event.currentTarget.value)}
-            pattern={paymentProvider === "PAYPAL" ? "[A-Za-z]{2}" : undefined}
-            placeholder={paymentProvider === "PAYPAL" ? "LK" : undefined}
             required
             value={addressFields.country}
-          />
+          >
+            <option value="">Select a country</option>
+            {DHL_COUNTRIES.map(([code, name]) => (
+              <option key={code} value={code}>{name} ({code})</option>
+            ))}
+          </select>
         </label>
         {isAuthenticated && selectedAddressId === "new" && (
           <label className="flex items-start gap-3 text-sm leading-[1.5] text-[#55584e]">
@@ -451,21 +506,52 @@ export function CheckoutForm({
             >
               {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
             </button>
+            {loadingDhlRates && <p aria-live="polite" className="text-sm text-[#55584e]">Checking DHL service availability and destination routing…</p>}
             {dhlRates.length > 0 && (
-              <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
-                Shipping option
+              <fieldset className="grid gap-2">
+                <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">DHL shipping service</legend>
+                {dhlRates.map((rate, index) => (
+                  <label className="flex items-start gap-3 border border-black/10 p-3 text-sm" key={`${rate.serviceCode ?? "dhl"}-${index}`}>
+                    <input
+                      aria-label={rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
+                      className="mt-1 accent-[#65771b]"
+                      checked={selectedDhlRate === rate.serviceCode}
+                      name="shippingService"
+                      onChange={() => setSelectedDhlRate(rate.serviceCode ?? "")}
+                      type="radio"
+                      value={rate.serviceCode ?? ""}
+                    />
+                    <span className="flex-1">
+                      <strong>{rate.serviceName ?? rate.serviceCode ?? "DHL Express"}</strong>
+                      {rate.transitDays ? <span className="ml-2 text-[#55584e]">{rate.transitDays} business days</span> : null}
+                    </span>
+                    <strong>{rate.currency} {rate.amount.toFixed(2)}</strong>
+                  </label>
+                ))}
                 <select
-                  className="auth-input"
+                  aria-label="Shipping option"
+                  className="sr-only"
                   onChange={(event) => setSelectedDhlRate(event.currentTarget.value)}
+                  tabIndex={-1}
                   value={selectedDhlRate}
                 >
+                  <option value="">Select a service</option>
                   {dhlRates.map((rate, index) => (
-                    <option key={`${rate.serviceCode ?? "dhl"}-${index}`} value={rate.serviceCode ?? ""}>
-                      {rate.serviceName ?? rate.serviceCode ?? "DHL Express"} — {rate.currency} {rate.amount.toFixed(2)}
+                    <option key={`${rate.serviceCode ?? "dhl"}-compat-${index}`} value={rate.serviceCode ?? ""}>
+                      {rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
                     </option>
                   ))}
                 </select>
-              </label>
+                <p className="text-xs leading-5 text-[#55584e]">
+                  Shipping is quoted by DHL. Import duties and destination taxes are not included
+                  in this quote and may be collected by customs on delivery.
+                </p>
+              </fieldset>
+            )}
+            {!loadingDhlRates && error && dhlRates.length === 0 && (
+              <p className="text-sm text-red-700" role="alert">
+                No usable DHL service was returned. Check the address, postal code, and country, then try again.
+              </p>
             )}
           </div>
         )}
@@ -515,9 +601,15 @@ function addressToFields(address: CheckoutAddress): AddressFields {
   return {
     line1: address.line1,
     line2: address.line2,
+    line3: "",
     city: address.city,
     state: address.state,
     postalCode: address.postalCode,
-    country: address.country,
+    country: normalizeCountryCode(address.country),
   };
+}
+
+function getPhoneCountryCode(phone: string | null | undefined): string {
+  const normalized = phone?.trim() ?? "";
+  return PHONE_COUNTRY_CODES.find(([code]) => normalized.startsWith(code))?.[0] ?? "+94";
 }
