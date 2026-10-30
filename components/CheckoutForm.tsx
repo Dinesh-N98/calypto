@@ -223,8 +223,30 @@ export function CheckoutForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildCheckoutPayload(formData)),
       });
-      const result = (await response.json()) as { url?: string; error?: string };
-      if (!response.ok || !result.url) throw new Error(result.error || "Unable to start checkout.");
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        console.error("Checkout request failed.", {
+          status: response.status,
+          body: result,
+        });
+      }
+      const errorMessage =
+        result &&
+        typeof result === "object" &&
+        "error" in result &&
+        typeof result.error === "string"
+          ? result.error
+          : "Unable to start checkout.";
+      if (
+        !result ||
+        typeof result !== "object" ||
+        !("url" in result) ||
+        typeof result.url !== "string" ||
+        !result.url
+      ) {
+        throw new Error(errorMessage);
+      }
+      if (!response.ok) throw new Error(errorMessage);
       window.location.href = result.url;
     } catch (checkoutError) {
       setError(
