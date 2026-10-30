@@ -70,6 +70,54 @@ function renderCheckout({
 }
 
 describe("CheckoutForm", () => {
+  it("keeps domestic OnePay checkout available without DHL rating", () => {
+    renderCheckout();
+
+    expect(screen.getByRole("button", { name: /Checkout/ })).toBeEnabled();
+  });
+
+  it("requires a fresh DHL rate selection for international checkout", async () => {
+    const user = userEvent.setup();
+    const internationalAddress = {
+      ...savedAddresses[0],
+      city: "London",
+      country: "United Kingdom",
+      postalCode: "SW1A 1AA",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            rates: [
+              {
+                serviceCode: "P",
+                serviceName: "DHL Express",
+                currency: "USD",
+                amount: 25,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    renderCheckout({
+      addresses: [internationalAddress],
+      defaultAddress: internationalAddress,
+    });
+
+    const checkoutButton = screen.getByRole("button", { name: /Checkout/ });
+    expect(checkoutButton).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    expect(await screen.findByRole("option", { name: /DHL Express/ })).toBeInTheDocument();
+    expect(checkoutButton).toBeDisabled();
+
+    await user.selectOptions(screen.getByLabelText("Shipping option"), "P");
+    expect(checkoutButton).toBeEnabled();
+  });
+
   it.each(["ONEPAY", "PAYPAL"] as const)(
     "shows the legal links beside the %s payment action",
     (paymentProvider) => {

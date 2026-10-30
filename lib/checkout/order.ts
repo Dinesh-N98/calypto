@@ -271,6 +271,11 @@ export async function createPendingCheckoutOrder({
   let shippingCents = 0;
   let shippingServiceCode: string | null = null;
   if (!isDomesticDestination(payload.address.country)) {
+    if (!payload.shippingServiceCode) {
+      throw new CheckoutInputError(
+        "Select a DHL shipping service before continuing to payment.",
+      );
+    }
     const config = getDhlConfig();
     const packageVariants: PackageVariant[] = resolvedItems
       .filter((item): item is NonNullable<typeof item> => item !== null)
@@ -306,9 +311,7 @@ export async function createPendingCheckoutOrder({
       console.error("Unable to calculate DHL checkout rate.", error);
       throw new CheckoutInputError("International shipping rates are temporarily unavailable.", 503);
     }
-    const selected = payload.shippingServiceCode
-      ? rates.find((rate) => rate.serviceCode === payload.shippingServiceCode)
-      : rates[0];
+    const selected = rates.find((rate) => rate.serviceCode === payload.shippingServiceCode);
     if (!selected) throw new CheckoutInputError("The selected DHL shipping service is unavailable.", 409);
     if (selected.currency !== CHECKOUT_CURRENCY || !Number.isFinite(selected.amount) || selected.amount <= 0) {
       throw new CheckoutInputError("DHL returned a currency that cannot be charged at checkout.", 502);

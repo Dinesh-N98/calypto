@@ -30,6 +30,11 @@ type AddressFields = Omit<CheckoutAddress, "id" | "isDefault">;
 type ContactFields = { firstName: string; lastName: string; email: string; phone: string };
 export type CheckoutPaymentProvider = "ONEPAY" | "PAYPAL";
 
+function isDomesticDestination(country: string): boolean {
+  const normalized = country.trim().toUpperCase();
+  return normalized === "LK" || normalized === "SRI LANKA";
+}
+
 const emptyAddress: AddressFields = {
   line1: "",
   line2: "",
@@ -79,6 +84,7 @@ export function CheckoutForm({
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [dhlRates, setDhlRates] = useState<DhlRateOption[]>([]);
   const [selectedDhlRate, setSelectedDhlRate] = useState("");
+  const [dhlQuoteItemsKey, setDhlQuoteItemsKey] = useState("");
   const [loadingDhlRates, setLoadingDhlRates] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState(() => defaultAddress?.id ?? "new");
@@ -98,6 +104,22 @@ export function CheckoutForm({
   }));
   const dirtyContactFields = useRef(new Set<keyof ContactFields>());
   const formElementRef = useRef<HTMLFormElement | null>(null);
+  const isDomestic = isDomesticDestination(addressFields.country);
+  const itemKey = items.map((item) => `${item.variantId}:${item.quantity}`).join("|");
+  const addressKey = [
+    addressFields.line1,
+    addressFields.line2 ?? "",
+    addressFields.city,
+    addressFields.state ?? "",
+    addressFields.postalCode,
+    addressFields.country,
+  ].join("|");
+  const quoteContextKey = `${addressKey}|${itemKey}`;
+  const hasSelectedDhlRate = dhlRates.some(
+    (rate) => Boolean(rate.serviceCode) && rate.serviceCode === selectedDhlRate,
+  ) && dhlQuoteItemsKey === quoteContextKey;
+  const canSubmitOnePay =
+    isDomestic || (!loadingDhlRates && dhlRates.length > 0 && hasSelectedDhlRate);
   const setFormRef = useCallback((element: HTMLFormElement | null) => {
     formElementRef.current = element;
   }, []);
@@ -157,16 +179,18 @@ export function CheckoutForm({
     }));
     setSelectedAddressId(value);
     setAddressFields(nextFields);
+    setDhlRates([]);
+    setSelectedDhlRate("");
+    setDhlQuoteItemsKey("");
   }
 
   function updateAddressField(field: keyof AddressFields, value: string) {
     const nextFields = { ...addressFields, [field]: value };
     setAddressDrafts((drafts) => ({ ...drafts, [selectedAddressId]: nextFields }));
     setAddressFields(nextFields);
-    if (field === "country") {
-      setDhlRates([]);
-      setSelectedDhlRate("");
-    }
+    setDhlRates([]);
+    setSelectedDhlRate("");
+    setDhlQuoteItemsKey("");
   }
 
   async function loadDhlRates() {
@@ -196,9 +220,11 @@ export function CheckoutForm({
         );
       }
       const rates = result.rates as DhlRateOption[];
-      if (!rates.length) throw new Error("DHL returned no shipping options.");
-      setDhlRates(rates);
-      setSelectedDhlRate(rates[0].serviceCode ?? "");
+      const selectableRates = rates.filter((rate) => Boolean(rate.serviceCode));
+      if (!selectableRates.length) throw new Error("DHL returned no selectable shipping options.");
+      setDhlRates(selectableRates);
+      setSelectedDhlRate("");
+      setDhlQuoteItemsKey(quoteContextKey);
     } catch (rateError) {
       setError(rateError instanceof Error ? rateError.message : "Unable to calculate DHL shipping rates.");
     } finally {
@@ -214,6 +240,10 @@ export function CheckoutForm({
   async function checkout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (paymentProvider !== "ONEPAY") return;
+    if (!isDomestic && !canSubmitOnePay) {
+      setError("Calculate and select a DHL shipping service before checkout.");
+      return;
+    }
     setIsCheckingOut(true);
     setError(null);
     try {
@@ -411,37 +441,39 @@ export function CheckoutForm({
             Save this address to my account for future orders
           </label>
         )}
-        <div className="grid gap-2 border-t border-black/10 pt-4">
-          <button
-            className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
-            disabled={loadingDhlRates}
-            onClick={() => void loadDhlRates()}
-            type="button"
-          >
-            {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
-          </button>
-          {dhlRates.length > 0 && (
-            <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
-              Shipping option
-              <select
-                className="auth-input"
-                onChange={(event) => setSelectedDhlRate(event.currentTarget.value)}
-                value={selectedDhlRate}
-              >
-                {dhlRates.map((rate, index) => (
-                  <option key={`${rate.serviceCode ?? "dhl"}-${index}`} value={rate.serviceCode ?? ""}>
-                    {rate.serviceName ?? rate.serviceCode ?? "DHL Express"} — {rate.currency} {rate.amount.toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
+        {!isDomestic && (
+          <div className="grid gap-2 border-t border-black/10 pt-4">
+            <button
+              className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
+              disabled={loadingDhlRates}
+              onClick={() => void loadDhlRates()}
+              type="button"
+            >
+              {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
+            </button>
+            {dhlRates.length > 0 && (
+              <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+                Shipping option
+                <select
+                  className="auth-input"
+                  onChange={(event) => setSelectedDhlRate(event.currentTarget.value)}
+                  value={selectedDhlRate}
+                >
+                  {dhlRates.map((rate, index) => (
+                    <option key={`${rate.serviceCode ?? "dhl"}-${index}`} value={rate.serviceCode ?? ""}>
+                      {rate.serviceName ?? rate.serviceCode ?? "DHL Express"} — {rate.currency} {rate.amount.toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
         {paymentProvider === "ONEPAY" && (
           <>
             <button
               className="button-primary inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
-              disabled={isCheckingOut}
+              disabled={isCheckingOut || !canSubmitOnePay}
               type="submit"
             >
               {isCheckingOut ? (
