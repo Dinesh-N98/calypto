@@ -1,4 +1,4 @@
-import { getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
+import { buildDhlPackage, getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
 import { getDhlConfig } from "@/lib/config/dhl";
 import { prisma } from "@/lib/prisma";
 import {
@@ -52,16 +52,13 @@ async function packagesForItems(value: unknown): Promise<DhlPackage[] | null> {
   });
   const config = getDhlConfig();
   if (variants.length !== quantities.size) return null;
-  return [{
-    weightKg: variants.reduce(
-      (sum, variant) =>
-        sum + (variant.weightKg ?? config.defaultPackage.weightKg) * (quantities.get(variant.id) ?? 0),
-      0,
-    ),
-    lengthCm: Math.max(...variants.map((variant) => variant.lengthCm ?? config.defaultPackage.lengthCm)),
-    widthCm: Math.max(...variants.map((variant) => variant.widthCm ?? config.defaultPackage.widthCm)),
-    heightCm: Math.max(...variants.map((variant) => variant.heightCm ?? config.defaultPackage.heightCm)),
-  }];
+  return [buildDhlPackage(
+    variants.map((variant) => ({
+      ...variant,
+      quantity: quantities.get(variant.id) ?? 0,
+    })),
+    config.defaultPackage,
+  )];
 }
 
 export async function POST(request: Request) {

@@ -45,6 +45,10 @@ type ProductRecord = {
     discountPriceCents: number | null;
     stock: number;
     imageUrl: string | null;
+    weightKg: number | null;
+    lengthCm: number | null;
+    widthCm: number | null;
+    heightCm: number | null;
   }[];
   tieredDiscounts: { minQuantity: number; discountPercentage: number }[];
   categoryId: string;
@@ -471,6 +475,10 @@ function ProductFormFields({
                   : "",
                 stock: variant.stock,
                 imageUrl: variant.imageUrl ?? "",
+                weightKg: variant.weightKg ?? null,
+                lengthCm: variant.lengthCm ?? null,
+                widthCm: variant.widthCm ?? null,
+                heightCm: variant.heightCm ?? null,
               })) ?? [],
               null,
               2,
@@ -482,7 +490,8 @@ function ProductFormFields({
           <span className="mt-1 block text-[11px] font-normal">
             Leave empty to create a hidden default variant using the product price and default
             stock. Otherwise each row needs a price and non-negative stock; SKU is optional and
-            generated automatically. Size, color, discountPrice, and imageUrl are optional.
+            generated automatically.             Size, color, discountPrice, imageUrl, and DHL metrics are optional. DHL metrics use
+            kilograms and centimetres; soft-bait lengths in inches must be converted before entry.
           </span>
         </label>
         <label className="text-xs font-bold text-[#55594f] md:col-span-2">

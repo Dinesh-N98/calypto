@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 
 import { getDhlConfig } from "@/lib/config/dhl";
 import { createDhlClient, DhlApiError } from "@/lib/dhl/client";
-import { buildRateRequestBody } from "@/lib/dhl/rate";
+import { buildDhlPackage, buildRateRequestBody } from "@/lib/dhl/rate";
 import { buildSoapEnvelope, escapeXml } from "@/lib/dhl/soap-builder";
 
 const config = {
@@ -89,6 +89,23 @@ describe("DHL SOAP client", () => {
 });
 
 describe("DHL rate request", () => {
+  it("uses variant metrics and falls back per missing field", () => {
+    expect(buildDhlPackage([
+      {
+        quantity: 2,
+        weightKg: 0.15,
+        lengthCm: 10.16,
+        widthCm: null,
+        heightCm: 2,
+      },
+    ], { weightKg: 0.5, lengthCm: 3, widthCm: 2, heightCm: 1 })).toEqual({
+      weightKg: 0.3,
+      lengthCm: 10.16,
+      widthCm: 2,
+      heightCm: 2,
+    });
+  });
+
   it("serializes packages and escapes recipient data", () => {
     const xml = buildRateRequestBody({
       recipient: {

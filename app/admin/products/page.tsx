@@ -26,6 +26,10 @@ export default async function AdminProductsPage() {
             discountPriceCents: true,
             stock: true,
             imageUrl: true,
+            weightKg: true,
+            lengthCm: true,
+            widthCm: true,
+            heightCm: true,
           },
         },
         tieredDiscounts: {

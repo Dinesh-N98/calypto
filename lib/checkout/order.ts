@@ -4,7 +4,7 @@ import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
 import { prisma } from "@/lib/prisma";
 import { calculateUnitPriceCents } from "@/lib/product-pricing";
 import { getDhlConfig } from "@/lib/config/dhl";
-import { getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
+import { buildDhlPackage, getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
 import type { PaymentProvider } from "@prisma/client";
 import type { CheckoutAddress, CheckoutCustomer, CheckoutPayload } from "@/lib/checkout/types";
 
@@ -286,15 +286,7 @@ export async function createPendingCheckoutOrder({
         widthCm: variant.widthCm,
         heightCm: variant.heightCm,
       }));
-    const packages: DhlPackage[] = [{
-      weightKg: packageVariants.reduce(
-        (sum, item) => sum + (item.weightKg ?? config.defaultPackage.weightKg) * item.quantity,
-        0,
-      ),
-      lengthCm: Math.max(...packageVariants.map((item) => item.lengthCm ?? config.defaultPackage.lengthCm)),
-      widthCm: Math.max(...packageVariants.map((item) => item.widthCm ?? config.defaultPackage.widthCm)),
-      heightCm: Math.max(...packageVariants.map((item) => item.heightCm ?? config.defaultPackage.heightCm)),
-    }];
+    const packages: DhlPackage[] = [buildDhlPackage(packageVariants, config.defaultPackage)];
     let rates: Awaited<ReturnType<typeof getDHLRates>>;
     try {
       rates = await getDHLRates({

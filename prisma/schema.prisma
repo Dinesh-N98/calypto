@@ -85,9 +85,13 @@ model ProductVariant {
   size               String?
   color              String?
   imageUrl           String?
+  /// Packed shipment weight in kilograms, not the net product weight.
   weightKg           Float?
+  /// Packed shipment length in centimetres. Convert soft-bait inch sizes before storing.
   lengthCm           Float?
+  /// Packed shipment width in centimetres.
   widthCm            Float?
+  /// Packed shipment height in centimetres.
   heightCm           Float?
   createdAt          DateTime @default(now())
 

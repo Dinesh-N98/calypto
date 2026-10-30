@@ -17,6 +17,14 @@ export type DhlPackage = {
   heightCm: number;
 };
 
+export type DhlVariantMetrics = {
+  quantity: number;
+  weightKg: number | null | undefined;
+  lengthCm: number | null | undefined;
+  widthCm: number | null | undefined;
+  heightCm: number | null | undefined;
+};
+
 export type DhlRateRequest = {
   recipient: DhlAddress;
   packages: DhlPackage[];
@@ -32,6 +40,22 @@ export type DhlRate = {
 
 function assertPositive(value: number, name: string): void {
   if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} must be greater than zero.`);
+}
+
+export function buildDhlPackage(
+  variants: DhlVariantMetrics[],
+  defaults = getDhlConfig().defaultPackage,
+): DhlPackage {
+  if (variants.length === 0) throw new Error("At least one product variant is required.");
+  return {
+    weightKg: variants.reduce(
+      (sum, variant) => sum + (variant.weightKg ?? defaults.weightKg) * variant.quantity,
+      0,
+    ),
+    lengthCm: Math.max(...variants.map((variant) => variant.lengthCm ?? defaults.lengthCm)),
+    widthCm: Math.max(...variants.map((variant) => variant.widthCm ?? defaults.widthCm)),
+    heightCm: Math.max(...variants.map((variant) => variant.heightCm ?? defaults.heightCm)),
+  };
 }
 
 function formatDhlTimestamp(value: Date): string {

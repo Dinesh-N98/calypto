@@ -60,7 +60,13 @@ function parseVariants(
         (item.size !== undefined && typeof item.size !== "string") ||
         (item.color !== undefined && typeof item.color !== "string") ||
         (item.discountPrice !== undefined && typeof item.discountPrice !== "string") ||
-        (item.imageUrl !== undefined && typeof item.imageUrl !== "string")
+        (item.imageUrl !== undefined && typeof item.imageUrl !== "string") ||
+        ["weightKg", "lengthCm", "widthCm", "heightCm"].some(
+          (field) =>
+            item[field] !== undefined &&
+            item[field] !== null &&
+            (typeof item[field] !== "number" || !Number.isFinite(item[field]) || item[field] <= 0),
+        )
       ) {
         return null;
       }
@@ -100,6 +106,10 @@ function parseVariants(
         discountPriceCents,
         stock,
         imageUrl: imageUrl || null,
+        weightKg: typeof item.weightKg === "number" ? item.weightKg : null,
+        lengthCm: typeof item.lengthCm === "number" ? item.lengthCm : null,
+        widthCm: typeof item.widthCm === "number" ? item.widthCm : null,
+        heightCm: typeof item.heightCm === "number" ? item.heightCm : null,
       };
     });
     if (variants.some((variant) => variant === null)) return null;
