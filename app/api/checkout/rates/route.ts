@@ -97,9 +97,18 @@ export async function POST(request: Request) {
   ) {
     return respond(NextResponse.json({ error: "The recipient address is invalid." }, { status: 400 }));
   }
-  const packages = body.packages !== undefined
-    ? parsePackages(body.packages)
-    : await packagesForItems(body.items);
+  let packages: DhlPackage[] | null;
+  try {
+    packages = body.packages !== undefined
+      ? parsePackages(body.packages)
+      : await packagesForItems(body.items);
+  } catch (error) {
+    console.error("Unable to prepare DHL checkout packages.", error);
+    return respond(NextResponse.json(
+      { error: "DHL shipping configuration is temporarily unavailable." },
+      { status: 503 },
+    ));
+  }
   if (!packages) {
     return respond(NextResponse.json({ error: "At least one valid package is required." }, { status: 400 }));
   }
@@ -118,6 +127,16 @@ export async function POST(request: Request) {
     return respond(NextResponse.json({ rates }, { headers: { "Cache-Control": "private, no-store" } }));
   } catch (error) {
     console.error("Unable to calculate DHL checkout rates.", error);
-    return respond(NextResponse.json({ error: "DHL rates are temporarily unavailable." }, { status: 502 }));
+    const message = error instanceof Error ? error.message : "Unknown DHL integration error.";
+    const status =
+      error && typeof error === "object" && "details" in error &&
+      error.details && typeof error.details === "object" &&
+      "kind" in error.details && error.details.kind === "configuration"
+        ? 503
+        : 502;
+    return respond(NextResponse.json(
+      { error: `DHL rates are temporarily unavailable: ${message}` },
+      { status },
+    ));
   }
 }

@@ -10,6 +10,7 @@ const parser = new XMLParser({
   trimValues: true,
   parseTagValue: false,
 });
+const DHL_REQUEST_TIMEOUT_MS = 15_000;
 
 export class DhlApiError extends Error {
   constructor(
@@ -19,8 +20,9 @@ export class DhlApiError extends Error {
       status?: number;
       code?: string;
     },
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = "DhlApiError";
   }
 }
@@ -86,6 +88,8 @@ export function createDhlClient(
   return {
     async request({ endpoint, body, parse, soapAction }) {
       const requestXml = buildSoapEnvelope(body, config);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), DHL_REQUEST_TIMEOUT_MS);
       let response: Response;
       try {
         response = await fetcher(endpoint, {
@@ -97,12 +101,39 @@ export function createDhlClient(
           },
           body: requestXml,
           cache: "no-store",
+          signal: controller.signal,
         });
-      } catch {
-        throw new DhlApiError("Unable to reach DHL.", { kind: "network" });
+      } catch (error) {
+        const message =
+          error instanceof DOMException && error.name === "AbortError"
+            ? "Request timed out."
+            : error instanceof Error
+              ? error.message
+              : "Unknown network error.";
+        console.error("DHL SOAP request failed to reach the endpoint.", {
+          endpoint,
+          message,
+        });
+        throw new DhlApiError(`Unable to reach DHL: ${message}`, { kind: "network" }, { cause: error });
+      } finally {
+        clearTimeout(timeout);
       }
 
-      const responseXml = await response.text();
+      let responseXml: string;
+      try {
+        responseXml = await response.text();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown response read error.";
+        console.error("DHL SOAP response could not be read.", {
+          endpoint,
+          status: response.status,
+          message,
+        });
+        throw new DhlApiError(`Unable to read DHL response: ${message}`, {
+          kind: "network",
+          status: response.status,
+        }, { cause: error });
+      }
       let parsed: ParsedXml;
       try {
         parsed = parseDhlXml(responseXml);
@@ -117,9 +148,23 @@ export function createDhlClient(
       }
       const fault = parseSoapFault(parsed);
       if (fault) {
-        throw new DhlApiError(fault.message, { kind: "soap", code: fault.code, status: response.status });
+        console.error("DHL SOAP fault received.", {
+          endpoint,
+          status: response.status,
+          code: fault.code,
+          message: fault.message,
+        });
+        throw new DhlApiError(fault.message, {
+          kind: "soap",
+          code: fault.code,
+          status: response.status,
+        });
       }
       if (!response.ok) {
+        console.error("DHL SOAP endpoint returned an HTTP error.", {
+          endpoint,
+          status: response.status,
+        });
         throw new DhlApiError(`DHL returned HTTP ${response.status}.`, {
           kind: "http",
           status: response.status,
