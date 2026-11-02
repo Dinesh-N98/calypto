@@ -12,8 +12,14 @@ const config = {
   password: "p<&\"",
   accountNumber: "524123",
   baseUrl: "https://wsbexpress.dhl.com:443/sndpt",
-  shipperCountry: "LK",
-  shipperCity: "Colombo 02",
+  shipper: {
+    streetLines: "58/3, Makandana road",
+    city: "Kesbewa",
+    postalCode: "10300",
+    countryCode: "LK",
+    phoneNumber: "+94766434416",
+    emailAddress: "icalypto@gmail.com",
+  },
 };
 
 describe("DHL configuration", () => {
@@ -23,8 +29,19 @@ describe("DHL configuration", () => {
       DHL_PASSWORD: " password ",
       DHL_ACCOUNT_NUMBER: " account ",
       DHL_BASE_URL: "https://example.test/base/",
-      DHL_SHIPPER_COUNTRY: "lk",
-      DHL_SHIPPER_CITY: "Colombo",
+    }).shipper).toEqual({
+      streetLines: "58/3, Makandana road",
+      city: "Kesbewa",
+      postalCode: "10300",
+      countryCode: "LK",
+      phoneNumber: "+94766434416",
+      emailAddress: "icalypto@gmail.com",
+    });
+    expect(getDhlConfig({
+      DHL_USERNAME: " user ",
+      DHL_PASSWORD: " password ",
+      DHL_ACCOUNT_NUMBER: " account ",
+      DHL_BASE_URL: "https://example.test/base/",
     }).endpoints).toEqual({
       rate: "https://example.test/base/expressRateBook",
       shipment: "https://example.test/base/expressRateBook",
@@ -135,6 +152,10 @@ describe("DHL rate request", () => {
       shipTimestamp: new Date("2026-10-15T13:00:00.000Z"),
     }, config);
     expect(xml).toContain("A&amp;B Road");
+    expect(xml).toContain("<StreetLines>58/3, Makandana road</StreetLines>");
+    expect(xml).toContain("<City>Kesbewa</City>");
+    expect(xml).toContain("<PostalCode>10300</PostalCode>");
+    expect(xml).toContain("<CountryCode>LK</CountryCode>");
     expect(xml).toContain('RequestedPackages number="1"');
     expect(xml).toContain("<ShipTimestamp>2026-10-15T13:00:00.000GMT+00:00</ShipTimestamp>");
   });

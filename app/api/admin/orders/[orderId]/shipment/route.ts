@@ -34,12 +34,6 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   try {
     const config = getDhlConfig();
-    if (!config.shipperPhone || !config.shipperEmail) {
-      return NextResponse.json(
-        { error: "DHL_SHIPPER_PHONE and DHL_SHIPPER_EMAIL must be configured." },
-        { status: 503 },
-      );
-    }
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: { items: { orderBy: { id: "asc" } } },
@@ -73,14 +67,14 @@ export async function POST(request: Request, { params }: RouteContext) {
         contact: {
           personName: "Calypto Bait",
           companyName: "Calypto Bait",
-          phoneNumber: config.shipperPhone,
-          emailAddress: config.shipperEmail,
+          phoneNumber: config.shipper.phoneNumber,
+          emailAddress: config.shipper.emailAddress,
         },
         address: {
-          streetLines: "Calypto Bait",
-          city: config.shipperCity,
-          postalCode: process.env.DHL_SHIPPER_POSTAL_CODE?.trim() || "00200",
-          countryCode: config.shipperCountry,
+          streetLines: config.shipper.streetLines,
+          city: config.shipper.city,
+          postalCode: config.shipper.postalCode,
+          countryCode: config.shipper.countryCode,
         },
       },
       recipient: {

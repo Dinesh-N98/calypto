@@ -5,10 +5,14 @@ export type DhlConfig = {
   password: string;
   accountNumber: string;
   baseUrl: string;
-  shipperCountry: string;
-  shipperCity: string;
-  shipperPhone: string;
-  shipperEmail: string;
+  shipper: {
+    streetLines: string;
+    city: string;
+    postalCode: string;
+    countryCode: string;
+    phoneNumber: string;
+    emailAddress: string;
+  };
   defaultPackage: {
     weightKg: number;
     lengthCm: number;
@@ -60,25 +64,19 @@ export function getDhlConfig(environment: Environment = process.env): DhlConfig 
   const username = required(environment, "DHL_USERNAME");
   const password = required(environment, "DHL_PASSWORD");
   const accountNumber = required(environment, "DHL_ACCOUNT_NUMBER");
-  const shipperCountry = (environment.DHL_SHIPPER_COUNTRY ?? "LK").trim().toUpperCase();
-  const shipperCity = (environment.DHL_SHIPPER_CITY ?? "Colombo 02").trim();
-  const shipperPhone = (environment.DHL_SHIPPER_PHONE ?? "").trim();
-  const shipperEmail = (environment.DHL_SHIPPER_EMAIL ?? "").trim();
-
-  if (!/^[A-Z]{2}$/.test(shipperCountry)) {
-    throw new Error("DHL_SHIPPER_COUNTRY must be a two-letter ISO country code.");
-  }
-  if (!shipperCity) throw new Error("DHL_SHIPPER_CITY is required for DHL integration.");
-
   return {
     username,
     password,
     accountNumber,
     baseUrl,
-    shipperCountry,
-    shipperCity,
-    shipperPhone,
-    shipperEmail,
+    shipper: {
+      streetLines: "58/3, Makandana road",
+      city: "Kesbewa",
+      postalCode: "10300",
+      countryCode: "LK",
+      phoneNumber: "+94766434416",
+      emailAddress: "icalypto@gmail.com",
+    },
     defaultPackage: {
       weightKg: positiveNumber(environment, "DHL_DEFAULT_PACKAGE_WEIGHT_KG", 0.5),
       lengthCm: positiveNumber(environment, "DHL_DEFAULT_PACKAGE_LENGTH_CM", 3),

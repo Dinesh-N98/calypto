@@ -26,12 +26,6 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   try {
     const config = getDhlConfig();
-    if (!config.shipperPhone || !config.shipperEmail) {
-      return NextResponse.json(
-        { error: "DHL_SHIPPER_PHONE and DHL_SHIPPER_EMAIL must be configured." },
-        { status: 503 },
-      );
-    }
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: { items: { orderBy: { id: "asc" } } },
@@ -50,17 +44,17 @@ export async function POST(request: Request, { params }: RouteContext) {
     const pickup = await requestDhlPickup({
       pickupTimestamp: nextBusinessDay(),
       pickupLocationCloseTime: process.env.DHL_PICKUP_CLOSE_TIME?.trim() || "16:30",
-      pickupLocation: config.shipperCity,
+      pickupLocation: config.shipper.city,
       specialInstruction: process.env.DHL_PICKUP_INSTRUCTION?.trim(),
       shipper: {
         personName: "Calypto Bait",
         companyName: "Calypto Bait",
-        phoneNumber: config.shipperPhone,
-        emailAddress: config.shipperEmail,
-        streetLines: process.env.DHL_SHIPPER_ADDRESS?.trim() || "Calypto Bait",
-        city: config.shipperCity,
-        postalCode: process.env.DHL_SHIPPER_POSTAL_CODE?.trim() || "00200",
-        countryCode: config.shipperCountry,
+        phoneNumber: config.shipper.phoneNumber,
+        emailAddress: config.shipper.emailAddress,
+        streetLines: config.shipper.streetLines,
+        city: config.shipper.city,
+        postalCode: config.shipper.postalCode,
+        countryCode: config.shipper.countryCode,
       },
       packages: [{
         weightKg: Number(process.env.DHL_DEFAULT_PACKAGE_WEIGHT_KG ?? "0.5") *

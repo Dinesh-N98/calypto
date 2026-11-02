@@ -65,7 +65,7 @@ function formatDhlTimestamp(value: Date): string {
 
 export function buildRateRequestBody(
   request: DhlRateRequest,
-  shipper: Pick<ReturnType<typeof getDhlConfig>, "shipperCountry" | "shipperCity" | "accountNumber">,
+  shipper: Pick<ReturnType<typeof getDhlConfig>, "shipper" | "accountNumber">,
 ): string {
   if (!request.recipient.countryCode || !request.recipient.city) {
     throw new Error("recipient city and countryCode are required.");
@@ -88,7 +88,13 @@ export function buildRateRequestBody(
     ? request.recipient.streetLines
     : [request.recipient.streetLines]).filter((line): line is string => typeof line === "string");
   const streetXml = streetLines.map((line) => xmlElement("StreetLines", line)).join("");
-  return `<rat:RateRequest xmlns:rat="http://scxgxtt.phx-dc.dhl.com/euExpressRateBook/RateMsgRequest"><ClientDetail/><RequestedShipment><DropOffType>REQUEST_COURIER</DropOffType><ServiceType>P</ServiceType><NextBusinessDay>N</NextBusinessDay><Ship><Shipper>${xmlElement("City", shipper.shipperCity)}${xmlElement("CountryCode", shipper.shipperCountry)}</Shipper><Recipient>${streetXml}${xmlElement("City", request.recipient.city)}${xmlElement("StateOrProvinceCode", request.recipient.stateOrProvinceCode)}${xmlElement("PostalCode", request.recipient.postalCode)}${xmlElement("CountryCode", request.recipient.countryCode)}</Recipient></Ship><Packages>${packages}</Packages>${xmlElement("ShipTimestamp", formatDhlTimestamp(request.shipTimestamp ?? new Date()))}${xmlElement("UnitOfMeasurement", "SI")}${xmlElement("Content", "NON_DOCUMENTS")}${xmlElement("PaymentInfo", "DDU")}${xmlElement("Account", shipper.accountNumber)}</RequestedShipment></rat:RateRequest>`;
+  const shipperXml = [
+    xmlElement("StreetLines", shipper.shipper.streetLines),
+    xmlElement("City", shipper.shipper.city),
+    xmlElement("PostalCode", shipper.shipper.postalCode),
+    xmlElement("CountryCode", shipper.shipper.countryCode),
+  ].join("");
+  return `<rat:RateRequest xmlns:rat="http://scxgxtt.phx-dc.dhl.com/euExpressRateBook/RateMsgRequest"><ClientDetail/><RequestedShipment><DropOffType>REQUEST_COURIER</DropOffType><ServiceType>P</ServiceType><NextBusinessDay>N</NextBusinessDay><Ship><Shipper>${shipperXml}</Shipper><Recipient>${streetXml}${xmlElement("City", request.recipient.city)}${xmlElement("StateOrProvinceCode", request.recipient.stateOrProvinceCode)}${xmlElement("PostalCode", request.recipient.postalCode)}${xmlElement("CountryCode", request.recipient.countryCode)}</Recipient></Ship><Packages>${packages}</Packages>${xmlElement("ShipTimestamp", formatDhlTimestamp(request.shipTimestamp ?? new Date()))}${xmlElement("UnitOfMeasurement", "SI")}${xmlElement("Content", "NON_DOCUMENTS")}${xmlElement("PaymentInfo", "DDU")}${xmlElement("Account", shipper.accountNumber)}</RequestedShipment></rat:RateRequest>`;
 }
 
 function numberValue(value: unknown): number | undefined {
