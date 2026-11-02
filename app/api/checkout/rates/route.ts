@@ -63,10 +63,30 @@ async function packagesForItems(value: unknown): Promise<DhlPackage[] | null> {
 }
 
 export async function POST(request: Request) {
-  if (request.headers.get("origin") !== new URL(request.url).origin) {
+  let origin: string;
+  try {
+    origin = new URL(request.url).origin;
+  } catch (error) {
+    console.error("Unable to resolve checkout request origin.", error);
+    return NextResponse.json(
+      { error: "The checkout request could not be processed.", kind: "request" },
+      { status: 400 },
+    );
+  }
+  if (request.headers.get("origin") !== origin) {
     return NextResponse.json({ error: "Cross-origin checkout is not allowed." }, { status: 403 });
   }
-  const limit = await applyRateLimit(request, "dhl-rate-quote", 20, 10 * 60);
+
+  let limit: Awaited<ReturnType<typeof applyRateLimit>>;
+  try {
+    limit = await applyRateLimit(request, "dhl-rate-quote", 20, 10 * 60);
+  } catch (error) {
+    console.error("Unable to apply DHL checkout rate limiting.", error);
+    return NextResponse.json(
+      { error: "DHL rates are temporarily unavailable.", kind: "rate_limit" },
+      { status: 503 },
+    );
+  }
   if (!limit.allowed) return rateLimitResponse(limit);
   const respond = (response: Response) => withRateLimitHeaders(response, limit);
 
@@ -77,7 +97,11 @@ export async function POST(request: Request) {
     if (error instanceof RequestBodyError) {
       return respond(NextResponse.json({ error: error.message }, { status: error.status }));
     }
-    throw error;
+    console.error("Unable to read DHL checkout rate request.", error);
+    return respond(NextResponse.json(
+      { error: "The checkout request could not be processed.", kind: "request" },
+      { status: 400 },
+    ));
   }
   if (!isObject(body) || !isObject(body.recipient)) {
     return respond(NextResponse.json({ error: "A recipient address is required." }, { status: 400 }));
@@ -109,7 +133,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Unable to prepare DHL checkout packages.", error);
     return respond(NextResponse.json(
-      { error: "DHL shipping configuration is temporarily unavailable." },
+      { error: "DHL shipping configuration is temporarily unavailable.", kind: "package_preparation" },
       { status: 503 },
     ));
   }
