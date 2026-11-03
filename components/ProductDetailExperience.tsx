@@ -460,10 +460,8 @@ export function ProductDetailExperience({
               setQuantity(Math.max(1, Math.min(nextQuantity, selectedVariant?.stock ?? nextQuantity)))
             }
           />
-          <p className="min-w-0 flex-1 break-words text-right text-xs text-[#62665c] sm:flex-none sm:text-left sm:text-sm">
-            {selectedVariant ? `${selectedVariant.stock} available · SKU ${selectedVariant.sku}` : "Select a variant"}
-          </p>
         </div>
+        
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#a3bd32] px-5 text-sm font-extrabold uppercase tracking-[.08em] text-ink hover:bg-[#b6cf45] disabled:cursor-not-allowed disabled:opacity-50"
