@@ -94,6 +94,7 @@ describe("createPendingCheckoutOrder", () => {
     expect(mocks.orderCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          providerReference: expect.stringMatching(/^CAL-[A-F0-9]{17}$/u),
           userId: "user-1",
           email: "ada@example.com",
           customerFirstName: "Ada",
@@ -109,6 +110,8 @@ describe("createPendingCheckoutOrder", () => {
         }),
       }),
     );
+    const orderCreateData = mocks.orderCreate.mock.calls[0][0].data;
+    expect(orderCreateData.providerReference).toHaveLength(21);
     expect(mocks.addressCreate).not.toHaveBeenCalled();
     expect(order).toMatchObject({ id: "order-1", userId: "user-1" });
   });

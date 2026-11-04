@@ -335,7 +335,7 @@ export async function createPendingCheckoutOrder({
 
   const session = await auth();
   const userId = session?.user?.id ?? null;
-  const reference = `CAL-${randomUUID().replaceAll("-", "").toUpperCase()}`;
+  const reference = `CAL-${randomUUID().replaceAll("-", "").slice(0, 17).toUpperCase()}`;
   const now = new Date();
 
   return prisma.$transaction(async (transaction) => {
