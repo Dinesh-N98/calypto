@@ -42,4 +42,40 @@ describe("createOnePayCheckout", () => {
       transactionId: "WQBV118E584C83CBA50C6",
     });
   });
+
+  it("reads the transaction identifier and redirect URL from OnePay data", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              status: 200,
+              message: "Checkout link created",
+              data: {
+                ipg_transaction_id: "WQBV118E584C83CBA50C6",
+                redirect_url: "https://pay.onepay.lk/checkout/data",
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        ),
+      );
+
+      await expect(
+        createOnePayCheckout({
+          appBaseUrl: "https://calyptobait.com",
+          amountCents: 14327,
+          customer: {
+            firstName: "Ada",
+            lastName: "Lovelace",
+            email: "ada@example.com",
+            phone: "+94771234567",
+          },
+          reference: "CAL-12345678901234567",
+        }),
+      ).resolves.toMatchObject({
+        redirectUrl: "https://pay.onepay.lk/checkout/data",
+        transactionId: "WQBV118E584C83CBA50C6",
+    });
+  });
 });

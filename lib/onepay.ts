@@ -63,8 +63,13 @@ function getOnePayResponseValue(
   key: string,
 ): unknown {
   if (result[key] !== undefined) return result[key];
-  const rawResponse = result.raw_response;
-  return isJsonObject(rawResponse) ? rawResponse[key] : undefined;
+  for (const containerKey of ["data", "raw_response"]) {
+    const container = result[containerKey];
+    if (isJsonObject(container) && container[key] !== undefined) {
+      return container[key];
+    }
+  }
+  return undefined;
 }
 
 function getOnePayConfig(): OnePayConfig {
@@ -187,6 +192,7 @@ export async function createOnePayCheckout({
   if (typeof transactionId !== "string" || !transactionId) {
     console.error("OnePay checkout response omitted its transaction identifier.", {
       responseKeys: Object.keys(response),
+      dataKeys: isJsonObject(response.data) ? Object.keys(response.data) : [],
       rawResponseKeys: isJsonObject(response.raw_response)
         ? Object.keys(response.raw_response)
         : [],
