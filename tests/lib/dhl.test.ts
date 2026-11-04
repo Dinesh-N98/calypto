@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { getDhlConfig } from "@/lib/config/dhl";
-import { createDhlClient, DhlApiError } from "@/lib/dhl/client";
+import { createDhlClient, DhlApiError, parseDhlXml, parseSoapFault } from "@/lib/dhl/client";
 import { buildDhlPackage, buildRateRequestBody, getDHLRates } from "@/lib/dhl/rate";
 import { buildSoapEnvelope, escapeXml } from "@/lib/dhl/soap-builder";
 
@@ -50,6 +50,14 @@ describe("DHL configuration", () => {
       tracking: "https://example.test/base/glDHLExpressTrack",
     });
     expect(() => getDhlConfig({ DHL_USERNAME: "user" })).toThrow("DHL_PASSWORD is required");
+  });
+
+  it("preserves password characters that dotenv treats as comment syntax when unquoted", () => {
+    expect(getDhlConfig({
+      DHL_USERNAME: "user",
+      DHL_PASSWORD: "pass#word",
+      DHL_ACCOUNT_NUMBER: "account",
+    }).password).toBe("pass#word");
   });
 });
 
@@ -103,6 +111,16 @@ describe("DHL SOAP client", () => {
       parse: () => true,
     })).rejects.toMatchObject({ details: { kind: "http", status: 503 } });
     expect(new DhlApiError("x", { kind: "api" })).toBeInstanceOf(Error);
+  });
+
+  it("surfaces DHL fault detail types such as Unauthorized", () => {
+    const parsed = parseDhlXml(
+      '<Envelope><Body><Fault><detail fault:type="Unauthorized" xmlns:fault="http://www.dhl.com/soapfaults"/></Fault></Body></Envelope>',
+    );
+    expect(parseSoapFault(parsed)).toEqual({
+      code: "Unauthorized",
+      message: "DHL SOAP fault: Unauthorized.",
+    });
   });
 
   it("logs bounded raw SOAP responses for upstream failures", async () => {
@@ -160,7 +178,7 @@ describe("DHL rate request", () => {
     expect(xml).toContain("<CountryCode>LK</CountryCode>");
     expect(xml).toContain("<City>Singapore</City><PostalCode>M5H 2N2</PostalCode><StateOrProvinceCode/>");
     expect(xml).toContain('RequestedPackages number="1"');
-    expect(xml).toContain("<ShipTimestamp>2026-10-15T13:00:00.000GMT+00:00</ShipTimestamp>");
+    expect(xml).toContain("<ShipTimestamp>2026-10-15T13:00:00GMT+00:00</ShipTimestamp>");
   });
 
   it("parses DHL Provider Service responses from the working RateBook format", async () => {
@@ -188,5 +206,29 @@ describe("DHL rate request", () => {
       currency: "USD",
       amount: 17.18,
     }]);
+  });
+
+  it("reports all DHL notification codes when no service is returned", async () => {
+    vi.stubEnv("DHL_USERNAME", "user");
+    vi.stubEnv("DHL_PASSWORD", "password");
+    vi.stubEnv("DHL_ACCOUNT_NUMBER", "524250192");
+    vi.stubEnv("DHL_BASE_URL", "https://example.test/sndpt/");
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(
+      `<Envelope><Body><RateResponse><Provider><Notification code="998"><Message>Invalid timestamp.</Message></Notification><Notification code="999"><Message>Process failure.</Message></Notification></Provider></RateResponse></Body></Envelope>`,
+      { status: 200 },
+    ));
+
+    await expect(getDHLRates({
+      recipient: {
+        streetLines: "BQE Road",
+        city: "Singapore",
+        postalCode: "200001",
+        countryCode: "SG",
+      },
+      packages: [{ weightKg: 0.5, lengthCm: 3, widthCm: 2, heightCm: 1 }],
+    }, fetcher)).rejects.toMatchObject({
+      message: "DHL returned no usable rate (DHL notification codes: 998, 999). Invalid timestamp. Process failure.",
+      details: { kind: "api", code: "998" },
+    });
   });
 });

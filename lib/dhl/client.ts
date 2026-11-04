@@ -73,9 +73,13 @@ export function parseSoapFault(parsed: ParsedXml): { code?: string; message: str
   const fault = findValue(parsed, ["Fault"]);
   if (fault === undefined) return null;
   const record = asRecord(fault);
+  const detail = asRecord(record?.detail ?? record?.Detail);
+  const detailType = text(detail?.["@_type"] ?? detail?.type);
   return {
-    code: text(record?.faultcode ?? record?.Code ?? record?.ErrorCode),
-    message: text(record?.faultstring ?? record?.Reason ?? record?.ErrorMessage) ?? "DHL SOAP fault.",
+    code: detailType ?? text(record?.faultcode ?? record?.Code ?? record?.ErrorCode),
+    message:
+      text(record?.faultstring ?? record?.Reason ?? record?.ErrorMessage) ??
+      (detailType ? `DHL SOAP fault: ${detailType}.` : "DHL SOAP fault."),
   };
 }
 
@@ -141,6 +145,11 @@ export function createDhlClient(
           status: response.status,
         }, { cause: error });
       }
+      console.error("DHL raw SOAP response received.", {
+        endpoint,
+        status: response.status,
+        response: responseExcerpt(responseXml),
+      });
       let parsed: ParsedXml;
       try {
         parsed = parseDhlXml(responseXml);

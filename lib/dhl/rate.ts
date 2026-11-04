@@ -60,7 +60,7 @@ export function buildDhlPackage(
 
 function formatDhlTimestamp(value: Date): string {
   if (Number.isNaN(value.getTime())) throw new Error("shipTimestamp must be a valid date.");
-  return value.toISOString().replace("Z", "GMT+00:00");
+  return `${value.toISOString().slice(0, 19)}GMT+00:00`;
 }
 
 export function buildRateRequestBody(
@@ -140,13 +140,25 @@ function rateServiceName(record: Record<string, unknown>): string | undefined {
   return textValue(record.ServiceTypeName ?? charge?.ChargeType);
 }
 
-function rateNotification(parsed: Record<string, unknown>): { code?: string; message?: string } {
-  const notification = asRecord(findDhlValue(parsed, ["Notification"]));
-  if (!notification) return {};
-  return {
-    code: textValue(notification["@_code"] ?? notification.code),
-    message: textValue(notification.Message),
-  };
+function rateNotifications(parsed: Record<string, unknown>): { codes: string[]; messages: string[] } {
+  const rawNotifications = findDhlValue(parsed, ["Notification"]);
+  const notifications = Array.isArray(rawNotifications)
+    ? rawNotifications
+    : rawNotifications
+      ? [rawNotifications]
+      : [];
+  return notifications.reduce(
+    (result, value) => {
+      const notification = asRecord(value);
+      if (!notification) return result;
+      const code = textValue(notification["@_code"] ?? notification.code);
+      const message = textValue(notification.Message);
+      if (code) result.codes.push(code);
+      if (message) result.messages.push(message);
+      return result;
+    },
+    { codes: [] as string[], messages: [] as string[] },
+  );
 }
 
 export async function getDHLRates(
@@ -181,11 +193,16 @@ export async function getDHLRates(
         }];
       });
       if (rates.length === 0) {
-        const notification = rateNotification(parsed);
-        const detail = notification.message ? ` ${notification.message}` : "";
+        const notifications = rateNotifications(parsed);
+        const codes = notifications.codes.length
+          ? ` (DHL notification codes: ${notifications.codes.join(", ")})`
+          : "";
+        const detail = notifications.messages.length
+          ? ` ${notifications.messages.join(" ")}`
+          : "";
         throw new DhlApiError(
-          `DHL returned no usable rate.${detail}`,
-          { kind: "api", code: notification.code },
+          `DHL returned no usable rate${codes}.${detail}`,
+          { kind: "api", code: notifications.codes[0] },
         );
       }
       return rates;

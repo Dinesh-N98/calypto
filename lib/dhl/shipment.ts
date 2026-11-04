@@ -60,7 +60,7 @@ function assertPositive(value: number, name: string): void {
 
 function formatDhlTimestamp(value: Date): string {
   if (Number.isNaN(value.getTime())) throw new Error("shipTimestamp must be a valid date.");
-  return value.toISOString().replace("Z", "GMT+00:00");
+  return `${value.toISOString().slice(0, 19)}GMT+00:00`;
 }
 
 function addressXml(address: DhlShipmentAddress): string {
