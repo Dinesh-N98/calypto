@@ -403,7 +403,7 @@ export async function createPendingCheckoutOrder({
         data: {
           orderId: order.id,
           provider,
-          amountCents: totalCents,
+          amountCents: grandTotalCents,
           currency: CHECKOUT_CURRENCY,
           idempotencyKey,
           requestHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex"),

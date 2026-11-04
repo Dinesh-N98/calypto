@@ -85,6 +85,7 @@ export function CheckoutForm({
   isAuthenticated,
   paymentProvider,
   paypalClientId,
+  onShippingCostChange,
 }: {
   items: CheckoutItem[];
   savedAddresses: CheckoutAddress[];
@@ -93,6 +94,7 @@ export function CheckoutForm({
   isAuthenticated: boolean;
   paymentProvider: CheckoutPaymentProvider;
   paypalClientId: string;
+  onShippingCostChange?: (shippingCents: number | null) => void;
 }) {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [dhlRates, setDhlRates] = useState<DhlRateOption[]>([]);
@@ -197,6 +199,7 @@ export function CheckoutForm({
     setDhlRates([]);
     setSelectedDhlRate("");
     setDhlQuoteItemsKey("");
+    onShippingCostChange?.(null);
   }
 
   function updateAddressField(field: keyof AddressFields, value: string) {
@@ -206,6 +209,13 @@ export function CheckoutForm({
     setDhlRates([]);
     setSelectedDhlRate("");
     setDhlQuoteItemsKey("");
+    onShippingCostChange?.(null);
+  }
+
+  function selectDhlRate(serviceCode: string) {
+    setSelectedDhlRate(serviceCode);
+    const rate = dhlRates.find((candidate) => candidate.serviceCode === serviceCode);
+    onShippingCostChange?.(rate ? Math.ceil(rate.amount * 100) : null);
   }
 
   async function loadDhlRates() {
@@ -517,7 +527,7 @@ export function CheckoutForm({
                       className="mt-1 accent-[#65771b]"
                       checked={selectedDhlRate === rate.serviceCode}
                       name="shippingService"
-                      onChange={() => setSelectedDhlRate(rate.serviceCode ?? "")}
+                      onChange={() => selectDhlRate(rate.serviceCode ?? "")}
                       type="radio"
                       value={rate.serviceCode ?? ""}
                     />
@@ -531,7 +541,7 @@ export function CheckoutForm({
                 <select
                   aria-label="Shipping option"
                   className="sr-only"
-                  onChange={(event) => setSelectedDhlRate(event.currentTarget.value)}
+                  onChange={(event) => selectDhlRate(event.currentTarget.value)}
                   tabIndex={-1}
                   value={selectedDhlRate}
                 >

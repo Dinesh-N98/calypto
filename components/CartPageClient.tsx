@@ -35,6 +35,7 @@ export default function CartPageClient({
   const { items, updateQuantity, removeItem } = useCart();
   const [directPurchaseQuantity, setDirectPurchaseQuantity] = useState(buyNowQuantity);
   const [paymentProvider, setPaymentProvider] = useState<CheckoutPaymentProvider>("ONEPAY");
+  const [shippingCents, setShippingCents] = useState<number | null>(null);
   const [isCheckoutStep, setIsCheckoutStep] = useState(startAtCheckout);
   const [discountCode, setDiscountCode] = useState("");
   const [discountMessage, setDiscountMessage] = useState("");
@@ -214,6 +215,7 @@ export default function CartPageClient({
                   <OrderSummary
                     checkoutHref={checkoutHref}
                     subtotalCents={subtotalCents}
+                    shippingCents={shippingCents}
                     discountCode={discountCode}
                     discountInputId="desktop-discount-code"
                     onDiscountCodeChange={(value) => {
@@ -238,7 +240,7 @@ export default function CartPageClient({
                   <span className="font-semibold">{formatPrice(subtotalCents)}</span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-[#62665b]">
-                  Shipping and taxes are calculated at checkout.
+                  Shipping is calculated at checkout.
                 </p>
                 <DiscountCodeEntry
                   code={discountCode}
@@ -310,6 +312,7 @@ export default function CartPageClient({
                     paymentProvider={paymentProvider}
                     paypalClientId={paypalClientId}
                     savedAddresses={savedAddresses}
+                    onShippingCostChange={setShippingCents}
                   />
                 </div>
                 <aside className="rounded-2xl border border-[#ddddd3] bg-white p-5 sm:p-6 lg:sticky lg:top-24">
@@ -327,7 +330,7 @@ export default function CartPageClient({
                       </div>
                     ))}
                   </div>
-                  <SummaryTotals subtotalCents={subtotalCents} />
+                  <SummaryTotals subtotalCents={subtotalCents} shippingCents={shippingCents} />
                   <p className="mt-4 flex items-center gap-2 text-xs text-[#62665b]">
                     <LockKeyhole aria-hidden="true" className="h-3.5 w-3.5" />
                     Secure checkout powered by {paymentProvider === "ONEPAY" ? "OnePay" : "PayPal"}.
@@ -365,6 +368,7 @@ export default function CartPageClient({
 function OrderSummary({
   checkoutHref,
   subtotalCents,
+  shippingCents,
   discountCode,
   discountInputId,
   onDiscountCodeChange,
@@ -373,6 +377,7 @@ function OrderSummary({
 }: {
   checkoutHref: string;
   subtotalCents: number;
+  shippingCents: number | null;
   discountCode: string;
   discountInputId: string;
   onDiscountCodeChange: (value: string) => void;
@@ -385,7 +390,7 @@ function OrderSummary({
         Order summary
       </h2>
       <div className="mt-5">
-        <SummaryTotals subtotalCents={subtotalCents} />
+        <SummaryTotals subtotalCents={subtotalCents} shippingCents={shippingCents} />
       </div>
       <DiscountCodeEntry
         code={discountCode}
@@ -402,13 +407,20 @@ function OrderSummary({
         <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
       </Link>
       <p className="mt-3 text-center text-xs text-[#62665b]">
-        Shipping and taxes are calculated at checkout.
+        Shipping is calculated at checkout.
       </p>
     </>
   );
 }
 
-function SummaryTotals({ subtotalCents }: { subtotalCents: number }) {
+function SummaryTotals({
+  subtotalCents,
+  shippingCents,
+}: {
+  subtotalCents: number;
+  shippingCents: number | null;
+}) {
+  const totalCents = subtotalCents + (shippingCents ?? 0);
   return (
     <dl className="grid gap-3 text-sm">
       <div className="flex justify-between gap-4">
@@ -417,15 +429,13 @@ function SummaryTotals({ subtotalCents }: { subtotalCents: number }) {
       </div>
       <div className="flex justify-between gap-4">
         <dt className="text-[#62665b]">Shipping</dt>
-        <dd className="text-right text-xs text-[#62665b]">Calculated at checkout</dd>
-      </div>
-      <div className="flex justify-between gap-4">
-        <dt className="text-[#62665b]">Taxes</dt>
-        <dd className="text-right text-xs text-[#62665b]">Calculated at checkout</dd>
+        <dd className="text-right text-xs text-[#62665b]">
+          {shippingCents === null ? "Calculated at checkout" : formatPrice(shippingCents)}
+        </dd>
       </div>
       <div className="mt-1 flex justify-between gap-4 border-t border-[#e5e5dc] pt-4">
         <dt className="font-bold">Total</dt>
-        <dd className="text-lg font-bold">{formatPrice(subtotalCents)}</dd>
+        <dd className="text-lg font-bold">{formatPrice(totalCents)}</dd>
       </div>
     </dl>
   );
