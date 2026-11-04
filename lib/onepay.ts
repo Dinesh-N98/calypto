@@ -58,6 +58,15 @@ function getOnePayErrorMessage(value: unknown, fallback: string): string {
   return fallback;
 }
 
+function getOnePayResponseValue(
+  result: JsonObject,
+  key: string,
+): unknown {
+  if (result[key] !== undefined) return result[key];
+  const rawResponse = result.raw_response;
+  return isJsonObject(rawResponse) ? rawResponse[key] : undefined;
+}
+
 function getOnePayConfig(): OnePayConfig {
   const appId = process.env.ONEPAY_APP_ID?.trim();
   const appToken = process.env.ONEPAY_APP_TOKEN?.trim();
@@ -135,10 +144,10 @@ async function postOnePay(path: string, body: JsonObject): Promise<unknown> {
   if (typeof responseBody === "string") {
     throw new OnePayApiError(502, "OnePay returned invalid JSON.");
   }
-  const result = responseBody;
-  if (!isJsonObject(result)) {
+  if (!isJsonObject(responseBody)) {
     throw new OnePayApiError(502, "OnePay returned an invalid JSON object.");
   }
+  const result: JsonObject = responseBody;
   return result;
 }
 
@@ -170,15 +179,25 @@ export async function createOnePayCheckout({
     transaction_redirect_url: `${appBaseUrl}/checkout/success?order=${encodeURIComponent(reference)}`,
   });
 
-  if (
-    !isJsonObject(result) ||
-    typeof result.ipg_transaction_id !== "string" ||
-    !result.ipg_transaction_id
-  ) {
+  if (!isJsonObject(result)) {
+    throw new Error("OnePay returned an invalid checkout response.");
+  }
+  const response: JsonObject = result;
+  const transactionId = getOnePayResponseValue(response, "ipg_transaction_id");
+  if (typeof transactionId !== "string" || !transactionId) {
+    console.error("OnePay checkout response omitted its transaction identifier.", {
+      responseKeys: Object.keys(response),
+      rawResponseKeys: isJsonObject(response.raw_response)
+        ? Object.keys(response.raw_response)
+        : [],
+    });
     throw new Error("OnePay did not return the documented transaction identifier.");
   }
 
-  return { redirectUrl: result.redirect_url, transactionId: result.ipg_transaction_id };
+  return {
+    redirectUrl: getOnePayResponseValue(response, "redirect_url"),
+    transactionId,
+  };
 }
 
 export async function verifyOnePayPayment({
