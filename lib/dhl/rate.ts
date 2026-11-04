@@ -67,7 +67,9 @@ export function buildRateRequestBody(
   request: DhlRateRequest,
   shipper: Pick<ReturnType<typeof getDhlConfig>, "shipper" | "accountNumber">,
 ): string {
-  if (!request.recipient.countryCode || !request.recipient.city) {
+  const recipientPostalCode = request.recipient.postalCode.trim().replace(/\s+/g, " ").toUpperCase();
+  const recipientStateOrProvinceCode = request.recipient.stateOrProvinceCode?.trim();
+  if (!request.recipient.countryCode || !request.recipient.city || !recipientPostalCode) {
     throw new Error("recipient city and countryCode are required.");
   }
   if (request.packages.length === 0) throw new Error("At least one package is required.");
@@ -91,15 +93,60 @@ export function buildRateRequestBody(
   const shipperXml = [
     xmlElement("StreetLines", shipper.shipper.streetLines),
     xmlElement("City", shipper.shipper.city),
+    xmlElement("StateOrProvinceCode", shipper.shipper.stateOrProvinceCode),
     xmlElement("PostalCode", shipper.shipper.postalCode),
     xmlElement("CountryCode", shipper.shipper.countryCode),
   ].join("");
-  return `<rat:RateRequest xmlns:rat="http://scxgxtt.phx-dc.dhl.com/euExpressRateBook/RateMsgRequest"><ClientDetail/><RequestedShipment><DropOffType>REQUEST_COURIER</DropOffType><ServiceType>P</ServiceType><NextBusinessDay>N</NextBusinessDay><Ship><Shipper>${shipperXml}</Shipper><Recipient>${streetXml}${xmlElement("City", request.recipient.city)}${xmlElement("StateOrProvinceCode", request.recipient.stateOrProvinceCode)}${xmlElement("PostalCode", request.recipient.postalCode)}${xmlElement("CountryCode", request.recipient.countryCode)}</Recipient></Ship><Packages>${packages}</Packages>${xmlElement("ShipTimestamp", formatDhlTimestamp(request.shipTimestamp ?? new Date()))}${xmlElement("UnitOfMeasurement", "SI")}${xmlElement("Content", "NON_DOCUMENTS")}${xmlElement("PaymentInfo", "DDU")}${xmlElement("Account", shipper.accountNumber)}</RequestedShipment></rat:RateRequest>`;
+  const recipientXml = [
+    streetXml,
+    xmlElement("City", request.recipient.city),
+    xmlElement("PostalCode", recipientPostalCode),
+    xmlElement("StateOrProvinceCode", recipientStateOrProvinceCode),
+    xmlElement("CountryCode", request.recipient.countryCode),
+  ].join("");
+  return `<rat:RateRequest xmlns:rat="http://scxgxtt.phx-dc.dhl.com/euExpressRateBook/RateMsgRequest"><ClientDetail/><RequestedShipment><DropOffType>REQUEST_COURIER</DropOffType><ServiceType>P</ServiceType><NextBusinessDay>N</NextBusinessDay><Ship><Shipper>${shipperXml}</Shipper><Recipient>${recipientXml}</Recipient></Ship><Packages>${packages}</Packages>${xmlElement("ShipTimestamp", formatDhlTimestamp(request.shipTimestamp ?? new Date()))}${xmlElement("UnitOfMeasurement", "SI")}${xmlElement("Content", "NON_DOCUMENTS")}${xmlElement("PaymentInfo", "DDU")}${xmlElement("Account", shipper.accountNumber)}</RequestedShipment></rat:RateRequest>`;
 }
 
 function numberValue(value: unknown): number | undefined {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function textValue(value: unknown): string | undefined {
+  return typeof value === "string" || typeof value === "number"
+    ? String(value).trim() || undefined
+    : undefined;
+}
+
+function rateAmount(record: Record<string, unknown>): number | undefined {
+  const totalNet = asRecord(record.TotalNet);
+  return numberValue(totalNet?.Amount ?? record.TotalAmount ?? record.Amount);
+}
+
+function rateCurrency(record: Record<string, unknown>): string {
+  const totalNet = asRecord(record.TotalNet);
+  return textValue(totalNet?.Currency ?? record.CurrencyCode ?? record.Currency) ?? "USD";
+}
+
+function rateServiceName(record: Record<string, unknown>): string | undefined {
+  const charges = asRecord(record.Charges);
+  const charge = asRecord(charges?.Charge);
+  return textValue(record.ServiceTypeName ?? charge?.ChargeType);
+}
+
+function rateNotification(parsed: Record<string, unknown>): { code?: string; message?: string } {
+  const notification = asRecord(findDhlValue(parsed, ["Notification"]));
+  if (!notification) return {};
+  return {
+    code: textValue(notification["@_code"] ?? notification.code),
+    message: textValue(notification.Message),
+  };
 }
 
 export async function getDHLRates(
@@ -119,22 +166,27 @@ export async function getDHLRates(
     endpoint: config.endpoints.rate,
     body: buildRateRequestBody(request, config),
     parse: (parsed) => {
-      const rawRates = findDhlValue(parsed, ["RatedShipment", "Rate"]);
+      const rawRates = findDhlValue(parsed, ["Rate", "Service"]);
       const candidates = Array.isArray(rawRates) ? rawRates : rawRates ? [rawRates] : [];
       const rates = candidates.flatMap((candidate) => {
-        if (typeof candidate !== "object" || candidate === null) return [];
-        const record = candidate as Record<string, unknown>;
-        const amount = numberValue(record.TotalNet ?? record.TotalAmount ?? record.Amount);
-        const currency = String(record.CurrencyCode ?? record.Currency ?? "USD");
+        const record = asRecord(candidate);
+        if (!record) return [];
+        const amount = rateAmount(record);
+        const currency = rateCurrency(record);
         return amount === undefined ? [] : [{
-          serviceCode: typeof record.ServiceType === "string" ? record.ServiceType : undefined,
-          serviceName: typeof record.ServiceTypeName === "string" ? record.ServiceTypeName : undefined,
+          serviceCode: textValue(record.ServiceType ?? record["@_type"]),
+          serviceName: rateServiceName(record),
           currency,
           amount,
         }];
       });
       if (rates.length === 0) {
-        throw new DhlApiError("DHL returned no usable rate.", { kind: "api" });
+        const notification = rateNotification(parsed);
+        const detail = notification.message ? ` ${notification.message}` : "";
+        throw new DhlApiError(
+          `DHL returned no usable rate.${detail}`,
+          { kind: "api", code: notification.code },
+        );
       }
       return rates;
     },

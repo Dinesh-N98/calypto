@@ -14,6 +14,7 @@ export type DhlPickupRequest = {
     emailAddress: string;
     streetLines: string;
     city: string;
+    stateOrProvinceCode?: string;
     postalCode: string;
     countryCode: string;
   };
@@ -54,6 +55,7 @@ export function buildPickupRequestBody(
     xmlElement("StreetLines", request.shipper.streetLines),
     xmlElement("City", request.shipper.city),
     xmlElement("PostalCode", request.shipper.postalCode),
+    xmlElement("StateOrProvinceCode", request.shipper.stateOrProvinceCode),
     xmlElement("CountryCode", request.shipper.countryCode),
   ].join("");
   const contact = [

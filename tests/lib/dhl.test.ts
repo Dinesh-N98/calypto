@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 
 import { getDhlConfig } from "@/lib/config/dhl";
 import { createDhlClient, DhlApiError } from "@/lib/dhl/client";
-import { buildDhlPackage, buildRateRequestBody } from "@/lib/dhl/rate";
+import { buildDhlPackage, buildRateRequestBody, getDHLRates } from "@/lib/dhl/rate";
 import { buildSoapEnvelope, escapeXml } from "@/lib/dhl/soap-builder";
 
 const config = {
@@ -32,6 +32,7 @@ describe("DHL configuration", () => {
     }).shipper).toEqual({
       streetLines: "58/3, Makandana road",
       city: "Kesbewa",
+      stateOrProvinceCode: "",
       postalCode: "10300",
       countryCode: "LK",
       phoneNumber: "+94766434416",
@@ -145,7 +146,7 @@ describe("DHL rate request", () => {
       recipient: {
         streetLines: "A&B Road",
         city: "Singapore",
-        postalCode: "200001",
+        postalCode: "m5h 2n2",
         countryCode: "SG",
       },
       packages: [{ weightKg: 0.5, lengthCm: 3, widthCm: 2, heightCm: 1 }],
@@ -154,9 +155,38 @@ describe("DHL rate request", () => {
     expect(xml).toContain("A&amp;B Road");
     expect(xml).toContain("<StreetLines>58/3, Makandana road</StreetLines>");
     expect(xml).toContain("<City>Kesbewa</City>");
+    expect(xml).toContain("<StateOrProvinceCode/>");
     expect(xml).toContain("<PostalCode>10300</PostalCode>");
     expect(xml).toContain("<CountryCode>LK</CountryCode>");
+    expect(xml).toContain("<City>Singapore</City><PostalCode>M5H 2N2</PostalCode><StateOrProvinceCode/>");
     expect(xml).toContain('RequestedPackages number="1"');
     expect(xml).toContain("<ShipTimestamp>2026-10-15T13:00:00.000GMT+00:00</ShipTimestamp>");
+  });
+
+  it("parses DHL Provider Service responses from the working RateBook format", async () => {
+    vi.stubEnv("DHL_USERNAME", "user");
+    vi.stubEnv("DHL_PASSWORD", "password");
+    vi.stubEnv("DHL_ACCOUNT_NUMBER", "524250192");
+    vi.stubEnv("DHL_BASE_URL", "https://example.test/sndpt/");
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(
+      `<SOAP-ENV:Envelope><SOAP-ENV:Body><RateResponse><Provider code="DHL"><Notification code="0"><Message/></Notification><Service type="P"><TotalNet><Currency>USD</Currency><Amount>17.18</Amount></TotalNet><Charges><Charge><ChargeType>EXPRESS WORLDWIDE NONDOC</ChargeType></Charge></Charges></Service></Provider></RateResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>`,
+      { status: 200 },
+    ));
+
+    await expect(getDHLRates({
+      recipient: {
+        streetLines: ["100 Queen Street West", "Suite 402"],
+        city: "Toronto",
+        postalCode: "M5H 2N2",
+        stateOrProvinceCode: "Ontario (ON)",
+        countryCode: "CA",
+      },
+      packages: [{ weightKg: 0.5, lengthCm: 3, widthCm: 2, heightCm: 1 }],
+    }, fetcher)).resolves.toEqual([{
+      serviceCode: "P",
+      serviceName: "EXPRESS WORLDWIDE NONDOC",
+      currency: "USD",
+      amount: 17.18,
+    }]);
   });
 });

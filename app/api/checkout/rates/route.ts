@@ -111,8 +111,13 @@ export async function POST(request: Request) {
     ? recipient.streetLines.filter((line): line is string => typeof line === "string").map((line) => line.trim())
     : typeof recipient.streetLines === "string" ? [recipient.streetLines.trim()] : [];
   const city = typeof recipient.city === "string" ? recipient.city.trim() : "";
-  const postalCode = typeof recipient.postalCode === "string" ? recipient.postalCode.trim() : "";
+  const postalCode = typeof recipient.postalCode === "string"
+    ? recipient.postalCode.trim().replace(/\s+/g, " ").toUpperCase()
+    : "";
   const countryCode = typeof recipient.countryCode === "string" ? recipient.countryCode.trim() : "";
+  const stateOrProvinceCode = typeof recipient.stateOrProvinceCode === "string"
+    ? recipient.stateOrProvinceCode.trim()
+    : "";
   if (
     streetLines.length < 1 ||
     streetLines.length > 3 ||
@@ -121,7 +126,8 @@ export async function POST(request: Request) {
     typeof recipient.postalCode !== "string" || !recipient.postalCode.trim() || recipient.postalCode.trim().length > 30 ||
     typeof recipient.countryCode !== "string" || !isDhlCountryCode(recipient.countryCode) ||
     (recipient.stateOrProvinceCode !== undefined &&
-      typeof recipient.stateOrProvinceCode !== "string")
+      (typeof recipient.stateOrProvinceCode !== "string" ||
+        stateOrProvinceCode.length > 100))
   ) {
     return respond(NextResponse.json({ error: "The recipient address is invalid." }, { status: 400 }));
   }
@@ -148,7 +154,7 @@ export async function POST(request: Request) {
         city,
         postalCode,
         countryCode: normalizeCountryCode(countryCode),
-        stateOrProvinceCode: recipient.stateOrProvinceCode?.trim(),
+        stateOrProvinceCode: stateOrProvinceCode || undefined,
       },
       packages,
     });

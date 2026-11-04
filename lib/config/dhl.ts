@@ -8,6 +8,7 @@ export type DhlConfig = {
   shipper: {
     streetLines: string;
     city: string;
+    stateOrProvinceCode?: string;
     postalCode: string;
     countryCode: string;
     phoneNumber: string;
@@ -72,6 +73,7 @@ export function getDhlConfig(environment: Environment = process.env): DhlConfig 
     shipper: {
       streetLines: "58/3, Makandana road",
       city: "Kesbewa",
+      stateOrProvinceCode: "",
       postalCode: "10300",
       countryCode: "LK",
       phoneNumber: "+94766434416",

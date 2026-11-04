@@ -73,6 +73,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         address: {
           streetLines: config.shipper.streetLines,
           city: config.shipper.city,
+          stateOrProvinceCode: config.shipper.stateOrProvinceCode,
           postalCode: config.shipper.postalCode,
           countryCode: config.shipper.countryCode,
         },
