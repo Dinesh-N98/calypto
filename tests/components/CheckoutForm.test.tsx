@@ -49,12 +49,14 @@ function renderCheckout({
   defaultAddress = addresses.find((address) => address.isDefault) ?? addresses[0] ?? null,
   isAuthenticated = true,
   paymentProvider = "ONEPAY",
+  onShippingCostChange,
 }: {
   currentProfile?: CheckoutProfile | null;
   addresses?: CheckoutAddress[];
   defaultAddress?: CheckoutAddress | null;
   isAuthenticated?: boolean;
   paymentProvider?: "ONEPAY" | "PAYPAL";
+  onShippingCostChange?: (shippingCents: number | null) => void;
 } = {}) {
   return render(
     <CheckoutForm
@@ -65,6 +67,7 @@ function renderCheckout({
       paypalClientId={paymentProvider === "PAYPAL" ? "test-client-id" : ""}
       profile={currentProfile}
       savedAddresses={addresses}
+      onShippingCostChange={onShippingCostChange}
     />,
   );
 }
@@ -78,6 +81,7 @@ describe("CheckoutForm", () => {
 
   it("requires a fresh DHL rate selection for international checkout", async () => {
     const user = userEvent.setup();
+    const onShippingCostChange = vi.fn();
     const internationalAddress = {
       ...savedAddresses[0],
       city: "London",
@@ -105,6 +109,7 @@ describe("CheckoutForm", () => {
     renderCheckout({
       addresses: [internationalAddress],
       defaultAddress: internationalAddress,
+      onShippingCostChange,
     });
 
     const checkoutButton = screen.getByRole("button", { name: /Checkout/ });
@@ -112,10 +117,9 @@ describe("CheckoutForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
     expect(await screen.findByRole("option", { name: /DHL Express/ })).toBeInTheDocument();
-    expect(checkoutButton).toBeDisabled();
-
-    await user.selectOptions(screen.getByLabelText("Shipping option"), "P");
     expect(checkoutButton).toBeEnabled();
+    expect(screen.getByRole("radio", { name: "DHL Express" })).toBeChecked();
+    expect(onShippingCostChange).toHaveBeenLastCalledWith(2500);
   });
 
   it.each(["ONEPAY", "PAYPAL"] as const)(

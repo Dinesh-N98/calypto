@@ -105,13 +105,21 @@ function parseAddress(value: unknown): CheckoutAddress | null {
 
   for (const field of fields) {
     const raw = value[field];
-    if (field === "aptSuite" && (raw === null || raw === undefined)) {
-      address.aptSuite = "";
+    if (
+      (field === "aptSuite" || field === "addressLine3") &&
+      (raw === null || raw === undefined)
+    ) {
+      address[field] = "";
       continue;
     }
     if (typeof raw !== "string") return null;
     const trimmed = raw.trim();
-    if (trimmed.length > limits[field] || (field !== "aptSuite" && !trimmed)) return null;
+    if (
+      trimmed.length > limits[field] ||
+      (field !== "aptSuite" && field !== "addressLine3" && !trimmed)
+    ) {
+      return null;
+    }
     address[field] = trimmed;
   }
   return address;

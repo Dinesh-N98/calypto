@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -43,6 +43,13 @@ function renderCart() {
   );
 }
 
+const internationalProfile = {
+  firstName: "Ada",
+  lastName: "Lovelace",
+  email: "ada@example.com",
+  phone: "+94771234567",
+};
+
 beforeEach(() => {
   vi.stubGlobal("scrollTo", vi.fn());
   cartMocks.items = [
@@ -63,7 +70,6 @@ beforeEach(() => {
 
 describe("CartPageClient", () => {
   it("routes checkout directly to the automated checkout page", async () => {
-    const user = userEvent.setup();
     const { container } = renderCart();
 
     expect(screen.getByRole("heading", { name: "Your cart" })).toBeInTheDocument();
@@ -95,5 +101,60 @@ describe("CartPageClient", () => {
       "href",
       "/checkout",
     );
+  });
+
+  it("propagates the auto-selected DHL rate into the summary and checkout state", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            rates: [
+              {
+                serviceCode: "P",
+                serviceName: "DHL Express",
+                currency: "USD",
+                amount: 31.27,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    render(
+      <CartPageClient
+        defaultAddress={{
+          id: "international",
+          line1: "1 Main Street",
+          line2: null,
+          city: "Toronto",
+          state: "ON",
+          postalCode: "M5H 2N2",
+          country: "CA",
+          isDefault: true,
+        }}
+        isAuthenticated={false}
+        profile={internationalProfile}
+        savedAddresses={[]}
+        buyNowQuantity={1}
+        startAtCheckout
+      />,
+    );
+
+    const checkoutButton = screen.getByRole("button", { name: /Checkout/ });
+    expect(checkoutButton).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "DHL Express" })).toBeChecked();
+      expect(checkoutButton).toBeEnabled();
+    });
+    expect(screen.getAllByText("$31.27").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("$291.25").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Taxes")).not.toBeInTheDocument();
   });
 });

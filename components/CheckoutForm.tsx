@@ -2,7 +2,7 @@
 
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { PayPalCheckoutButtons } from "@/components/PayPalCheckoutButtons";
 import type { CheckoutPayload } from "@/lib/checkout/types";
 import {
@@ -131,11 +131,15 @@ export function CheckoutForm({
     addressFields.country,
   ].join("|");
   const quoteContextKey = `${addressKey}|${itemKey}`;
-  const hasSelectedDhlRate = dhlRates.some(
-    (rate) => Boolean(rate.serviceCode) && rate.serviceCode === selectedDhlRate,
-  ) && dhlQuoteItemsKey === quoteContextKey;
+  const selectedRate = useMemo(
+    () => dhlRates.find((rate) => rate.serviceCode === selectedDhlRate),
+    [dhlRates, selectedDhlRate],
+  );
+  const hasCurrentQuote = dhlQuoteItemsKey === quoteContextKey;
+  const selectedShippingCents =
+    selectedRate && hasCurrentQuote ? Math.ceil(selectedRate.amount * 100) : null;
   const canSubmitOnePay =
-    isDomestic || (!loadingDhlRates && dhlRates.length > 0 && hasSelectedDhlRate);
+    isDomestic || (!loadingDhlRates && selectedRate !== undefined && hasCurrentQuote);
   const setFormRef = useCallback((element: HTMLFormElement | null) => {
     formElementRef.current = element;
   }, []);
@@ -153,6 +157,10 @@ export function CheckoutForm({
       return next;
     });
   }, [profile]);
+
+  useEffect(() => {
+    onShippingCostChange?.(selectedShippingCents);
+  }, [onShippingCostChange, selectedShippingCents]);
 
   const buildCheckoutPayload = useCallback(
     (formData: FormData): CheckoutPayload => ({
@@ -174,9 +182,10 @@ export function CheckoutForm({
       },
       saveAddress:
         isAuthenticated && selectedAddressId === "new" && formData.get("saveAddress") === "on",
-      shippingServiceCode: selectedDhlRate || undefined,
+      shippingServiceCode:
+        selectedRate && hasCurrentQuote ? selectedRate.serviceCode : undefined,
     }),
-    [isAuthenticated, items, selectedAddressId, selectedDhlRate],
+    [hasCurrentQuote, isAuthenticated, items, selectedAddressId, selectedRate],
   );
 
   const getPayPalPayload = useCallback(() => {
@@ -214,8 +223,6 @@ export function CheckoutForm({
 
   function selectDhlRate(serviceCode: string) {
     setSelectedDhlRate(serviceCode);
-    const rate = dhlRates.find((candidate) => candidate.serviceCode === serviceCode);
-    onShippingCostChange?.(rate ? Math.ceil(rate.amount * 100) : null);
   }
 
   async function loadDhlRates() {
@@ -250,7 +257,7 @@ export function CheckoutForm({
       const selectableRates = rates.filter((rate) => Boolean(rate.serviceCode));
       if (!selectableRates.length) throw new Error("DHL returned no selectable shipping options.");
       setDhlRates(selectableRates);
-      setSelectedDhlRate("");
+      setSelectedDhlRate(selectableRates[0].serviceCode ?? "");
       setDhlQuoteItemsKey(quoteContextKey);
     } catch (rateError) {
       setError(rateError instanceof Error ? rateError.message : "Unable to calculate DHL shipping rates.");
@@ -564,6 +571,26 @@ export function CheckoutForm({
               </p>
             )}
           </div>
+        )}
+        {process.env.NODE_ENV === "development" && (
+          <details className="border border-dashed border-black/20 p-2 text-xs text-[#55584e]">
+            <summary className="cursor-pointer">Checkout diagnostics</summary>
+            <pre className="mt-2 overflow-auto whitespace-pre-wrap">
+              {JSON.stringify(
+                {
+                  isDomestic,
+                  loadingDhlRates,
+                  ratesCount: dhlRates.length,
+                  selectedDhlRate,
+                  dhlQuoteItemsKey,
+                  quoteContextKey,
+                  canSubmitOnePay,
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </details>
         )}
         {paymentProvider === "ONEPAY" && (
           <>

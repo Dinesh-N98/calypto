@@ -19,7 +19,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { createPendingCheckoutOrder } from "@/lib/checkout/order";
+import { createPendingCheckoutOrder, parseCheckoutPayload } from "@/lib/checkout/order";
 
 const variant = {
   id: "variant-1",
@@ -111,6 +111,20 @@ describe("createPendingCheckoutOrder", () => {
     );
     expect(mocks.addressCreate).not.toHaveBeenCalled();
     expect(order).toMatchObject({ id: "order-1", userId: "user-1" });
+  });
+
+  describe("parseCheckoutPayload", () => {
+    it("accepts checkout addresses without the optional third address line", () => {
+      const parsed = parseCheckoutPayload({
+        ...payload,
+        address: {
+          ...payload.address,
+          addressLine3: "",
+        },
+      });
+
+      expect(parsed.address.addressLine3).toBe("");
+    });
   });
 
   it("creates a saved address only when the signed-in customer opts in", async () => {
