@@ -9,6 +9,7 @@ type OnePayConfig = {
   appId: string;
   appToken: string;
   hashSalt: string;
+  serviceId: number;
 };
 
 type CustomerDetails = {
@@ -62,11 +63,17 @@ function getOnePayResponseValue(
   result: JsonObject,
   key: string,
 ): unknown {
-  if (result[key] !== undefined) return result[key];
+  const keys = key === "redirect_url"
+    ? ["redirect_url", "checkout_url", "payment_url", "url", "link"]
+    : [key];
+  for (const candidateKey of keys) {
+    if (result[candidateKey] !== undefined) return result[candidateKey];
+  }
   for (const containerKey of ["data", "raw_response"]) {
     const container = result[containerKey];
-    if (isJsonObject(container) && container[key] !== undefined) {
-      return container[key];
+    if (!isJsonObject(container)) continue;
+    for (const candidateKey of keys) {
+      if (container[candidateKey] !== undefined) return container[candidateKey];
     }
   }
   return undefined;
@@ -76,10 +83,15 @@ function getOnePayConfig(): OnePayConfig {
   const appId = process.env.ONEPAY_APP_ID?.trim();
   const appToken = process.env.ONEPAY_APP_TOKEN?.trim();
   const hashSalt = process.env.ONEPAY_HASH_SALT?.trim();
+  const serviceIdValue = process.env.ONEPAY_SERVICE_ID?.trim() || "4";
+  const serviceId = Number(serviceIdValue);
   if (!appId || !appToken || !hashSalt) {
     throw new Error("ONEPAY_APP_ID, ONEPAY_APP_TOKEN, and ONEPAY_HASH_SALT are required.");
   }
-  return { appId, appToken, hashSalt };
+  if (!Number.isSafeInteger(serviceId) || serviceId < 1) {
+    throw new Error("ONEPAY_SERVICE_ID must be a positive integer.");
+  }
+  return { appId, appToken, hashSalt, serviceId };
 }
 
 export function assertOnePayConfigured(): void {
@@ -173,6 +185,7 @@ export async function createOnePayCheckout({
     .update(`${config.appId}${ONEPAY_CURRENCY}${amount}${config.hashSalt}`)
     .digest("hex");
   const result = await postOnePay("/v3/checkout/link/", {
+    service_id: config.serviceId,
     amount: Number(amount),
     currency: ONEPAY_CURRENCY,
     hash,

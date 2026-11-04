@@ -6,6 +6,7 @@ describe("createOnePayCheckout", () => {
     process.env.ONEPAY_APP_ID = "test-app";
     process.env.ONEPAY_APP_TOKEN = "test-token";
     process.env.ONEPAY_HASH_SALT = "test-salt";
+    delete process.env.ONEPAY_SERVICE_ID;
   });
 
   it("reads the transaction identifier from the documented raw response", async () => {
@@ -41,41 +42,83 @@ describe("createOnePayCheckout", () => {
       redirectUrl: "https://pay.onepay.lk/checkout/test",
       transactionId: "WQBV118E584C83CBA50C6",
     });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.onepay.lk/v3/checkout/link/",
+      expect.objectContaining({
+        body: expect.stringContaining('"service_id":4'),
+      }),
+    );
   });
 
   it("reads the transaction identifier and redirect URL from OnePay data", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              status: 200,
-              message: "Checkout link created",
-              data: {
-                ipg_transaction_id: "WQBV118E584C83CBA50C6",
-                redirect_url: "https://pay.onepay.lk/checkout/data",
-              },
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          ),
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            status: 200,
+            message: "Checkout link created",
+            data: {
+              ipg_transaction_id: "WQBV118E584C83CBA50C6",
+              redirect_url: "https://pay.onepay.lk/checkout/data",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
         ),
-      );
+      ),
+    );
 
-      await expect(
-        createOnePayCheckout({
-          appBaseUrl: "https://calyptobait.com",
-          amountCents: 14327,
-          customer: {
-            firstName: "Ada",
-            lastName: "Lovelace",
-            email: "ada@example.com",
-            phone: "+94771234567",
-          },
-          reference: "CAL-12345678901234567",
-        }),
-      ).resolves.toMatchObject({
-        redirectUrl: "https://pay.onepay.lk/checkout/data",
-        transactionId: "WQBV118E584C83CBA50C6",
+    await expect(
+      createOnePayCheckout({
+        appBaseUrl: "https://calyptobait.com",
+        amountCents: 14327,
+        customer: {
+          firstName: "Ada",
+          lastName: "Lovelace",
+          email: "ada@example.com",
+          phone: "+94771234567",
+        },
+        reference: "CAL-12345678901234567",
+      }),
+    ).resolves.toMatchObject({
+      redirectUrl: "https://pay.onepay.lk/checkout/data",
+      transactionId: "WQBV118E584C83CBA50C6",
+    });
+  });
+
+  it("accepts a hosted payment URL alias from OnePay data", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            status: 200,
+            message: "Checkout link created",
+            data: {
+              ipg_transaction_id: "WQBV118E584C83CBA50C6",
+              checkout_url: "https://pay.onepay.lk/checkout/alias",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    await expect(
+      createOnePayCheckout({
+        appBaseUrl: "https://calyptobait.com",
+        amountCents: 14327,
+        customer: {
+          firstName: "Ada",
+          lastName: "Lovelace",
+          email: "ada@example.com",
+          phone: "+94771234567",
+        },
+        reference: "CAL-12345678901234567",
+      }),
+    ).resolves.toMatchObject({
+      redirectUrl: "https://pay.onepay.lk/checkout/alias",
+      transactionId: "WQBV118E584C83CBA50C6",
     });
   });
 });
