@@ -63,20 +63,22 @@ function getOnePayResponseValue(
   result: JsonObject,
   key: string,
 ): unknown {
-  const keys = key === "redirect_url"
-    ? ["redirect_url", "checkout_url", "payment_url", "url", "link"]
-    : [key];
-  for (const candidateKey of keys) {
-    if (result[candidateKey] !== undefined) return result[candidateKey];
-  }
-  for (const containerKey of ["data", "raw_response"]) {
-    const container = result[containerKey];
-    if (!isJsonObject(container)) continue;
+  const keys =
+    key === "redirect_url"
+      ? ["redirect_url", "checkout_url", "payment_url", "url", "link"]
+      : [key];
+  const visit = (value: unknown, depth: number): unknown => {
+    if (!isJsonObject(value) || depth > 4) return undefined;
     for (const candidateKey of keys) {
-      if (container[candidateKey] !== undefined) return container[candidateKey];
+      if (value[candidateKey] !== undefined) return value[candidateKey];
     }
-  }
-  return undefined;
+    for (const nestedValue of Object.values(value)) {
+      const found = visit(nestedValue, depth + 1);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  };
+  return visit(result, 0);
 }
 
 function getOnePayConfig(): OnePayConfig {
@@ -213,10 +215,14 @@ export async function createOnePayCheckout({
     throw new Error("OnePay did not return the documented transaction identifier.");
   }
 
-  return {
-    redirectUrl: getOnePayResponseValue(response, "redirect_url"),
-    transactionId,
-  };
+  const redirectUrl = getOnePayResponseValue(response, "redirect_url");
+  if (typeof redirectUrl !== "string" || !redirectUrl) {
+    console.error("OnePay checkout response omitted its checkout URL.", {
+      response: redactSensitiveResponse(response),
+    });
+  }
+
+  return { redirectUrl, transactionId };
 }
 
 export async function verifyOnePayPayment({
