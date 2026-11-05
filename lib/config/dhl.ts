@@ -60,7 +60,7 @@ function normalizeBaseUrl(value: string): string {
 
 export function getDhlConfig(environment: Environment = process.env): DhlConfig {
   const baseUrl = normalizeBaseUrl(
-    environment.DHL_BASE_URL ?? "https://wsbexpress.dhl.com:443/sndpt/",
+    environment.DHL_BASE_URL ?? "https://wsbexpress.dhl.com:443/gbl/",
   );
   const username = required(environment, "DHL_USERNAME");
   const password = required(environment, "DHL_PASSWORD");

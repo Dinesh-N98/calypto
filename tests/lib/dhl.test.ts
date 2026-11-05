@@ -52,6 +52,19 @@ describe("DHL configuration", () => {
     expect(() => getDhlConfig({ DHL_USERNAME: "user" })).toThrow("DHL_PASSWORD is required");
   });
 
+  it("defaults to DHL production endpoints when no base URL is provided", () => {
+    expect(getDhlConfig({
+      DHL_USERNAME: "user",
+      DHL_PASSWORD: "password",
+      DHL_ACCOUNT_NUMBER: "account",
+    }).endpoints).toEqual({
+      rate: "https://wsbexpress.dhl.com/gbl/expressRateBook",
+      shipment: "https://wsbexpress.dhl.com/gbl/expressRateBook",
+      pickup: "https://wsbexpress.dhl.com/gbl/requestPickup",
+      tracking: "https://wsbexpress.dhl.com/gbl/glDHLExpressTrack",
+    });
+  });
+
   it("preserves password characters that dotenv treats as comment syntax when unquoted", () => {
     expect(getDhlConfig({
       DHL_USERNAME: "user",
