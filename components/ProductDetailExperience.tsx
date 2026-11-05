@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Share2, ShoppingBag } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/components/CartProvider";
-import { DirectOrderInquiryModal } from "@/components/DirectOrderInquiryModal";
 import { QuantitySelector } from "@/components/QuantitySelector";
 import { useToast } from "@/components/ToastProvider";
 import { WishlistButton } from "@/components/WishlistButton";
@@ -79,9 +79,8 @@ export function ProductDetailExperience({
   categoryName,
 }: ProductDetailExperienceProps) {
   const { addItem } = useCart();
+  const router = useRouter();
   const { showToast } = useToast();
-  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
-  const closeInquiry = useCallback(() => setIsInquiryOpen(false), []);
   const gallery = useMemo(() => {
     const values = [product.imageUrl, ...images.map((image) => image.url)];
     return [...new Set(values)].map((url) => ({
@@ -230,7 +229,7 @@ export function ProductDetailExperience({
     );
     showToast(`${product.name}${variantLabel ? ` (${variantLabel})` : ""} added to cart.`);
     if (goToCheckout) {
-      setIsInquiryOpen(true);
+      router.push("/checkout");
     }
   }
 
@@ -250,7 +249,6 @@ export function ProductDetailExperience({
 
   return (
     <section className="grid w-full min-w-0 grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] lg:gap-12">
-      {isInquiryOpen && <DirectOrderInquiryModal leadSource="buy_now" onClose={closeInquiry} />}
       <div className="min-w-0">
         <div className="relative aspect-square overflow-hidden rounded-sm bg-[#f0f0e8]">
           <Image

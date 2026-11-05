@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   addItem: vi.fn(),
+  routerPush: vi.fn(),
   showToast: vi.fn(),
 }));
 
@@ -21,6 +22,9 @@ vi.mock("next/image", () => ({
 }));
 vi.mock("@/components/WishlistButton", () => ({
   WishlistButton: () => null,
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mocks.routerPush }),
 }));
 
 import { ProductDetailExperience } from "@/components/ProductDetailExperience";
@@ -42,12 +46,13 @@ const product = {
 
 beforeEach(() => {
   mocks.addItem.mockClear();
+  mocks.routerPush.mockClear();
   mocks.showToast.mockClear();
   window.gtag = vi.fn();
 });
 
 describe("ProductDetailExperience", () => {
-  it("adds the selected item and opens an inquiry when Buy Now is clicked", async () => {
+  it("adds the selected item and navigates to checkout when Buy Now is clicked", async () => {
     const user = userEvent.setup();
     render(
       <ProductDetailExperience
@@ -83,6 +88,7 @@ describe("ProductDetailExperience", () => {
       expect.objectContaining({ name: "River Shad", variantId: "variant-1" }),
       2,
     );
+    expect(mocks.routerPush).toHaveBeenCalledWith("/checkout");
     expect(window.gtag).toHaveBeenCalledWith(
       "event",
       "add_to_cart",
@@ -100,11 +106,6 @@ describe("ProductDetailExperience", () => {
           }),
         ],
       }),
-    );
-    expect(screen.getByRole("dialog", { name: "Direct Order Inquiry" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Send Inquiry via Form" })).toHaveAttribute(
-      "href",
-      "/contact#lead-source=buy_now",
     );
   });
 

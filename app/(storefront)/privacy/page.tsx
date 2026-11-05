@@ -99,11 +99,10 @@ export default function PrivacyPolicyPage() {
               Newsletter-modal dismissal or subscription state and cookie-consent preferences in
               local storage.
             </li>
-            <li>Preview-announcement dismissal in session storage.</li>
           </ul>
           <p className={paragraphClass}>
             You can clear these values through your browser settings. Clearing them may remove saved
-            cart items or cause a dismissed announcement to appear again.
+            cart items or reset other functional preferences.
           </p>
           <p className={paragraphClass}>
             If configured, Google Analytics is loaded only after you enable the performance category
