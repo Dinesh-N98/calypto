@@ -133,8 +133,9 @@ export default function CartPageClient({
             </h2>
             <p className="mt-2 text-sm text-[#55584e]">Find something made for your next cast.</p>
             <Link
-              className="mt-6 inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-ink px-5 text-sm font-bold text-paper transition-colors hover:bg-olive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
+              className="mt-6 inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-[#a3bd32] px-5 text-sm font-bold text-[#0d0e0c] transition-colors hover:bg-[#829b22] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
               href="/shop"
+              style={{ backgroundColor: "#a3bd32", color: "#0d0e0c" }}
             >
               Browse the lineup
               <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
