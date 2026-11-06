@@ -4,7 +4,8 @@ import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
 import { prisma } from "@/lib/prisma";
 import { calculateUnitPriceCents } from "@/lib/product-pricing";
 import { getDhlConfig } from "@/lib/config/dhl";
-import { buildDhlPackage, getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
+import { buildDhlPackage, type DhlPackage } from "@/lib/dhl/rate";
+import { getCheckoutShippingRates } from "@/lib/checkout/sri-lanka-shipping";
 import type { PaymentProvider } from "@prisma/client";
 import type { CheckoutAddress, CheckoutCustomer, CheckoutPayload } from "@/lib/checkout/types";
 import { isDhlCountryCode, normalizeCountryCode } from "@/lib/checkout/international";
@@ -309,7 +310,7 @@ export async function createPendingCheckoutOrder({
   let shippingCents = 0;
   let shippingServiceCode: string | null = null;
   if (!payload.shippingServiceCode) {
-    throw new CheckoutInputError("Select a DHL shipping service before continuing to payment.");
+    throw new CheckoutInputError("Select a shipping option before continuing to payment.");
   }
   const config = getDhlConfig();
   const packageVariants: PackageVariant[] = resolvedItems
@@ -322,9 +323,9 @@ export async function createPendingCheckoutOrder({
       heightCm: variant.heightCm,
     }));
   const packages: DhlPackage[] = [buildDhlPackage(packageVariants, config.defaultPackage)];
-  let rates: Awaited<ReturnType<typeof getDHLRates>>;
+  let rates: Awaited<ReturnType<typeof getCheckoutShippingRates>>;
   try {
-    rates = await getDHLRates({
+    rates = await getCheckoutShippingRates({
       recipient: {
         streetLines: [
           payload.address.streetAddress,
@@ -339,25 +340,28 @@ export async function createPendingCheckoutOrder({
       packages,
     });
   } catch (error) {
-    console.error("Unable to calculate DHL checkout rate.", error);
+    console.error("Unable to calculate checkout shipping rate.", error);
     throw new CheckoutInputError("Shipping rates are temporarily unavailable.", 503);
   }
   const selected = rates.find((rate) => rate.serviceCode === payload.shippingServiceCode);
   if (!selected)
-    throw new CheckoutInputError("The selected DHL shipping service is unavailable.", 409);
+    throw new CheckoutInputError("The selected shipping option is no longer available.", 409);
   if (
     selected.currency !== CHECKOUT_CURRENCY ||
     !Number.isFinite(selected.amount) ||
     selected.amount <= 0
   ) {
     throw new CheckoutInputError(
-      "DHL returned a currency that cannot be charged at checkout.",
+      "The shipping quote uses a currency that cannot be charged at checkout.",
       502,
     );
   }
   shippingCents = Math.ceil(selected.amount * 100);
   shippingServiceCode = selected.serviceCode ?? null;
   const grandTotalCents = totalCents + shippingCents;
+  if (!Number.isSafeInteger(grandTotalCents) || grandTotalCents > 2_147_483_647) {
+    throw new CheckoutInputError("The order total is invalid.");
+  }
 
   const session = await auth();
   const userId = session?.user?.id ?? null;

@@ -38,6 +38,18 @@ export type DhlRate = {
   amount: number;
 };
 
+function streetLinesXml(streetLines: string | string[]): string {
+  const lines = (Array.isArray(streetLines) ? streetLines : [streetLines])
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length > 3) {
+    throw new Error("DHL supports up to three street address lines.");
+  }
+  return lines
+    .map((line, index) => xmlElement(index === 0 ? "StreetLines" : `StreetLines${index + 1}`, line))
+    .join("");
+}
+
 function assertPositive(value: number, name: string): void {
   if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} must be greater than zero.`);
 }
@@ -86,12 +98,9 @@ export function buildRateRequestBody(
     })
     .join("");
 
-  const streetLines = (Array.isArray(request.recipient.streetLines)
-    ? request.recipient.streetLines
-    : [request.recipient.streetLines]).filter((line): line is string => typeof line === "string");
-  const streetXml = streetLines.map((line) => xmlElement("StreetLines", line)).join("");
+  const streetXml = streetLinesXml(request.recipient.streetLines);
   const shipperXml = [
-    xmlElement("StreetLines", shipper.shipper.streetLines),
+    streetLinesXml(shipper.shipper.streetLines),
     xmlElement("City", shipper.shipper.city),
     xmlElement("StateOrProvinceCode", shipper.shipper.stateOrProvinceCode),
     xmlElement("PostalCode", shipper.shipper.postalCode),
@@ -100,8 +109,8 @@ export function buildRateRequestBody(
   const recipientXml = [
     streetXml,
     xmlElement("City", request.recipient.city),
-    xmlElement("PostalCode", recipientPostalCode),
     xmlElement("StateOrProvinceCode", recipientStateOrProvinceCode),
+    xmlElement("PostalCode", recipientPostalCode),
     xmlElement("CountryCode", request.recipient.countryCode),
   ].join("");
   return `<rat:RateRequest xmlns:rat="http://scxgxtt.phx-dc.dhl.com/euExpressRateBook/RateMsgRequest"><ClientDetail/><RequestedShipment><DropOffType>REQUEST_COURIER</DropOffType><ServiceType>P</ServiceType><NextBusinessDay>N</NextBusinessDay><Ship><Shipper>${shipperXml}</Shipper><Recipient>${recipientXml}</Recipient></Ship><Packages>${packages}</Packages>${xmlElement("ShipTimestamp", formatDhlTimestamp(request.shipTimestamp ?? new Date()))}${xmlElement("UnitOfMeasurement", "SI")}${xmlElement("Content", "NON_DOCUMENTS")}${xmlElement("PaymentInfo", "DDU")}${xmlElement("Account", shipper.accountNumber)}</RequestedShipment></rat:RateRequest>`;

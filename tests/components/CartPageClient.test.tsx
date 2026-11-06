@@ -184,7 +184,7 @@ describe("CartPageClient", () => {
     const checkoutButton = screen.getByRole("button", { name: /Continue to payment/ });
     expect(checkoutButton).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
 
     await waitFor(() => {
       expect(screen.getByRole("radio", { name: "DHL Express" })).toBeChecked();

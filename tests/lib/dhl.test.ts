@@ -189,11 +189,41 @@ describe("DHL rate request", () => {
     expect(xml).toContain("<StateOrProvinceCode/>");
     expect(xml).toContain("<PostalCode>10300</PostalCode>");
     expect(xml).toContain("<CountryCode>LK</CountryCode>");
-    expect(xml).toContain("<City>Singapore</City><PostalCode>M5H 2N2</PostalCode><StateOrProvinceCode/>");
+    expect(xml).toContain("<City>Singapore</City><StateOrProvinceCode/><PostalCode>M5H 2N2</PostalCode>");
     expect(xml).toContain('RequestedPackages number="1"');
     expect(xml).toContain("<ShipTimestamp>2026-10-15T13:00:00GMT+00:00</ShipTimestamp>");
   });
 
+  it("serializes multiple street lines with DHL element names and schema order", () => {
+    const xml = buildRateRequestBody({
+      recipient: {
+        streetLines: ["100 Queen Street West", "Suite 402", "Attn: Receiving"],
+        city: "Toronto",
+        postalCode: "M5H 2N2",
+        stateOrProvinceCode: "ON",
+        countryCode: "CA",
+      },
+      packages: [{ weightKg: 0.5, lengthCm: 3, widthCm: 2, heightCm: 1 }],
+      shipTimestamp: new Date("2026-10-15T13:00:00.000Z"),
+    }, config);
+
+    expect(xml).toContain(
+      "<StreetLines>100 Queen Street West</StreetLines>" +
+        "<StreetLines2>Suite 402</StreetLines2>" +
+        "<StreetLines3>Attn: Receiving</StreetLines3>" +
+        "<City>Toronto</City><StateOrProvinceCode>ON</StateOrProvinceCode>" +
+        "<PostalCode>M5H 2N2</PostalCode><CountryCode>CA</CountryCode>",
+    );
+    expect(() => buildRateRequestBody({
+      recipient: {
+        streetLines: ["Line 1", "Line 2", "Line 3", "Line 4"],
+        city: "Toronto",
+        postalCode: "M5H 2N2",
+        countryCode: "CA",
+      },
+      packages: [{ weightKg: 0.5, lengthCm: 3, widthCm: 2, heightCm: 1 }],
+    }, config)).toThrow("DHL supports up to three street address lines.");
+  });
   it("parses DHL Provider Service responses from the working RateBook format", async () => {
     vi.stubEnv("DHL_USERNAME", "user");
     vi.stubEnv("DHL_PASSWORD", "password");

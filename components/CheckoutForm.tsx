@@ -631,7 +631,8 @@ export function CheckoutForm({
           <fieldset className="grid gap-3 border-t border-[#e5e5dc] pt-6">
             <legend className="text-base font-bold">Shipping method</legend>
             <p className="text-sm text-[#62665b]">
-              Choose a DHL service for this delivery destination.
+              Choose a DHL service. For Sri Lankan deliveries, a local rate is offered if DHL has
+              no domestic service available.
             </p>
             <button
               className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
@@ -639,17 +640,17 @@ export function CheckoutForm({
               onClick={() => void loadDhlRates()}
               type="button"
             >
-              {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
+              {loadingDhlRates ? "Calculating shipping…" : "Calculate shipping"}
             </button>
             {loadingDhlRates && (
               <p aria-live="polite" className="text-sm text-[#55584e]">
-                Checking DHL service availability and destination routing…
+                Checking available shipping services and destination routing…
               </p>
             )}
             {dhlRates.length > 0 && (
               <fieldset className="grid gap-2">
                 <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">
-                  DHL shipping service
+                  Shipping option
                 </legend>
                 {dhlRates.map((rate, index) => (
                   <label
@@ -785,8 +786,8 @@ export function CheckoutForm({
         )}
         {!loadingDhlRates && error && dhlRates.length === 0 && (
           <p className="text-sm text-red-700" role="alert">
-            No usable DHL service was returned. Check the address, postal code, and country, then
-            try again.
+            No shipping option was returned. Check the address, postal code, and country, then try
+            again.
           </p>
         )}
         {currentStep === 3 && (

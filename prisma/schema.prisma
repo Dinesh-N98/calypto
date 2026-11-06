@@ -263,6 +263,14 @@ model Address {
   @@index([userId, isDefault])
 }
 
+model SriLankaShippingRateSettings {
+  id                String   @id @default("LK")
+  underOneKgCents   Int      @default(300)
+  oneToThreeKgCents Int      @default(500)
+  overThreeKgCents  Int      @default(1000)
+  updatedAt         DateTime @updatedAt
+}
+
 model WishlistItem {
   id        String   @id @default(cuid())
   userId    String

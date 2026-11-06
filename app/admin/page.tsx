@@ -54,6 +54,15 @@ export default function AdminPage() {
         </Link>
         <Link
           className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
+          href="/admin/shipping"
+        >
+          <h2 className="text-base font-bold">Shipping rates</h2>
+          <p className="mt-2 text-sm leading-6 text-[#65695f]">
+            Configure the local delivery fallback used for Sri Lankan orders.
+          </p>
+        </Link>
+        <Link
+          className="rounded-lg border border-black/10 bg-white p-5 shadow-sm transition hover:border-[#a3bd32] sm:p-7"
           href="/admin/newsletter-discounts"
         >
           <h2 className="text-base font-bold">Newsletter discounts</h2>

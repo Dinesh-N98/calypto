@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   addressCount: vi.fn(),
   addressCreate: vi.fn(),
   orderCreate: vi.fn(),
-  getDHLRates: vi.fn(),
+  getCheckoutShippingRates: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
@@ -29,7 +29,9 @@ vi.mock("@/lib/dhl/rate", () => ({
     widthCm: 2,
     heightCm: 1,
   })),
-  getDHLRates: mocks.getDHLRates,
+}));
+vi.mock("@/lib/checkout/sri-lanka-shipping", () => ({
+  getCheckoutShippingRates: mocks.getCheckoutShippingRates,
 }));
 
 import { createPendingCheckoutOrder, parseCheckoutPayload } from "@/lib/checkout/order";
@@ -83,14 +85,14 @@ const createdOrder = {
 };
 
 beforeEach(() => {
-  mocks.getDHLRates.mockClear();
+  mocks.getCheckoutShippingRates.mockClear();
   mocks.auth.mockResolvedValue({ user: { id: "user-1" } });
   mocks.variantFindMany.mockResolvedValue([variant]);
   mocks.variantUpdateMany.mockResolvedValue({ count: 1 });
   mocks.addressCount.mockResolvedValue(1);
   mocks.addressCreate.mockResolvedValue({ id: "address-2" });
   mocks.orderCreate.mockResolvedValue(createdOrder);
-  mocks.getDHLRates.mockResolvedValue([
+  mocks.getCheckoutShippingRates.mockResolvedValue([
     { serviceCode: "P", serviceName: "DHL Express Domestic", currency: "USD", amount: 8.5 },
   ]);
   mocks.transaction.mockImplementation(async (callback) =>
@@ -131,7 +133,7 @@ describe("createPendingCheckoutOrder", () => {
         }),
       }),
     );
-    expect(mocks.getDHLRates).toHaveBeenCalledWith(
+    expect(mocks.getCheckoutShippingRates).toHaveBeenCalledWith(
       expect.objectContaining({
         recipient: expect.objectContaining({
           countryCode: "LK",
@@ -144,6 +146,32 @@ describe("createPendingCheckoutOrder", () => {
     expect(orderCreateData.providerReference).toHaveLength(21);
     expect(mocks.addressCreate).not.toHaveBeenCalled();
     expect(order).toMatchObject({ id: "order-1", userId: "user-1" });
+  });
+
+  it("recalculates the Sri Lanka fallback amount on the server", async () => {
+    mocks.getCheckoutShippingRates.mockResolvedValueOnce([
+      {
+        serviceCode: "LK-LOCAL-WEIGHT",
+        serviceName: "Sri Lanka local delivery (under 1 kg)",
+        currency: "USD",
+        amount: 3,
+      },
+    ]);
+
+    await createPendingCheckoutOrder({
+      payload: { ...payload, shippingServiceCode: "LK-LOCAL-WEIGHT" },
+      provider: "ONEPAY",
+    });
+
+    expect(mocks.orderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          shippingCents: 300,
+          shippingServiceCode: "LK-LOCAL-WEIGHT",
+          totalCents: 2299,
+        }),
+      }),
+    );
   });
 
   describe("parseCheckoutPayload", () => {

@@ -109,7 +109,7 @@ function stubCheckoutAndShippingFetch() {
 }
 
 describe("CheckoutForm", () => {
-  it("requires a DHL quote for Sri Lankan delivery before continuing", async () => {
+  it("requires a shipping quote for Sri Lankan delivery before continuing", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",
@@ -134,10 +134,12 @@ describe("CheckoutForm", () => {
     const continueButton = screen.getByRole("button", { name: "Continue to payment" });
     expect(continueButton).toBeDisabled();
     expect(
-      screen.getByText("Choose a DHL service for this delivery destination."),
+      screen.getByText(
+        "Choose a DHL service. For Sri Lankan deliveries, a local rate is offered if DHL has no domestic service available.",
+      ),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
     expect(await screen.findByRole("radio", { name: "DHL Express Domestic" })).toBeChecked();
     expect(continueButton).toBeEnabled();
     expect(screen.getByText("USD 8.50")).toBeInTheDocument();
@@ -148,7 +150,7 @@ describe("CheckoutForm", () => {
     const fetchMock = stubCheckoutAndShippingFetch();
     renderCheckout({ currentStep: 3 });
 
-    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
     await screen.findByRole("radio", { name: "DHL Express Domestic" });
     await user.click(screen.getByRole("button", { name: "Continue to payment" }));
     await user.click(screen.getByRole("button", { name: "Review order" }));
@@ -190,7 +192,7 @@ describe("CheckoutForm", () => {
     expect(phoneInput).toHaveValue("2025550123");
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Continue to delivery" }));
-    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
     await screen.findByRole("radio", { name: "DHL Express Domestic" });
     await user.click(screen.getByRole("button", { name: "Continue to payment" }));
     await user.click(screen.getByRole("button", { name: "Review order" }));
@@ -262,7 +264,7 @@ describe("CheckoutForm", () => {
     const continueButton = screen.getByRole("button", { name: "Continue to payment" });
     expect(continueButton).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
     expect(await screen.findByRole("option", { name: /DHL Express/ })).toBeInTheDocument();
     expect(continueButton).toBeEnabled();
     expect(screen.getByRole("radio", { name: "DHL Express" })).toBeChecked();

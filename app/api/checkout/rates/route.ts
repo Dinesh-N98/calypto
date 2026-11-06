@@ -1,5 +1,6 @@
-import { buildDhlPackage, getDHLRates, type DhlPackage } from "@/lib/dhl/rate";
+import { buildDhlPackage, type DhlPackage } from "@/lib/dhl/rate";
 import { getDhlConfig } from "@/lib/config/dhl";
+import { getCheckoutShippingRates } from "@/lib/checkout/sri-lanka-shipping";
 import { prisma } from "@/lib/prisma";
 import {
   applyRateLimit,
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const rates = await getDHLRates({
+    const rates = await getCheckoutShippingRates({
       recipient: {
         streetLines,
         city,
