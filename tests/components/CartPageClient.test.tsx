@@ -82,6 +82,41 @@ describe("CartPageClient", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("renders accessible checkout progress and a mobile order summary", () => {
+    render(
+      <CartPageClient
+        defaultAddress={null}
+        isAuthenticated={false}
+        profile={null}
+        savedAddresses={[]}
+        buyNowQuantity={1}
+        startAtCheckout
+      />,
+    );
+
+    expect(screen.getByRole("list", { name: "Checkout progress" })).toBeInTheDocument();
+    expect(screen.getByText("Cart")).toBeInTheDocument();
+    expect(screen.getByText("Details")).toBeInTheDocument();
+    expect(screen.getByText("Delivery")).toBeInTheDocument();
+    expect(screen.getByText("Payment")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("listitem").find((item) => item.querySelector('[aria-current="step"]')),
+    ).toBeInTheDocument();
+
+    const summary = screen
+      .getAllByText("Order summary")
+      .map((element) => element.closest("details"))
+      .find(
+        (element): element is HTMLDetailsElement =>
+          element !== null && element.textContent?.includes("Shoreline Rod") === true,
+      );
+    expect(summary).toBeInTheDocument();
+    expect(summary).toHaveTextContent("Shoreline Rod");
+    expect(summary).toHaveTextContent("Qty 2");
+    expect(summary).toHaveTextContent("$259.98");
+    expect(summary).toHaveTextContent("Secure checkout powered by OnePay.");
+  });
+
   it("explains manual inquiry redemption without changing cart totals", async () => {
     const user = userEvent.setup();
     renderCart();

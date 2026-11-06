@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, LockKeyhole, Tag, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, LockKeyhole, Tag, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { useCart } from "@/components/CartProvider";
 import {
@@ -14,6 +14,15 @@ import {
 import { QuantitySelector } from "@/components/QuantitySelector";
 import { formatPrice } from "@/lib/currency";
 import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
+
+type CheckoutSummaryItem = {
+  variantId: string;
+  imageUrl: string;
+  name: string;
+  variantLabel?: string;
+  priceCents: number;
+  quantity: number;
+};
 
 export default function CartPageClient({
   savedAddresses,
@@ -98,27 +107,35 @@ export default function CartPageClient({
             </div>
             <ol
               aria-label="Checkout progress"
-              className="flex items-center gap-2 text-xs font-semibold"
+              className="flex max-w-full flex-wrap items-center gap-x-1 gap-y-2 text-[10px] font-semibold sm:gap-2 sm:text-xs"
             >
-              <li
-                aria-current={!isCheckoutStep ? "step" : undefined}
-                className={`flex items-center gap-2 ${isCheckoutStep ? "text-[#77796f]" : "text-olive"}`}
-              >
-                <span className="grid h-7 w-7 place-items-center rounded-full border border-current">
-                  1
-                </span>
-                Cart
-              </li>
-              <span aria-hidden="true" className="h-px w-5 bg-[#c8c8bc]" />
-              <li
-                aria-current={isCheckoutStep ? "step" : undefined}
-                className={`flex items-center gap-2 ${isCheckoutStep ? "text-olive" : "text-[#77796f]"}`}
-              >
-                <span className="grid h-7 w-7 place-items-center rounded-full border border-current">
-                  2
-                </span>
-                Checkout
-              </li>
+              {(
+                [
+                  ["Cart", !isCheckoutStep, isCheckoutStep],
+                  ["Details", isCheckoutStep, false],
+                  ["Delivery", false, false],
+                  ["Payment", false, false],
+                ] as const
+              ).map(([label, current, complete], index) => (
+                <li className="flex items-center gap-1 whitespace-nowrap sm:gap-2" key={label}>
+                  <span
+                    aria-current={current ? "step" : undefined}
+                    className={`grid h-6 w-6 place-items-center rounded-full border sm:h-7 sm:w-7 ${
+                      current || complete
+                        ? "border-olive bg-olive text-white"
+                        : "border-[#c8c8bc] text-[#77796f]"
+                    }`}
+                  >
+                    {complete ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : index + 1}
+                  </span>
+                  <span className={current || complete ? "text-olive" : "text-[#77796f]"}>
+                    {label}
+                  </span>
+                  {index < 3 && (
+                    <span aria-hidden="true" className="h-px w-1 bg-[#c8c8bc] sm:w-5" />
+                  )}
+                </li>
+              ))}
             </ol>
           </div>
         </header>
@@ -229,14 +246,19 @@ export default function CartPageClient({
                 </aside>
               </div>
 
-              <section
-                aria-labelledby="mobile-order-summary-title"
-                className="mt-5 rounded-xl border border-[#ddddd3] bg-white p-4 sm:p-5 lg:hidden"
-              >
-                <h2 className="text-base font-bold" id="mobile-order-summary-title">
-                  Order summary
-                </h2>
-                <div className="mt-4 flex justify-between text-sm">
+              <details className="mt-5 rounded-xl border border-[#ddddd3] bg-white p-4 sm:p-5 lg:hidden">
+                <summary className="cursor-pointer list-none text-base font-bold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-olive">
+                  <span
+                    className="flex items-center justify-between gap-3"
+                    id="mobile-order-summary-title"
+                  >
+                    Order summary
+                    <span className="text-sm font-semibold text-olive">
+                      {formatPrice(subtotalCents)}
+                    </span>
+                  </span>
+                </summary>
+                <div className="mt-4 flex justify-between border-t border-[#e5e5dc] pt-4 text-sm">
                   <span className="text-[#62665b]">Subtotal</span>
                   <span className="font-semibold">{formatPrice(subtotalCents)}</span>
                 </div>
@@ -253,7 +275,7 @@ export default function CartPageClient({
                   onApply={applyDiscountCode}
                   message={discountMessage}
                 />
-              </section>
+              </details>
             </section>
 
             <section aria-label="Delivery and payment" hidden={!isCheckoutStep}>
@@ -265,17 +287,33 @@ export default function CartPageClient({
                 <ArrowLeft aria-hidden="true" className="h-4 w-4" />
                 Back to cart
               </button>
+              <MobileCheckoutSummary
+                items={purchaseItems}
+                subtotalCents={subtotalCents}
+                shippingCents={shippingCents}
+                paymentProvider={paymentProvider}
+              />
               <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(19rem,1fr)] lg:gap-8">
                 <div className="rounded-2xl border border-[#ddddd3] bg-white p-4 sm:p-6">
-                  <div className="mb-5">
-                    <h2 className="text-lg font-bold">Contact & delivery</h2>
+                  <div className="mb-6">
+                    <p className="text-[.65rem] font-bold uppercase tracking-[.14em] text-olive">
+                      Step 2 of 4
+                    </p>
+                    <h2 className="mt-2 text-xl font-black tracking-tight">
+                      Your checkout details
+                    </h2>
                     <p className="mt-1 text-sm text-[#62665b]">
                       Your details are used to arrange delivery and send order updates.
                     </p>
                   </div>
-                  <fieldset className="mb-6 grid gap-3 border-b border-[#e5e5dc] pb-5">
-                    <legend className="mb-2 text-sm font-bold">Payment method</legend>
-                    <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-[#ddddd3] px-3 text-sm font-medium has-[:checked]:border-olive has-[:checked]:bg-[#f7f8f1]">
+                  <fieldset className="mb-6 grid gap-3 border-b border-[#e5e5dc] pb-6">
+                    <legend className="mb-1 text-base font-bold">Payment method</legend>
+                    <p className="mb-1 text-sm text-[#62665b]">
+                      Choose how you would like to pay after reviewing your delivery details.
+                    </p>
+                    <label
+                      className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${paymentProvider === "ONEPAY" ? "border-olive bg-[#f7f8f1]" : "border-[#ddddd3] hover:border-olive/60"}`}
+                    >
                       <input
                         checked={paymentProvider === "ONEPAY"}
                         className="h-4 w-4 accent-olive"
@@ -284,11 +322,16 @@ export default function CartPageClient({
                         type="radio"
                         value="ONEPAY"
                       />
-                      OnePay
-                      <span className="ml-auto text-xs text-[#62665b]">Secure payment</span>
+                      <span className="grid gap-0.5">
+                        <span className="font-bold">OnePay</span>
+                        <span className="text-xs font-normal text-[#62665b]">
+                          Secure card and local payment checkout
+                        </span>
+                      </span>
+                      <span className="ml-auto text-xs font-semibold text-olive">Recommended</span>
                     </label>
                     <label
-                      className={`flex min-h-12 items-center gap-3 rounded-lg border border-[#ddddd3] px-3 text-sm font-medium ${paypalClientId ? "cursor-pointer has-[:checked]:border-olive has-[:checked]:bg-[#f7f8f1]" : "opacity-55"}`}
+                      className={`flex min-h-16 items-center gap-3 rounded-xl border p-3 transition-colors ${paypalClientId ? (paymentProvider === "PAYPAL" ? "cursor-pointer border-olive bg-[#f7f8f1]" : "cursor-pointer border-[#ddddd3] hover:border-olive/60") : "opacity-55"}`}
                     >
                       <input
                         checked={paymentProvider === "PAYPAL"}
@@ -299,7 +342,12 @@ export default function CartPageClient({
                         type="radio"
                         value="PAYPAL"
                       />
-                      PayPal
+                      <span className="grid gap-0.5">
+                        <span className="font-bold">PayPal</span>
+                        <span className="text-xs font-normal text-[#62665b]">
+                          Pay with your PayPal account
+                        </span>
+                      </span>
                       {!paypalClientId && (
                         <span className="ml-auto text-xs text-[#62665b]">Unavailable</span>
                       )}
@@ -320,10 +368,23 @@ export default function CartPageClient({
                   <h2 className="text-base font-bold">Order summary</h2>
                   <div className="mt-4 max-h-64 space-y-3 overflow-y-auto border-b border-[#e5e5dc] pb-4">
                     {purchaseItems.map((item) => (
-                      <div className="flex justify-between gap-4 text-sm" key={item.variantId}>
-                        <span className="text-[#62665b]">
-                          {item.name}{" "}
-                          <span aria-label={`Quantity ${item.quantity}`}>× {item.quantity}</span>
+                      <div className="flex gap-3 text-sm" key={item.variantId}>
+                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#efeee7]">
+                          <Image
+                            alt=""
+                            fill
+                            sizes="56px"
+                            src={item.imageUrl}
+                            className="object-contain p-1"
+                            placeholder="blur"
+                            blurDataURL={productImageBlurDataURL}
+                          />
+                        </div>
+                        <span className="min-w-0 flex-1 text-[#62665b]">
+                          <span className="block font-semibold text-ink">{item.name}</span>
+                          <span className="mt-0.5 block text-xs">
+                            {item.variantLabel} · Qty {item.quantity}
+                          </span>
                         </span>
                         <span className="shrink-0 font-medium">
                           {formatPrice(item.priceCents * item.quantity)}
@@ -407,9 +468,7 @@ function OrderSummary({
         Proceed to checkout
         <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
       </Link>
-      <p className="mt-3 text-center text-xs text-[#62665b]">
-        Shipping is calculated at checkout.
-      </p>
+      <p className="mt-3 text-center text-xs text-[#62665b]">Shipping is calculated at checkout.</p>
     </>
   );
 }
@@ -439,6 +498,64 @@ function SummaryTotals({
         <dd className="text-lg font-bold">{formatPrice(totalCents)}</dd>
       </div>
     </dl>
+  );
+}
+
+function MobileCheckoutSummary({
+  items,
+  subtotalCents,
+  shippingCents,
+  paymentProvider,
+}: {
+  items: CheckoutSummaryItem[];
+  subtotalCents: number;
+  shippingCents: number | null;
+  paymentProvider: CheckoutPaymentProvider;
+}) {
+  const totalCents = subtotalCents + (shippingCents ?? 0);
+  return (
+    <details className="mb-5 rounded-2xl border border-[#ddddd3] bg-white p-4 lg:hidden">
+      <summary className="cursor-pointer list-none text-base font-bold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-olive">
+        <span className="flex items-center justify-between gap-3">
+          <span>Order summary</span>
+          <span className="shrink-0 text-sm font-semibold text-olive">
+            {formatPrice(totalCents)}
+          </span>
+        </span>
+      </summary>
+      <div className="mt-4 space-y-3 border-t border-[#e5e5dc] pt-4">
+        {items.map((item) => (
+          <div className="flex gap-3 text-sm" key={item.variantId}>
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#efeee7]">
+              <Image
+                alt=""
+                fill
+                sizes="56px"
+                src={item.imageUrl}
+                className="object-contain p-1"
+                placeholder="blur"
+                blurDataURL={productImageBlurDataURL}
+              />
+            </div>
+            <span className="min-w-0 flex-1 text-[#62665b]">
+              <span className="block font-semibold text-ink">{item.name}</span>
+              {item.variantLabel && <span className="mt-0.5 block text-xs">{item.variantLabel}</span>}
+              <span className="mt-0.5 block text-xs">Qty {item.quantity}</span>
+            </span>
+            <span className="shrink-0 font-medium">
+              {formatPrice(item.priceCents * item.quantity)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 border-t border-[#e5e5dc] pt-4">
+        <SummaryTotals subtotalCents={subtotalCents} shippingCents={shippingCents} />
+        <p className="mt-4 flex items-center gap-2 text-xs text-[#62665b]">
+          <LockKeyhole aria-hidden="true" className="h-3.5 w-3.5" />
+          Secure checkout powered by {paymentProvider === "ONEPAY" ? "OnePay" : "PayPal"}.
+        </p>
+      </div>
+    </details>
   );
 }
 

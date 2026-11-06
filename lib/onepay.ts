@@ -229,10 +229,12 @@ export async function verifyOnePayPayment({
   transactionId,
   amountCents,
   currency,
+  reference,
 }: {
   transactionId: string;
   amountCents: number;
   currency: string;
+  reference?: string;
 }): Promise<boolean> {
   const result = await postOnePay("/v3/transaction/status/", {
     onepay_transaction_id: transactionId,
@@ -251,12 +253,23 @@ export async function verifyOnePayPayment({
   ) {
     throw new Error("The verified OnePay transaction does not match the pending order.");
   }
+  if (reference) {
+    const providerReference = getOnePayResponseValue(result, "reference");
+    const orderReference = getOnePayResponseValue(result, "order_reference");
+    if (
+      (providerReference !== undefined && providerReference !== reference) ||
+      (orderReference !== undefined && orderReference !== reference)
+    ) {
+      throw new Error("The verified OnePay transaction references a different order.");
+    }
+  }
 
   return true;
 }
 
 export async function refreshOnePayOrderStatus(order: {
   id: string;
+  providerReference: string;
   providerTransactionId: string | null;
   totalCents: number;
   currency: string;
@@ -268,6 +281,7 @@ export async function refreshOnePayOrderStatus(order: {
     transactionId: order.providerTransactionId,
     amountCents: order.totalCents,
     currency: order.currency,
+    reference: order.providerReference,
   });
 
   if (isPaid) {

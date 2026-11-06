@@ -132,8 +132,8 @@ export async function POST(request: Request) {
     return respond(Response.json(
       {
         error:
-          error instanceof OnePayApiError
-            ? `OnePay rejected the checkout request: ${error.message}`
+          error instanceof OnePayApiError && error.status >= 400 && error.status < 500
+            ? "OnePay rejected the checkout request. Check your details and try again."
             : `Checkout could not be confirmed. Keep reference ${order.providerReference} and contact support if you were charged.`,
       },
       {

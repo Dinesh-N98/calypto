@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     where: { paymentProvider: "ONEPAY", providerTransactionId: transactionId },
     select: {
       id: true,
+      providerReference: true,
       providerTransactionId: true,
       totalCents: true,
       currency: true,

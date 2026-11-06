@@ -52,8 +52,17 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const CHECKOUT_ITEM_LIMIT = 100;
+const CHECKOUT_QUANTITY_LIMIT = 1_000;
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const allowed = new Set(keys);
+  return Object.keys(value).every((key) => allowed.has(key));
+}
+
 function parseCustomer(value: unknown): CheckoutCustomer | null {
   if (!isObject(value)) return null;
+  if (!hasOnlyKeys(value, ["firstName", "lastName", "email", "phone"])) return null;
   const firstName = typeof value.firstName === "string" ? value.firstName.trim() : "";
   const lastName = typeof value.lastName === "string" ? value.lastName.trim() : "";
   const email = typeof value.email === "string" ? value.email.trim().toLowerCase() : "";
@@ -75,6 +84,17 @@ function parseCustomer(value: unknown): CheckoutCustomer | null {
 
 function parseAddress(value: unknown): CheckoutAddress | null {
   if (!isObject(value)) return null;
+  if (
+    !hasOnlyKeys(value, [
+      "streetAddress",
+      "aptSuite",
+      "addressLine3",
+      "city",
+      "state",
+      "postalCode",
+      "country",
+    ])
+  ) return null;
   const limits = {
     streetAddress: 200,
     aptSuite: 200,
@@ -126,7 +146,13 @@ function parseAddress(value: unknown): CheckoutAddress | null {
 }
 
 export function parseCheckoutPayload(value: unknown): CheckoutPayload {
-  if (!isObject(value) || !Array.isArray(value.items) || value.items.length < 1 || value.items.length > 100) {
+  if (
+    !isObject(value) ||
+    !hasOnlyKeys(value, ["items", "customer", "address", "saveAddress", "shippingServiceCode"]) ||
+    !Array.isArray(value.items) ||
+    value.items.length < 1 ||
+    value.items.length > CHECKOUT_ITEM_LIMIT
+  ) {
     throw new CheckoutInputError("Your cart is empty or invalid.");
   }
 
@@ -134,12 +160,14 @@ export function parseCheckoutPayload(value: unknown): CheckoutPayload {
   for (const item of value.items) {
     if (
       !isObject(item) ||
+      !hasOnlyKeys(item, ["variantId", "quantity"]) ||
       typeof item.variantId !== "string" ||
       item.variantId.length < 1 ||
       item.variantId.length > 140 ||
       typeof item.quantity !== "number" ||
       !Number.isSafeInteger(item.quantity) ||
-      item.quantity < 1
+      item.quantity < 1 ||
+      item.quantity > CHECKOUT_QUANTITY_LIMIT
     ) {
       throw new CheckoutInputError("Your cart is empty or invalid.");
     }

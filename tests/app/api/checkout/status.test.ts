@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  auth: vi.fn(),
   findFirst: vi.fn(),
   refreshOnePayOrderStatus: vi.fn(),
 }));
 
+vi.mock("@/auth", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/prisma", () => ({
   prisma: { order: { findFirst: mocks.findFirst } },
 }));
@@ -39,6 +41,7 @@ function request() {
 }
 
 beforeEach(() => {
+  mocks.auth.mockReset();
   mocks.findFirst.mockClear();
   mocks.refreshOnePayOrderStatus.mockClear();
   mocks.findFirst.mockResolvedValue(order);
@@ -86,5 +89,15 @@ describe("GET /api/checkout/status purchase data", () => {
         items: order.items,
       },
     });
+  });
+
+  it("does not expose an authenticated customer's order to another user", async () => {
+    mocks.findFirst.mockResolvedValue({ ...order, userId: "owner-id" });
+    mocks.auth.mockResolvedValue({ user: { id: "different-user" } });
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "Order not found." });
   });
 });

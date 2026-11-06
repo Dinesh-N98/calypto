@@ -113,13 +113,13 @@ export function PayPalCheckoutButtons({
                     : "Payment is being verified. Please check your order status shortly.";
                 throw new Error(error);
               }
-              router.push(
-                `/checkout/success?order=${encodeURIComponent(result.orderReference)}`,
-              );
+              router.push(`/checkout/success?order=${encodeURIComponent(result.orderReference)}`);
             },
             onCancel: () => {
               setIsProcessing(false);
-              setMessage("Checkout canceled. Your cart is unchanged; you can try again or choose OnePay.");
+              setMessage(
+                "Checkout canceled. Your cart is unchanged; you can try again or choose OnePay.",
+              );
             },
             onError: (error) => {
               console.error("PayPal checkout failed.", error);
@@ -175,15 +175,19 @@ export function PayPalCheckoutButtons({
   }, [clientId, createPayload, router]);
 
   return (
-    <div className="grid gap-3">
-      <div aria-busy={isProcessing || !sdkReady} ref={containerRef} />
+    <div className="grid gap-3 rounded-xl border border-[#ddddd3] bg-[#f7f8f1] p-4">
+      <div
+        aria-busy={isProcessing || !sdkReady}
+        aria-label="PayPal payment buttons"
+        ref={containerRef}
+      />
       {(!sdkReady || isProcessing) && !message && (
-        <p className="text-sm text-[#55584e]" role="status">
+        <p aria-live="polite" className="text-sm text-[#55584e]" role="status">
           {isProcessing ? "Processing PayPal checkout..." : "Loading PayPal..."}
         </p>
       )}
       {message && (
-        <p className="text-sm text-red-700" role="alert">
+        <p aria-live="assertive" className="text-sm text-red-700" role="alert">
           {message}
         </p>
       )}

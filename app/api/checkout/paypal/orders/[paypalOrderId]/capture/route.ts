@@ -65,7 +65,7 @@ export async function POST(
   const respond = (response: Response) => withRateLimitHeaders(response, limit);
 
   const { paypalOrderId } = await params;
-  if (!paypalOrderId || paypalOrderId.length > 64) {
+  if (!paypalOrderId || paypalOrderId.length > 64 || !/^[A-Za-z0-9_-]+$/u.test(paypalOrderId)) {
     return respond(Response.json({ error: "PayPal order ID is invalid." }, { status: 400 }));
   }
 
@@ -78,7 +78,7 @@ export async function POST(
   }
 
   const session = await auth();
-  if (attempt.order.userId && attempt.order.userId !== session?.user?.id) {
+  if (attempt.order.userId !== (session?.user?.id ?? null)) {
     return respond(Response.json({ error: "You cannot capture this order." }, { status: 403 }));
   }
   if (attempt.status === "paid" && attempt.providerCaptureId) {
@@ -169,11 +169,25 @@ export async function POST(
       try {
         const currentOrder = await getPayPalOrder(paypalOrderId);
         const completed = getCompletedCapture(currentOrder);
-        if (completed) {
-          return respond(Response.json(
-            { error: "PayPal reports a completed capture; payment reconciliation is required." },
-            { status: 409 },
-          ));
+        if (
+          completed &&
+          completed.orderId === attempt.providerOrderId &&
+          completed.purchaseUnit.custom_id === attempt.orderId &&
+          completed.purchaseUnit.invoice_id === attempt.order.providerReference &&
+          completed.capture.amount.value === toPayPalAmount(attempt.amountCents) &&
+          completed.capture.amount.currency_code === attempt.currency
+        ) {
+          const paid = await markPayPalAttemptPaid({
+            attemptId: attempt.id,
+            captureId: completed.capture.id,
+          });
+          if (paid) {
+            return respond(Response.json({
+              status: "paid",
+              orderReference: attempt.order.providerReference,
+              captureId: completed.capture.id,
+            }));
+          }
         }
       } catch (reconciliationError) {
         console.error("Unable to reconcile repeated PayPal capture.", reconciliationError);

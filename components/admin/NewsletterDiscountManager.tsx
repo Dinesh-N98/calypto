@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import {
   NEWSLETTER_DISCOUNT_CODE_PATTERN,
@@ -72,7 +72,7 @@ export function NewsletterDiscountManager() {
   const [totalSubscribers, setTotalSubscribers] = useState(0);
   const [listBusy, setListBusy] = useState(false);
 
-  async function loadSubscribers(nextPage = 1, nextSearch = searchTerm) {
+  const loadSubscribers = useCallback(async (nextPage = 1, nextSearch = "") => {
     setListBusy(true);
     try {
       const params = new URLSearchParams({ page: String(nextPage), limit: String(pageSize) });
@@ -94,11 +94,14 @@ export function NewsletterDiscountManager() {
     } finally {
       setListBusy(false);
     }
-  }
+  }, [pageSize]);
 
   useEffect(() => {
-    void loadSubscribers(1, "");
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadSubscribers(1, "");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadSubscribers]);
 
   async function lookupCode(event?: FormEvent<HTMLFormElement>, overrideCode?: string) {
     event?.preventDefault();

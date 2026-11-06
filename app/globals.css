@@ -190,6 +190,16 @@ a {
   box-shadow: 0 0 0 1px var(--color-lime);
 }
 
+.bg-paper .auth-input:focus-visible,
+.bg-paper select.auth-input:focus-visible {
+  border-color: var(--color-olive);
+  box-shadow: 0 0 0 3px rgba(101, 119, 27, 0.2);
+}
+
+.bg-paper fieldset {
+  min-width: 0;
+}
+
 .admin-catalog-input {
   width: 100%;
   min-height: 2.75rem;

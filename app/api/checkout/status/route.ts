@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { refreshOnePayOrderStatus } from "@/lib/onepay";
 
@@ -11,6 +12,7 @@ export async function GET(request: Request) {
     where: { providerReference: reference },
     select: {
       id: true,
+      userId: true,
       paymentProvider: true,
       providerTransactionId: true,
       providerReference: true,
@@ -30,6 +32,12 @@ export async function GET(request: Request) {
     },
   });
   if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
+  if (order.userId) {
+    const session = await auth();
+    if (session?.user?.id !== order.userId) {
+      return Response.json({ error: "Order not found." }, { status: 404 });
+    }
+  }
 
   let status = order.status;
   try {

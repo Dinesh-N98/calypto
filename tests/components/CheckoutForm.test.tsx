@@ -79,6 +79,17 @@ describe("CheckoutForm", () => {
     expect(screen.getByRole("button", { name: /Checkout/ })).toBeEnabled();
   });
 
+  it("organizes checkout details into accessible sections", () => {
+    renderCheckout();
+
+    expect(screen.getByRole("group", { name: "Contact information" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Delivery address" })).toBeInTheDocument();
+    expect(
+      screen.getByText("We'll use this to send your order confirmation and delivery updates."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Where should we send your order?")).toBeInTheDocument();
+  });
+
   it("requires a fresh DHL rate selection for international checkout", async () => {
     const user = userEvent.setup();
     const onShippingCostChange = vi.fn();

@@ -128,6 +128,21 @@ describe("createPendingCheckoutOrder", () => {
 
       expect(parsed.address.addressLine3).toBe("");
     });
+
+    it("rejects unexpected fields and oversized quantities", () => {
+      expect(() =>
+        parseCheckoutPayload({
+          ...payload,
+          unexpected: true,
+        }),
+      ).toThrow("Your cart is empty or invalid.");
+      expect(() =>
+        parseCheckoutPayload({
+          ...payload,
+          items: [{ variantId: "variant-1", quantity: 1001 }],
+        }),
+      ).toThrow("Your cart is empty or invalid.");
+    });
   });
 
   it("creates a saved address only when the signed-in customer opts in", async () => {
