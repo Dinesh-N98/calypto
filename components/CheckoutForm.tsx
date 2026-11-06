@@ -208,7 +208,7 @@ export function CheckoutForm({
       contact: contactFields,
       address: addressFields,
       shipping: {
-        label: selectedRate?.serviceName ?? "DHL Express",
+        label: "Shipping fee",
         amountCents: selectedShippingCents,
       },
       paymentProvider,
@@ -218,7 +218,6 @@ export function CheckoutForm({
     contactFields,
     onReviewDataChange,
     paymentProvider,
-    selectedRate?.serviceName,
     selectedShippingCents,
   ]);
 
@@ -328,10 +327,6 @@ export function CheckoutForm({
     setAddressDrafts((drafts) => ({ ...drafts, [selectedAddressId]: nextFields }));
     setAddressFields(nextFields);
     invalidateQuote();
-  }
-
-  function selectDhlRate(serviceCode: string) {
-    setSelectedDhlRate(serviceCode);
   }
 
   const loadDhlRates = useCallback(async (contextKey: string) => {
@@ -722,70 +717,16 @@ export function CheckoutForm({
             </label>
           )}
           <fieldset className="grid gap-3 border-t border-[#e5e5dc] pt-6">
-            <legend className="text-base font-bold">Shipping method</legend>
-            <p className="text-sm text-[#62665b]">
-              Choose a DHL service. For Sri Lankan deliveries, a local rate is offered if DHL has
-              no domestic service available.
-            </p>
+            <legend className="text-base font-bold">Shipping fee</legend>
             {loadingDhlRates && (
               <p aria-live="polite" className="text-sm text-[#55584e]">
                 Checking available shipping services and destination routing…
               </p>
             )}
-            {currentDhlRates.length > 0 && (
-              <fieldset className="grid gap-2">
-                <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">
-                  Shipping option
-                </legend>
-                {currentDhlRates.map((rate, index) => (
-                  <label
-                    className="flex items-start gap-3 border border-black/10 p-3 text-sm"
-                    key={`${rate.serviceCode ?? "dhl"}-${index}`}
-                  >
-                    <input
-                      aria-label={rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
-                      className="mt-1 accent-[#65771b]"
-                      checked={selectedDhlRate === rate.serviceCode}
-                      name="shippingService"
-                      onChange={() => selectDhlRate(rate.serviceCode ?? "")}
-                      type="radio"
-                      value={rate.serviceCode ?? ""}
-                    />
-                    <span className="flex-1">
-                      <strong>{rate.serviceName ?? rate.serviceCode ?? "DHL Express"}</strong>
-                      {rate.transitDays ? (
-                        <span className="ml-2 text-[#55584e]">
-                          {rate.transitDays} business days
-                        </span>
-                      ) : null}
-                    </span>
-                    <strong>
-                      {rate.currency} {rate.amount.toFixed(2)}
-                    </strong>
-                  </label>
-                ))}
-                <select
-                  aria-label="Shipping option"
-                  className="sr-only"
-                  onChange={(event) => selectDhlRate(event.currentTarget.value)}
-                  tabIndex={-1}
-                  value={selectedDhlRate}
-                >
-                  <option value="">Select a service</option>
-                  {currentDhlRates.map((rate, index) => (
-                    <option
-                      key={`${rate.serviceCode ?? "dhl"}-compat-${index}`}
-                      value={rate.serviceCode ?? ""}
-                    >
-                      {rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs leading-5 text-[#55584e]">
-                  Shipping is quoted by DHL. Import duties and destination taxes are not included in
-                  this quote and may be collected by customs on delivery.
-                </p>
-              </fieldset>
+            {selectedRate && hasCurrentQuote && (
+              <p className="text-sm font-semibold">
+                {selectedRate.currency} {selectedRate.amount.toFixed(2)}
+              </p>
             )}
           </fieldset>
         </fieldset>
