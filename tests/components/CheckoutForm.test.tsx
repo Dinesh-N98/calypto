@@ -49,6 +49,7 @@ function renderCheckout({
   defaultAddress = addresses.find((address) => address.isDefault) ?? addresses[0] ?? null,
   isAuthenticated = true,
   paymentProvider = "ONEPAY",
+  currentStep = 5,
   onShippingCostChange,
 }: {
   currentProfile?: CheckoutProfile | null;
@@ -56,11 +57,13 @@ function renderCheckout({
   defaultAddress?: CheckoutAddress | null;
   isAuthenticated?: boolean;
   paymentProvider?: "ONEPAY" | "PAYPAL";
+  currentStep?: 2 | 3 | 4 | 5;
   onShippingCostChange?: (shippingCents: number | null) => void;
 } = {}) {
   return render(
     <CheckoutForm
       defaultAddress={defaultAddress}
+      currentStep={currentStep}
       isAuthenticated={isAuthenticated}
       items={[{ variantId: "variant-1", quantity: 1 }]}
       paymentProvider={paymentProvider}
@@ -74,20 +77,47 @@ function renderCheckout({
 
 describe("CheckoutForm", () => {
   it("keeps domestic OnePay checkout available without DHL rating", () => {
-    renderCheckout();
+    renderCheckout({ currentStep: 5 });
 
     expect(screen.getByRole("button", { name: /Checkout/ })).toBeEnabled();
   });
 
+  it("submits OnePay checkout from the review step", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: "Checkout unavailable" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderCheckout({ currentStep: 5 });
+
+    await user.click(screen.getByRole("button", { name: /Checkout/ }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/checkout",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(await screen.findByText("Checkout unavailable")).toBeInTheDocument();
+  });
+
   it("organizes checkout details into accessible sections", () => {
-    renderCheckout();
+    renderCheckout({ currentStep: 2 });
 
     expect(screen.getByRole("group", { name: "Contact information" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Delivery address" })).toBeInTheDocument();
     expect(
       screen.getByText("We'll use this to send your order confirmation and delivery updates."),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Delivery address" })).not.toBeInTheDocument();
+  });
+
+  it("shows delivery address and shipping controls on the delivery step", () => {
+    renderCheckout({ currentStep: 3 });
+
+    expect(screen.getByRole("group", { name: "Delivery address" })).toBeInTheDocument();
     expect(screen.getByText("Where should we send your order?")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Contact information" })).not.toBeInTheDocument();
   });
 
   it("requires a fresh DHL rate selection for international checkout", async () => {
@@ -120,15 +150,16 @@ describe("CheckoutForm", () => {
     renderCheckout({
       addresses: [internationalAddress],
       defaultAddress: internationalAddress,
+      currentStep: 3,
       onShippingCostChange,
     });
 
-    const checkoutButton = screen.getByRole("button", { name: /Checkout/ });
-    expect(checkoutButton).toBeDisabled();
+    const continueButton = screen.getByRole("button", { name: "Continue to payment" });
+    expect(continueButton).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
     expect(await screen.findByRole("option", { name: /DHL Express/ })).toBeInTheDocument();
-    expect(checkoutButton).toBeEnabled();
+    expect(continueButton).toBeEnabled();
     expect(screen.getByRole("radio", { name: "DHL Express" })).toBeChecked();
     expect(onShippingCostChange).toHaveBeenLastCalledWith(2500);
   });
@@ -136,7 +167,7 @@ describe("CheckoutForm", () => {
   it.each(["ONEPAY", "PAYPAL"] as const)(
     "shows the legal links beside the %s payment action",
     (paymentProvider) => {
-      renderCheckout({ paymentProvider });
+      renderCheckout({ paymentProvider, currentStep: 5 });
 
       expect(screen.getByText(/By placing your order, you agree to Calypto's/)).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Terms of Service" })).toHaveAttribute(
@@ -160,7 +191,7 @@ describe("CheckoutForm", () => {
   );
 
   it("renders server-provided contact details and default address immediately", () => {
-    renderCheckout();
+    renderCheckout({ currentStep: 3 });
 
     expect(screen.getByLabelText("First name")).toHaveValue("Ada");
     expect(screen.getByLabelText("Last name")).toHaveValue("Lovelace");
@@ -175,7 +206,12 @@ describe("CheckoutForm", () => {
 
   it("does not overwrite a field edited before updated profile props arrive", async () => {
     const user = userEvent.setup();
-    const view = renderCheckout({ currentProfile: null, addresses: [], isAuthenticated: false });
+    const view = renderCheckout({
+      currentProfile: null,
+      addresses: [],
+      isAuthenticated: false,
+      currentStep: 2,
+    });
 
     await user.type(screen.getByLabelText("First name"), "Grace");
     view.rerender(
@@ -199,7 +235,7 @@ describe("CheckoutForm", () => {
 
   it("retains the new-address draft while switching between saved addresses", async () => {
     const user = userEvent.setup();
-    renderCheckout();
+    renderCheckout({ currentStep: 3 });
     const addressSelector = screen.getByLabelText("Delivery address");
     const streetAddress = screen.getByLabelText("Street address");
 
@@ -221,7 +257,7 @@ describe("CheckoutForm", () => {
 
   it("keeps guests blank and permits manual entry", async () => {
     const user = userEvent.setup();
-    renderCheckout({ currentProfile: null, addresses: [], isAuthenticated: false });
+    renderCheckout({ currentProfile: null, addresses: [], isAuthenticated: false, currentStep: 2 });
 
     expect(screen.getByLabelText("First name")).toHaveValue("");
     expect(screen.getByLabelText("Email")).toHaveValue("");

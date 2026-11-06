@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { PayPalCheckoutButtons } from "@/components/PayPalCheckoutButtons";
@@ -41,6 +41,13 @@ type DhlRateOption = {
 type AddressFields = Omit<CheckoutAddress, "id" | "isDefault">;
 type ContactFields = { firstName: string; lastName: string; email: string; phone: string };
 export type CheckoutPaymentProvider = "ONEPAY" | "PAYPAL";
+export type CheckoutStep = 2 | 3 | 4 | 5;
+export type CheckoutReviewData = {
+  contact: ContactFields;
+  address: AddressFields;
+  shipping: { label: string; amountCents: number | null };
+  paymentProvider: CheckoutPaymentProvider;
+};
 
 function isDomesticDestination(country: string): boolean {
   const normalized = country.trim().toUpperCase();
@@ -85,7 +92,11 @@ export function CheckoutForm({
   isAuthenticated,
   paymentProvider,
   paypalClientId,
+  currentStep = 4,
+  onPaymentProviderChange,
+  onReviewDataChange,
   onShippingCostChange,
+  onStepChange,
 }: {
   items: CheckoutItem[];
   savedAddresses: CheckoutAddress[];
@@ -94,7 +105,11 @@ export function CheckoutForm({
   isAuthenticated: boolean;
   paymentProvider: CheckoutPaymentProvider;
   paypalClientId: string;
+  currentStep?: CheckoutStep;
+  onPaymentProviderChange?: (provider: CheckoutPaymentProvider) => void;
+  onReviewDataChange?: (data: CheckoutReviewData) => void;
   onShippingCostChange?: (shippingCents: number | null) => void;
+  onStepChange?: (step: CheckoutStep) => void;
 }) {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [dhlRates, setDhlRates] = useState<DhlRateOption[]>([]);
@@ -147,6 +162,48 @@ export function CheckoutForm({
   }, []);
 
   useEffect(() => {
+    onReviewDataChange?.({
+      contact: contactFields,
+      address: addressFields,
+      shipping: {
+        label: selectedRate?.serviceName ?? (isDomestic ? "Domestic delivery" : "DHL Express"),
+        amountCents: selectedShippingCents,
+      },
+      paymentProvider,
+    });
+  }, [
+    addressFields,
+    contactFields,
+    isDomestic,
+    onReviewDataChange,
+    paymentProvider,
+    selectedRate?.serviceName,
+    selectedShippingCents,
+  ]);
+
+  function validateStep(step: CheckoutStep): boolean {
+    const form = formElementRef.current;
+    const section = form?.querySelector<HTMLFieldSetElement>(`[data-checkout-step="${step}"]`);
+    return section?.reportValidity() ?? false;
+  }
+
+  function goToStep(step: CheckoutStep) {
+    onStepChange?.(step);
+  }
+
+  function continueToStep(step: CheckoutStep) {
+    if (currentStep === 2 && !validateStep(2)) return;
+    if (currentStep === 3) {
+      if (!isDomestic && !canSubmitOnePay) {
+        setError("Calculate and select a DHL shipping service before continuing.");
+        return;
+      }
+    }
+    setError(null);
+    goToStep(step);
+  }
+
+  useEffect(() => {
     if (!profile) return;
     setContactFields((fields) => {
       const next = { ...fields };
@@ -191,9 +248,9 @@ export function CheckoutForm({
 
   const getPayPalPayload = useCallback(() => {
     const form = formElementRef.current;
-    if (!form || !form.reportValidity()) return null;
+    if (!form || (currentStep !== 5 && !form.reportValidity())) return null;
     return buildCheckoutPayload(new FormData(form));
-  }, [buildCheckoutPayload]);
+  }, [buildCheckoutPayload, currentStep]);
 
   function selectAddress(value: string) {
     const address = savedAddresses.find((savedAddress) => savedAddress.id === value);
@@ -293,6 +350,7 @@ export function CheckoutForm({
   async function checkout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (paymentProvider !== "ONEPAY") return;
+    if (currentStep !== 5) return;
     if (!isDomestic && !canSubmitOnePay) {
       setError("Calculate and select a DHL shipping service before checkout.");
       return;
@@ -342,10 +400,7 @@ export function CheckoutForm({
   return (
     <>
       <form className="mt-6 grid gap-6" onSubmit={checkout} ref={setFormRef}>
-        <p className="rounded-lg bg-[#f7f8f1] px-3 py-3 text-sm leading-[1.6] text-[#55584e]">
-          Enter your contact and delivery details before choosing a payment method.
-        </p>
-        <fieldset className="grid gap-4">
+        <fieldset className="grid gap-4" data-checkout-step="2" hidden={currentStep !== 2}>
           <legend className="text-base font-bold">Contact information</legend>
           <p className="text-sm text-[#62665b]">
             We&apos;ll use this to send your order confirmation and delivery updates.
@@ -433,25 +488,29 @@ export function CheckoutForm({
             </div>
           </div>
         </fieldset>
-        {isAuthenticated && savedAddresses.length > 0 && (
-          <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
-            Delivery address
-            <select
-              className="auth-input"
-              onChange={(event) => selectAddress(event.currentTarget.value)}
-              value={selectedAddressId}
-            >
-              {savedAddresses.map((address) => (
-                <option key={address.id} value={address.id}>
-                  {address.line1} - {address.city}
-                  {address.isDefault ? " (Default)" : ""}
-                </option>
-              ))}
-              <option value="new">+ Enter a new address</option>
-            </select>
-          </label>
-        )}
-        <fieldset className="grid gap-4 border-t border-[#e5e5dc] pt-6">
+        <fieldset
+          className="grid gap-4 border-t border-[#e5e5dc] pt-6"
+          data-checkout-step="3"
+          hidden={currentStep !== 3}
+        >
+          {isAuthenticated && savedAddresses.length > 0 && (
+            <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
+              Delivery address
+              <select
+                className="auth-input"
+                onChange={(event) => selectAddress(event.currentTarget.value)}
+                value={selectedAddressId}
+              >
+                {savedAddresses.map((address) => (
+                  <option key={address.id} value={address.id}>
+                    {address.line1} - {address.city}
+                    {address.isDefault ? " (Default)" : ""}
+                  </option>
+                ))}
+                <option value="new">+ Enter a new address</option>
+              </select>
+            </label>
+          )}
           <legend className="text-base font-bold">Delivery address</legend>
           <p className="text-sm text-[#62665b]">Where should we send your order?</p>
           <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em] sm:col-span-2">
@@ -548,88 +607,201 @@ export function CheckoutForm({
               Save this address to my account for future orders
             </label>
           )}
+          {!isDomestic && (
+            <fieldset className="grid gap-3 border-t border-[#e5e5dc] pt-6">
+              <legend className="text-base font-bold">Shipping method</legend>
+              <p className="text-sm text-[#62665b]">
+                Choose a DHL service for this international destination.
+              </p>
+              <button
+                className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
+                disabled={loadingDhlRates}
+                onClick={() => void loadDhlRates()}
+                type="button"
+              >
+                {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
+              </button>
+              {loadingDhlRates && (
+                <p aria-live="polite" className="text-sm text-[#55584e]">
+                  Checking DHL service availability and destination routing…
+                </p>
+              )}
+              {dhlRates.length > 0 && (
+                <fieldset className="grid gap-2">
+                  <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">
+                    DHL shipping service
+                  </legend>
+                  {dhlRates.map((rate, index) => (
+                    <label
+                      className="flex items-start gap-3 border border-black/10 p-3 text-sm"
+                      key={`${rate.serviceCode ?? "dhl"}-${index}`}
+                    >
+                      <input
+                        aria-label={rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
+                        className="mt-1 accent-[#65771b]"
+                        checked={selectedDhlRate === rate.serviceCode}
+                        name="shippingService"
+                        onChange={() => selectDhlRate(rate.serviceCode ?? "")}
+                        type="radio"
+                        value={rate.serviceCode ?? ""}
+                      />
+                      <span className="flex-1">
+                        <strong>{rate.serviceName ?? rate.serviceCode ?? "DHL Express"}</strong>
+                        {rate.transitDays ? (
+                          <span className="ml-2 text-[#55584e]">
+                            {rate.transitDays} business days
+                          </span>
+                        ) : null}
+                      </span>
+                      <strong>
+                        {rate.currency} {rate.amount.toFixed(2)}
+                      </strong>
+                    </label>
+                  ))}
+                  <select
+                    aria-label="Shipping option"
+                    className="sr-only"
+                    onChange={(event) => selectDhlRate(event.currentTarget.value)}
+                    tabIndex={-1}
+                    value={selectedDhlRate}
+                  >
+                    <option value="">Select a service</option>
+                    {dhlRates.map((rate, index) => (
+                      <option
+                        key={`${rate.serviceCode ?? "dhl"}-compat-${index}`}
+                        value={rate.serviceCode ?? ""}
+                      >
+                        {rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs leading-5 text-[#55584e]">
+                    Shipping is quoted by DHL. Import duties and destination taxes are not included
+                    in this quote and may be collected by customs on delivery.
+                  </p>
+                </fieldset>
+              )}
+            </fieldset>
+          )}
         </fieldset>
-        {!isDomestic && (
-          <fieldset className="grid gap-3 border-t border-[#e5e5dc] pt-6">
-            <legend className="text-base font-bold">Shipping method</legend>
-            <p className="text-sm text-[#62665b]">
-              Choose a DHL service for this international destination.
-            </p>
+        <fieldset
+          className="grid gap-4 border-t border-[#e5e5dc] pt-6"
+          data-checkout-step="4"
+          hidden={currentStep !== 4}
+        >
+          <legend className="text-base font-bold">Payment method</legend>
+          <p className="text-sm text-[#62665b]">Choose how you would like to pay for your order.</p>
+          <label
+            className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${paymentProvider === "ONEPAY" ? "border-olive bg-[#f7f8f1]" : "border-[#ddddd3] hover:border-olive/60"}`}
+          >
+            <input
+              checked={paymentProvider === "ONEPAY"}
+              className="h-4 w-4 accent-olive"
+              name="paymentProvider"
+              onChange={() => onPaymentProviderChange?.("ONEPAY")}
+              type="radio"
+              value="ONEPAY"
+            />
+            <span className="grid gap-0.5">
+              <span className="font-bold">OnePay</span>
+              <span className="text-xs font-normal text-[#62665b]">
+                Secure card and local payment checkout
+              </span>
+            </span>
+            <span className="ml-auto text-xs font-semibold text-olive">Recommended</span>
+          </label>
+          <label
+            className={`flex min-h-16 items-center gap-3 rounded-xl border p-3 transition-colors ${paypalClientId ? (paymentProvider === "PAYPAL" ? "cursor-pointer border-olive bg-[#f7f8f1]" : "cursor-pointer border-[#ddddd3] hover:border-olive/60") : "opacity-55"}`}
+          >
+            <input
+              checked={paymentProvider === "PAYPAL"}
+              className="h-4 w-4 accent-olive"
+              disabled={!paypalClientId}
+              name="paymentProvider"
+              onChange={() => onPaymentProviderChange?.("PAYPAL")}
+              type="radio"
+              value="PAYPAL"
+            />
+            <span className="grid gap-0.5">
+              <span className="font-bold">PayPal</span>
+              <span className="text-xs font-normal text-[#62665b]">
+                Pay with your PayPal account
+              </span>
+            </span>
+            {!paypalClientId && <span className="ml-auto text-xs text-[#62665b]">Unavailable</span>}
+          </label>
+        </fieldset>
+        {currentStep === 4 && (
+          <div className="flex justify-between gap-3 border-t border-[#e5e5dc] pt-6">
             <button
-              className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
-              disabled={loadingDhlRates}
-              onClick={() => void loadDhlRates()}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#c9cabe] px-4 text-sm font-semibold text-ink hover:border-olive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
+              onClick={() => goToStep(3)}
               type="button"
             >
-              {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
+              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+              Back to delivery
             </button>
-            {loadingDhlRates && (
-              <p aria-live="polite" className="text-sm text-[#55584e]">
-                Checking DHL service availability and destination routing…
-              </p>
-            )}
-            {dhlRates.length > 0 && (
-              <fieldset className="grid gap-2">
-                <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">
-                  DHL shipping service
-                </legend>
-                {dhlRates.map((rate, index) => (
-                  <label
-                    className="flex items-start gap-3 border border-black/10 p-3 text-sm"
-                    key={`${rate.serviceCode ?? "dhl"}-${index}`}
-                  >
-                    <input
-                      aria-label={rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
-                      className="mt-1 accent-[#65771b]"
-                      checked={selectedDhlRate === rate.serviceCode}
-                      name="shippingService"
-                      onChange={() => selectDhlRate(rate.serviceCode ?? "")}
-                      type="radio"
-                      value={rate.serviceCode ?? ""}
-                    />
-                    <span className="flex-1">
-                      <strong>{rate.serviceName ?? rate.serviceCode ?? "DHL Express"}</strong>
-                      {rate.transitDays ? (
-                        <span className="ml-2 text-[#55584e]">
-                          {rate.transitDays} business days
-                        </span>
-                      ) : null}
-                    </span>
-                    <strong>
-                      {rate.currency} {rate.amount.toFixed(2)}
-                    </strong>
-                  </label>
-                ))}
-                <select
-                  aria-label="Shipping option"
-                  className="sr-only"
-                  onChange={(event) => selectDhlRate(event.currentTarget.value)}
-                  tabIndex={-1}
-                  value={selectedDhlRate}
-                >
-                  <option value="">Select a service</option>
-                  {dhlRates.map((rate, index) => (
-                    <option
-                      key={`${rate.serviceCode ?? "dhl"}-compat-${index}`}
-                      value={rate.serviceCode ?? ""}
-                    >
-                      {rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs leading-5 text-[#55584e]">
-                  Shipping is quoted by DHL. Import duties and destination taxes are not included in
-                  this quote and may be collected by customs on delivery.
-                </p>
-              </fieldset>
-            )}
-            {!loadingDhlRates && error && dhlRates.length === 0 && (
-              <p className="text-sm text-red-700" role="alert">
-                No usable DHL service was returned. Check the address, postal code, and country,
-                then try again.
-              </p>
-            )}
-          </fieldset>
+            <button
+              className="button-primary inline-flex min-h-11 items-center justify-center gap-2 px-5 text-sm font-bold text-paper"
+              onClick={() => continueToStep(5)}
+              type="button"
+            >
+              Review order
+              <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        {currentStep === 5 && paymentProvider === "PAYPAL" && paypalClientId && (
+          <div>
+            <PayPalCheckoutButtons clientId={paypalClientId} createPayload={getPayPalPayload} />
+            <div className="mt-3">
+              <CheckoutLegalNotice />
+            </div>
+          </div>
+        )}
+        {currentStep === 5 && paymentProvider === "PAYPAL" && !paypalClientId && (
+          <p className="text-sm text-red-700" role="alert">
+            PayPal is not configured for this deployment.
+          </p>
+        )}
+        {!loadingDhlRates && error && dhlRates.length === 0 && (
+          <p className="text-sm text-red-700" role="alert">
+            No usable DHL service was returned. Check the address, postal code, and country, then
+            try again.
+          </p>
+        )}
+        {currentStep === 3 && (
+          <div className="flex flex-wrap justify-between gap-3 border-t border-[#e5e5dc] pt-6">
+            <button
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#c9cabe] px-4 text-sm font-semibold text-ink hover:border-olive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
+              onClick={() => goToStep(2)}
+              type="button"
+            >
+              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+              Back to details
+            </button>
+            <button
+              className="button-primary inline-flex min-h-11 items-center justify-center gap-2 px-5 text-sm font-bold text-paper"
+              disabled={loadingDhlRates || (!isDomestic && !canSubmitOnePay)}
+              onClick={() => continueToStep(4)}
+              type="button"
+            >
+              Continue to payment
+              <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        {currentStep === 2 && (
+          <div className="flex justify-end border-t border-[#e5e5dc] pt-6">
+            <button
+              className="button-primary inline-flex min-h-11 items-center justify-center gap-2 px-5 text-sm font-bold text-paper"
+              onClick={() => continueToStep(3)}
+              type="button"
+            >
+              Continue to delivery
+              <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
         )}
         {process.env.NODE_ENV === "development" && (
           <details className="border border-dashed border-black/20 p-2 text-xs text-[#55584e]">
@@ -651,7 +823,7 @@ export function CheckoutForm({
             </pre>
           </details>
         )}
-        {paymentProvider === "ONEPAY" && (
+        {currentStep === 5 && paymentProvider === "ONEPAY" && (
           <>
             <button
               className="button-primary inline-flex w-full items-center justify-center gap-3 px-5 py-4 text-[.7rem] tracking-[.1em] text-paper"
@@ -676,19 +848,6 @@ export function CheckoutForm({
           </p>
         )}
       </form>
-      {paymentProvider === "PAYPAL" &&
-        (paypalClientId ? (
-          <div className="mt-5">
-            <PayPalCheckoutButtons clientId={paypalClientId} createPayload={getPayPalPayload} />
-            <div className="mt-3">
-              <CheckoutLegalNotice />
-            </div>
-          </div>
-        ) : (
-          <p className="mt-5 text-sm text-red-700" role="alert">
-            PayPal is not configured for this deployment.
-          </p>
-        ))}
     </>
   );
 }

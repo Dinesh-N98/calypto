@@ -179,7 +179,9 @@ describe("CartPageClient", () => {
       />,
     );
 
-    const checkoutButton = screen.getByRole("button", { name: /Checkout/ });
+    await user.click(screen.getByRole("button", { name: "Continue to delivery" }));
+
+    const checkoutButton = screen.getByRole("button", { name: /Continue to payment/ });
     expect(checkoutButton).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
@@ -188,6 +190,21 @@ describe("CartPageClient", () => {
       expect(screen.getByRole("radio", { name: "DHL Express" })).toBeChecked();
       expect(checkoutButton).toBeEnabled();
     });
+    await user.click(checkoutButton);
+    expect(screen.getByRole("button", { name: "Review order" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Review order" }));
+    expect(screen.getByRole("heading", { name: "Review your order" })).toBeInTheDocument();
+    expect(screen.getByText("Step 5 of 5")).toBeInTheDocument();
+    expect(screen.queryByText("Step 5 of 4")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Choose your payment method" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Complete your secure payment to place the order."),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: "Back to payment" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Checkout/ })).toBeEnabled();
     expect(screen.getAllByText("$31.27").length).toBeGreaterThan(0);
     expect(screen.getAllByText("$291.25").length).toBeGreaterThan(0);
     expect(screen.queryByText("Taxes")).not.toBeInTheDocument();

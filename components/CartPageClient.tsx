@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Check, LockKeyhole, Tag, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, LockKeyhole, Pencil, Tag, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { useCart } from "@/components/CartProvider";
 import {
@@ -10,6 +10,7 @@ import {
   type CheckoutAddress,
   type CheckoutPaymentProvider,
   type CheckoutProfile,
+  type CheckoutReviewData,
 } from "@/components/CheckoutForm";
 import { QuantitySelector } from "@/components/QuantitySelector";
 import { formatPrice } from "@/lib/currency";
@@ -46,6 +47,8 @@ export default function CartPageClient({
   const [paymentProvider, setPaymentProvider] = useState<CheckoutPaymentProvider>("ONEPAY");
   const [shippingCents, setShippingCents] = useState<number | null>(null);
   const [isCheckoutStep, setIsCheckoutStep] = useState(startAtCheckout);
+  const [checkoutStep, setCheckoutStep] = useState<2 | 3 | 4 | 5>(2);
+  const [reviewData, setReviewData] = useState<CheckoutReviewData | null>(null);
   const [discountCode, setDiscountCode] = useState("");
   const [discountMessage, setDiscountMessage] = useState("");
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
@@ -81,6 +84,7 @@ export default function CartPageClient({
 
   function returnToCart() {
     setIsCheckoutStep(false);
+    setCheckoutStep(2);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   const checkoutHref = buyNowVariantId
@@ -112,9 +116,22 @@ export default function CartPageClient({
               {(
                 [
                   ["Cart", !isCheckoutStep, isCheckoutStep],
-                  ["Details", isCheckoutStep, false],
-                  ["Delivery", false, false],
-                  ["Payment", false, false],
+                  [
+                    "Details",
+                    isCheckoutStep && checkoutStep === 2,
+                    isCheckoutStep && checkoutStep > 2,
+                  ],
+                  [
+                    "Delivery",
+                    isCheckoutStep && checkoutStep === 3,
+                    isCheckoutStep && checkoutStep > 3,
+                  ],
+                  [
+                    "Payment",
+                    isCheckoutStep && checkoutStep === 4,
+                    isCheckoutStep && checkoutStep > 4,
+                  ],
+                  ["Review", isCheckoutStep && checkoutStep === 5, false],
                 ] as const
               ).map(([label, current, complete], index) => (
                 <li className="flex items-center gap-1 whitespace-nowrap sm:gap-2" key={label}>
@@ -131,7 +148,7 @@ export default function CartPageClient({
                   <span className={current || complete ? "text-olive" : "text-[#77796f]"}>
                     {label}
                   </span>
-                  {index < 3 && (
+                  {index < 4 && (
                     <span aria-hidden="true" className="h-px w-1 bg-[#c8c8bc] sm:w-5" />
                   )}
                 </li>
@@ -295,65 +312,38 @@ export default function CartPageClient({
               />
               <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(19rem,1fr)] lg:gap-8">
                 <div className="rounded-2xl border border-[#ddddd3] bg-white p-4 sm:p-6">
-                  <div className="mb-6">
-                    <p className="text-[.65rem] font-bold uppercase tracking-[.14em] text-olive">
-                      Step 2 of 4
-                    </p>
-                    <h2 className="mt-2 text-xl font-black tracking-tight">
-                      Your checkout details
-                    </h2>
-                    <p className="mt-1 text-sm text-[#62665b]">
-                      Your details are used to arrange delivery and send order updates.
-                    </p>
-                  </div>
-                  <fieldset className="mb-6 grid gap-3 border-b border-[#e5e5dc] pb-6">
-                    <legend className="mb-1 text-base font-bold">Payment method</legend>
-                    <p className="mb-1 text-sm text-[#62665b]">
-                      Choose how you would like to pay after reviewing your delivery details.
-                    </p>
-                    <label
-                      className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${paymentProvider === "ONEPAY" ? "border-olive bg-[#f7f8f1]" : "border-[#ddddd3] hover:border-olive/60"}`}
-                    >
-                      <input
-                        checked={paymentProvider === "ONEPAY"}
-                        className="h-4 w-4 accent-olive"
-                        name="paymentProvider"
-                        onChange={() => setPaymentProvider("ONEPAY")}
-                        type="radio"
-                        value="ONEPAY"
-                      />
-                      <span className="grid gap-0.5">
-                        <span className="font-bold">OnePay</span>
-                        <span className="text-xs font-normal text-[#62665b]">
-                          Secure card and local payment checkout
-                        </span>
-                      </span>
-                      <span className="ml-auto text-xs font-semibold text-olive">Recommended</span>
-                    </label>
-                    <label
-                      className={`flex min-h-16 items-center gap-3 rounded-xl border p-3 transition-colors ${paypalClientId ? (paymentProvider === "PAYPAL" ? "cursor-pointer border-olive bg-[#f7f8f1]" : "cursor-pointer border-[#ddddd3] hover:border-olive/60") : "opacity-55"}`}
-                    >
-                      <input
-                        checked={paymentProvider === "PAYPAL"}
-                        className="h-4 w-4 accent-olive"
-                        disabled={!paypalClientId}
-                        name="paymentProvider"
-                        onChange={() => setPaymentProvider("PAYPAL")}
-                        type="radio"
-                        value="PAYPAL"
-                      />
-                      <span className="grid gap-0.5">
-                        <span className="font-bold">PayPal</span>
-                        <span className="text-xs font-normal text-[#62665b]">
-                          Pay with your PayPal account
-                        </span>
-                      </span>
-                      {!paypalClientId && (
-                        <span className="ml-auto text-xs text-[#62665b]">Unavailable</span>
-                      )}
-                    </label>
-                  </fieldset>
+                  {checkoutStep < 5 && (
+                    <div className="mb-6">
+                      <p className="text-[.65rem] font-bold uppercase tracking-[.14em] text-olive">
+                        Step {checkoutStep} of 5
+                      </p>
+                      <h2 className="mt-2 text-xl font-black tracking-tight">
+                        {checkoutStep === 2
+                          ? "Your contact details"
+                          : checkoutStep === 3
+                            ? "Your delivery details"
+                            : "Choose your payment method"}
+                      </h2>
+                      <p className="mt-1 text-sm text-[#62665b]">
+                        {checkoutStep === 2
+                          ? "We'll use this to send your order confirmation and delivery updates."
+                          : checkoutStep === 3
+                            ? "Where should we send your order?"
+                            : "Complete your secure payment to place the order."}
+                      </p>
+                    </div>
+                  )}
+                  {checkoutStep === 5 && reviewData && (
+                    <CheckoutReview
+                      data={reviewData}
+                      items={purchaseItems}
+                      onEdit={(step) => setCheckoutStep(step)}
+                      shippingCents={shippingCents}
+                      subtotalCents={subtotalCents}
+                    />
+                  )}
                   <CheckoutForm
+                    currentStep={checkoutStep}
                     defaultAddress={defaultAddress}
                     isAuthenticated={isAuthenticated}
                     items={checkoutItems}
@@ -361,7 +351,10 @@ export default function CartPageClient({
                     paymentProvider={paymentProvider}
                     paypalClientId={paypalClientId}
                     savedAddresses={savedAddresses}
+                    onPaymentProviderChange={setPaymentProvider}
+                    onReviewDataChange={setReviewData}
                     onShippingCostChange={setShippingCents}
+                    onStepChange={setCheckoutStep}
                   />
                 </div>
                 <aside className="rounded-2xl border border-[#ddddd3] bg-white p-5 sm:p-6 lg:sticky lg:top-24">
@@ -473,6 +466,104 @@ function OrderSummary({
   );
 }
 
+function CheckoutReview({
+  data,
+  items,
+  onEdit,
+  shippingCents,
+  subtotalCents,
+}: {
+  data: CheckoutReviewData;
+  items: CheckoutSummaryItem[];
+  onEdit: (step: 2 | 3 | 4) => void;
+  shippingCents: number | null;
+  subtotalCents: number;
+}) {
+  return (
+    <section
+      aria-labelledby="checkout-review-title"
+      className="mb-6 grid gap-4 border-b border-[#e5e5dc] pb-6"
+    >
+      <div>
+        <p className="text-[.65rem] font-bold uppercase tracking-[.14em] text-olive">Step 5 of 5</p>
+        <h2 className="mt-2 text-xl font-black tracking-tight" id="checkout-review-title">
+          Review your order
+        </h2>
+        <p className="mt-1 text-sm text-[#62665b]">Check your details before completing payment.</p>
+      </div>
+      <ReviewCard title="Contact information" onEdit={() => onEdit(2)}>
+        <p>
+          {data.contact.firstName} {data.contact.lastName}
+        </p>
+        <p>{data.contact.email}</p>
+        <p>{data.contact.phone}</p>
+      </ReviewCard>
+      <ReviewCard title="Delivery address" onEdit={() => onEdit(3)}>
+        <p>{data.address.line1}</p>
+        {data.address.line2 && <p>{data.address.line2}</p>}
+        {data.address.line3 && <p>{data.address.line3}</p>}
+        <p>
+          {data.address.city}, {data.address.state} {data.address.postalCode}
+        </p>
+        <p>{data.address.country}</p>
+        <p className="mt-2 font-semibold">
+          {data.shipping.label}{" "}
+          <span className="font-normal">
+            {shippingCents === null ? "—" : formatPrice(shippingCents)}
+          </span>
+        </p>
+      </ReviewCard>
+      <ReviewCard title="Payment method" onEdit={() => onEdit(4)}>
+        <p className="font-semibold">{data.paymentProvider === "ONEPAY" ? "OnePay" : "PayPal"}</p>
+      </ReviewCard>
+      <div className="rounded-xl bg-[#f7f8f1] p-4">
+        <h3 className="font-bold">Order summary</h3>
+        <div className="mt-3 grid gap-2 text-sm">
+          {items.map((item) => (
+            <div className="flex justify-between gap-4" key={item.variantId}>
+              <span className="text-[#62665b]">
+                {item.name} × {item.quantity}
+              </span>
+              <span className="font-semibold">{formatPrice(item.priceCents * item.quantity)}</span>
+            </div>
+          ))}
+          <div className="mt-2 flex justify-between border-t border-[#ddddd3] pt-3 font-bold">
+            <span>Total</span>
+            <span>{formatPrice(subtotalCents + (shippingCents ?? 0))}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReviewCard({
+  title,
+  children,
+  onEdit,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onEdit: () => void;
+}) {
+  return (
+    <section className="rounded-xl border border-[#ddddd3] p-4">
+      <div className="flex items-start justify-between gap-4">
+        <h3 className="font-bold">{title}</h3>
+        <button
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-olive hover:bg-[#f7f8f1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive"
+          onClick={onEdit}
+          type="button"
+        >
+          <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
+          Edit
+        </button>
+      </div>
+      <div className="mt-2 text-sm leading-6 text-[#62665b]">{children}</div>
+    </section>
+  );
+}
+
 function SummaryTotals({
   subtotalCents,
   shippingCents,
@@ -539,7 +630,9 @@ function MobileCheckoutSummary({
             </div>
             <span className="min-w-0 flex-1 text-[#62665b]">
               <span className="block font-semibold text-ink">{item.name}</span>
-              {item.variantLabel && <span className="mt-0.5 block text-xs">{item.variantLabel}</span>}
+              {item.variantLabel && (
+                <span className="mt-0.5 block text-xs">{item.variantLabel}</span>
+              )}
               <span className="mt-0.5 block text-xs">Qty {item.quantity}</span>
             </span>
             <span className="shrink-0 font-medium">
