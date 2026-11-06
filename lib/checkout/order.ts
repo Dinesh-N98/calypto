@@ -26,11 +26,6 @@ type PackageVariant = {
   heightCm: number | null;
 };
 
-function isDomesticDestination(country: string): boolean {
-  const normalized = country.trim().toUpperCase();
-  return normalized === "LK" || normalized === "SRI LANKA";
-}
-
 export class CheckoutInputError extends Error {
   constructor(
     message: string,
@@ -94,7 +89,8 @@ function parseAddress(value: unknown): CheckoutAddress | null {
       "postalCode",
       "country",
     ])
-  ) return null;
+  )
+    return null;
   const limits = {
     streetAddress: 200,
     aptSuite: 200,
@@ -125,10 +121,7 @@ function parseAddress(value: unknown): CheckoutAddress | null {
 
   for (const field of fields) {
     const raw = value[field];
-    if (
-      (field === "aptSuite" || field === "addressLine3") &&
-      (raw === null || raw === undefined)
-    ) {
+    if ((field === "aptSuite" || field === "addressLine3") && (raw === null || raw === undefined)) {
       address[field] = "";
       continue;
     }
@@ -191,7 +184,8 @@ export function parseCheckoutPayload(value: unknown): CheckoutPayload {
   const shippingServiceCode =
     value.shippingServiceCode === undefined
       ? undefined
-      : typeof value.shippingServiceCode === "string" && /^[A-Za-z0-9_-]{1,30}$/u.test(value.shippingServiceCode)
+      : typeof value.shippingServiceCode === "string" &&
+          /^[A-Za-z0-9_-]{1,30}$/u.test(value.shippingServiceCode)
         ? value.shippingServiceCode
         : (() => {
             throw new CheckoutInputError("The selected shipping service is invalid.");
@@ -314,51 +308,55 @@ export async function createPendingCheckoutOrder({
 
   let shippingCents = 0;
   let shippingServiceCode: string | null = null;
-  if (!isDomesticDestination(payload.address.country)) {
-    if (!payload.shippingServiceCode) {
-      throw new CheckoutInputError(
-        "Select a DHL shipping service before continuing to payment.",
-      );
-    }
-    const config = getDhlConfig();
-    const packageVariants: PackageVariant[] = resolvedItems
-      .filter((item): item is NonNullable<typeof item> => item !== null)
-      .map(({ variant, quantity }) => ({
-        quantity,
-        weightKg: variant.weightKg,
-        lengthCm: variant.lengthCm,
-        widthCm: variant.widthCm,
-        heightCm: variant.heightCm,
-      }));
-    const packages: DhlPackage[] = [buildDhlPackage(packageVariants, config.defaultPackage)];
-    let rates: Awaited<ReturnType<typeof getDHLRates>>;
-    try {
-      rates = await getDHLRates({
-        recipient: {
-          streetLines: [
-            payload.address.streetAddress,
-            payload.address.aptSuite,
-            payload.address.addressLine3,
-          ].filter((line): line is string => Boolean(line)),
-          city: payload.address.city,
-          postalCode: payload.address.postalCode,
-          countryCode: normalizeCountryCode(payload.address.country),
-          stateOrProvinceCode: payload.address.state || undefined,
-        },
-        packages,
-      });
-    } catch (error) {
-      console.error("Unable to calculate DHL checkout rate.", error);
-      throw new CheckoutInputError("International shipping rates are temporarily unavailable.", 503);
-    }
-    const selected = rates.find((rate) => rate.serviceCode === payload.shippingServiceCode);
-    if (!selected) throw new CheckoutInputError("The selected DHL shipping service is unavailable.", 409);
-    if (selected.currency !== CHECKOUT_CURRENCY || !Number.isFinite(selected.amount) || selected.amount <= 0) {
-      throw new CheckoutInputError("DHL returned a currency that cannot be charged at checkout.", 502);
-    }
-    shippingCents = Math.ceil(selected.amount * 100);
-    shippingServiceCode = selected.serviceCode ?? null;
+  if (!payload.shippingServiceCode) {
+    throw new CheckoutInputError("Select a DHL shipping service before continuing to payment.");
   }
+  const config = getDhlConfig();
+  const packageVariants: PackageVariant[] = resolvedItems
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .map(({ variant, quantity }) => ({
+      quantity,
+      weightKg: variant.weightKg,
+      lengthCm: variant.lengthCm,
+      widthCm: variant.widthCm,
+      heightCm: variant.heightCm,
+    }));
+  const packages: DhlPackage[] = [buildDhlPackage(packageVariants, config.defaultPackage)];
+  let rates: Awaited<ReturnType<typeof getDHLRates>>;
+  try {
+    rates = await getDHLRates({
+      recipient: {
+        streetLines: [
+          payload.address.streetAddress,
+          payload.address.aptSuite,
+          payload.address.addressLine3,
+        ].filter((line): line is string => Boolean(line)),
+        city: payload.address.city,
+        postalCode: payload.address.postalCode,
+        countryCode: normalizeCountryCode(payload.address.country),
+        stateOrProvinceCode: payload.address.state || undefined,
+      },
+      packages,
+    });
+  } catch (error) {
+    console.error("Unable to calculate DHL checkout rate.", error);
+    throw new CheckoutInputError("Shipping rates are temporarily unavailable.", 503);
+  }
+  const selected = rates.find((rate) => rate.serviceCode === payload.shippingServiceCode);
+  if (!selected)
+    throw new CheckoutInputError("The selected DHL shipping service is unavailable.", 409);
+  if (
+    selected.currency !== CHECKOUT_CURRENCY ||
+    !Number.isFinite(selected.amount) ||
+    selected.amount <= 0
+  ) {
+    throw new CheckoutInputError(
+      "DHL returned a currency that cannot be charged at checkout.",
+      502,
+    );
+  }
+  shippingCents = Math.ceil(selected.amount * 100);
+  shippingServiceCode = selected.serviceCode ?? null;
   const grandTotalCents = totalCents + shippingCents;
 
   const session = await auth();

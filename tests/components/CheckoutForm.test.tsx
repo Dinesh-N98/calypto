@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState, type ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   CheckoutForm,
@@ -61,7 +62,7 @@ function renderCheckout({
   onShippingCostChange?: (shippingCents: number | null) => void;
 } = {}) {
   return render(
-    <CheckoutForm
+    <StatefulCheckout
       defaultAddress={defaultAddress}
       currentStep={currentStep}
       isAuthenticated={isAuthenticated}
@@ -75,26 +76,89 @@ function renderCheckout({
   );
 }
 
-describe("CheckoutForm", () => {
-  it("keeps domestic OnePay checkout available without DHL rating", () => {
-    renderCheckout({ currentStep: 5 });
+function StatefulCheckout(props: ComponentProps<typeof CheckoutForm>) {
+  const [step, setStep] = useState(props.currentStep ?? 5);
+  return <CheckoutForm {...props} currentStep={step} onStepChange={setStep} />;
+}
 
-    expect(screen.getByRole("button", { name: /Checkout/ })).toBeEnabled();
+function stubCheckoutAndShippingFetch() {
+  const fetchMock = vi.fn().mockImplementation((url: string) =>
+    Promise.resolve(
+      url === "/api/checkout/rates"
+        ? new Response(
+            JSON.stringify({
+              rates: [
+                {
+                  serviceCode: "P",
+                  serviceName: "DHL Express Domestic",
+                  currency: "USD",
+                  amount: 8.5,
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          )
+        : new Response(JSON.stringify({ error: "Checkout unavailable" }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          }),
+    ),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+describe("CheckoutForm", () => {
+  it("requires a DHL quote for Sri Lankan delivery before continuing", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            rates: [
+              {
+                serviceCode: "P",
+                serviceName: "DHL Express Domestic",
+                currency: "USD",
+                amount: 8.5,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    renderCheckout({ currentStep: 3 });
+
+    const continueButton = screen.getByRole("button", { name: "Continue to payment" });
+    expect(continueButton).toBeDisabled();
+    expect(
+      screen.getByText("Choose a DHL service for this delivery destination."),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    expect(await screen.findByRole("radio", { name: "DHL Express Domestic" })).toBeChecked();
+    expect(continueButton).toBeEnabled();
+    expect(screen.getByText("USD 8.50")).toBeInTheDocument();
   });
 
-  it("submits OnePay checkout from the review step", async () => {
+  it("submits OnePay checkout with DHL shipping from the review step", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ error: "Checkout unavailable" }), {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    renderCheckout({ currentStep: 5 });
+    const fetchMock = stubCheckoutAndShippingFetch();
+    renderCheckout({ currentStep: 3 });
+
+    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    await screen.findByRole("radio", { name: "DHL Express Domestic" });
+    await user.click(screen.getByRole("button", { name: "Continue to payment" }));
+    await user.click(screen.getByRole("button", { name: "Review order" }));
 
     await user.click(screen.getByRole("button", { name: /Checkout/ }));
 
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/checkout/rates",
+      expect.objectContaining({ method: "POST" }),
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/checkout",
       expect.objectContaining({ method: "POST" }),
@@ -103,14 +167,8 @@ describe("CheckoutForm", () => {
   });
 
   it("shows a dynamic calling-code prefix and submits a normalized E.164 phone", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ error: "Checkout unavailable" }), {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    const { container } = renderCheckout({ currentStep: 5 });
+    const fetchMock = stubCheckoutAndShippingFetch();
+    const { container } = renderCheckout({ currentStep: 2 });
     const callingCode = container.querySelector<HTMLSelectElement>('[aria-label="Calling code"]');
     const phoneInput = container.querySelector<HTMLInputElement>(
       '[aria-label="Phone number (E.164)"]',
@@ -121,6 +179,8 @@ describe("CheckoutForm", () => {
 
     expect(phoneInput).toHaveValue("771234567");
     expect(phoneInput.parentElement).toHaveTextContent("(+94)");
+    expect(phoneInput).toHaveAttribute("placeholder", "771234567");
+    expect(phoneInput).toHaveStyle({ paddingLeft: "6rem" });
 
     fireEvent.change(callingCode, { target: { value: "+1" } });
     expect(phoneInput.parentElement).toHaveTextContent("(+1)");
@@ -128,14 +188,20 @@ describe("CheckoutForm", () => {
 
     fireEvent.change(phoneInput, { target: { value: "202 555 0123" } });
     expect(phoneInput).toHaveValue("2025550123");
-    const form = container.querySelector("form");
-    if (!form) throw new Error("Checkout form was not rendered.");
-    fireEvent.submit(form);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Continue to delivery" }));
+    await user.click(screen.getByRole("button", { name: "Calculate DHL shipping" }));
+    await screen.findByRole("radio", { name: "DHL Express Domestic" });
+    await user.click(screen.getByRole("button", { name: "Continue to payment" }));
+    await user.click(screen.getByRole("button", { name: "Review order" }));
+    await user.click(screen.getByRole("button", { name: /Checkout/ }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
-    const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+    const checkoutCall = fetchMock.mock.calls.find((call) => call[0] === "/api/checkout");
+    if (!checkoutCall) throw new Error("OnePay checkout request was not sent.");
+    const requestBody = JSON.parse(checkoutCall[1].body as string) as {
       customer: { phone: string };
     };
     expect(requestBody.customer.phone).toBe("+12025550123");
@@ -255,7 +321,7 @@ describe("CheckoutForm", () => {
 
     await user.type(screen.getByLabelText("First name"), "Grace");
     view.rerender(
-      <CheckoutForm
+      <StatefulCheckout
         defaultAddress={null}
         isAuthenticated={false}
         items={[{ variantId: "variant-1", quantity: 1 }]}
@@ -263,6 +329,7 @@ describe("CheckoutForm", () => {
         paypalClientId=""
         profile={{ ...profile, firstName: "Ada" }}
         savedAddresses={[]}
+        currentStep={2}
       />,
     );
 

@@ -49,11 +49,6 @@ export type CheckoutReviewData = {
   paymentProvider: CheckoutPaymentProvider;
 };
 
-function isDomesticDestination(country: string): boolean {
-  const normalized = country.trim().toUpperCase();
-  return normalized === "LK" || normalized === "SRI LANKA";
-}
-
 function normalizeE164Phone(value: string): string {
   const digits = value.replace(/\D/gu, "");
   return digits ? `+${digits}` : "";
@@ -148,7 +143,6 @@ export function CheckoutForm({
   }));
   const dirtyContactFields = useRef(new Set<keyof ContactFields>());
   const formElementRef = useRef<HTMLFormElement | null>(null);
-  const isDomestic = isDomesticDestination(addressFields.country);
   const itemKey = items.map((item) => `${item.variantId}:${item.quantity}`).join("|");
   const addressKey = [
     addressFields.line1,
@@ -166,8 +160,7 @@ export function CheckoutForm({
   const hasCurrentQuote = dhlQuoteItemsKey === quoteContextKey;
   const selectedShippingCents =
     selectedRate && hasCurrentQuote ? Math.ceil(selectedRate.amount * 100) : null;
-  const canSubmitOnePay =
-    isDomestic || (!loadingDhlRates && selectedRate !== undefined && hasCurrentQuote);
+  const canSubmitOnePay = !loadingDhlRates && selectedRate !== undefined && hasCurrentQuote;
   const maxPhoneSubscriberDigits = 15 - (phoneCountryCode.length - 1);
   const setFormRef = useCallback((element: HTMLFormElement | null) => {
     formElementRef.current = element;
@@ -178,7 +171,7 @@ export function CheckoutForm({
       contact: contactFields,
       address: addressFields,
       shipping: {
-        label: selectedRate?.serviceName ?? (isDomestic ? "Domestic delivery" : "DHL Express"),
+        label: selectedRate?.serviceName ?? "DHL Express",
         amountCents: selectedShippingCents,
       },
       paymentProvider,
@@ -186,7 +179,6 @@ export function CheckoutForm({
   }, [
     addressFields,
     contactFields,
-    isDomestic,
     onReviewDataChange,
     paymentProvider,
     selectedRate?.serviceName,
@@ -206,7 +198,7 @@ export function CheckoutForm({
   function continueToStep(step: CheckoutStep) {
     if (currentStep === 2 && !validateStep(2)) return;
     if (currentStep === 3) {
-      if (!isDomestic && !canSubmitOnePay) {
+      if (!canSubmitOnePay) {
         setError("Calculate and select a DHL shipping service before continuing.");
         return;
       }
@@ -365,7 +357,7 @@ export function CheckoutForm({
     event.preventDefault();
     if (paymentProvider !== "ONEPAY") return;
     if (currentStep !== 5) return;
-    if (!isDomestic && !canSubmitOnePay) {
+    if (!canSubmitOnePay) {
       setError("Calculate and select a DHL shipping service before checkout.");
       return;
     }
@@ -494,7 +486,7 @@ export function CheckoutForm({
                     <input
                       aria-label="Phone number (E.164)"
                       autoComplete="tel-national"
-                      className="auth-input pl-[5.5rem]"
+                      className="auth-input"
                       maxLength={maxPhoneSubscriberDigits}
                       name="phoneSubscriber"
                       onChange={(event) => {
@@ -507,6 +499,7 @@ export function CheckoutForm({
                       pattern={`[0-9]{7,${maxPhoneSubscriberDigits}}`}
                       placeholder="771234567"
                       required
+                      style={{ paddingLeft: "6rem" }}
                       type="tel"
                       value={getPhoneSubscriber(contactFields.phone, phoneCountryCode)}
                     />
@@ -635,82 +628,80 @@ export function CheckoutForm({
               Save this address to my account for future orders
             </label>
           )}
-          {!isDomestic && (
-            <fieldset className="grid gap-3 border-t border-[#e5e5dc] pt-6">
-              <legend className="text-base font-bold">Shipping method</legend>
-              <p className="text-sm text-[#62665b]">
-                Choose a DHL service for this international destination.
+          <fieldset className="grid gap-3 border-t border-[#e5e5dc] pt-6">
+            <legend className="text-base font-bold">Shipping method</legend>
+            <p className="text-sm text-[#62665b]">
+              Choose a DHL service for this delivery destination.
+            </p>
+            <button
+              className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
+              disabled={loadingDhlRates}
+              onClick={() => void loadDhlRates()}
+              type="button"
+            >
+              {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
+            </button>
+            {loadingDhlRates && (
+              <p aria-live="polite" className="text-sm text-[#55584e]">
+                Checking DHL service availability and destination routing…
               </p>
-              <button
-                className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
-                disabled={loadingDhlRates}
-                onClick={() => void loadDhlRates()}
-                type="button"
-              >
-                {loadingDhlRates ? "Calculating DHL rates…" : "Calculate DHL shipping"}
-              </button>
-              {loadingDhlRates && (
-                <p aria-live="polite" className="text-sm text-[#55584e]">
-                  Checking DHL service availability and destination routing…
-                </p>
-              )}
-              {dhlRates.length > 0 && (
-                <fieldset className="grid gap-2">
-                  <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">
-                    DHL shipping service
-                  </legend>
-                  {dhlRates.map((rate, index) => (
-                    <label
-                      className="flex items-start gap-3 border border-black/10 p-3 text-sm"
-                      key={`${rate.serviceCode ?? "dhl"}-${index}`}
-                    >
-                      <input
-                        aria-label={rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
-                        className="mt-1 accent-[#65771b]"
-                        checked={selectedDhlRate === rate.serviceCode}
-                        name="shippingService"
-                        onChange={() => selectDhlRate(rate.serviceCode ?? "")}
-                        type="radio"
-                        value={rate.serviceCode ?? ""}
-                      />
-                      <span className="flex-1">
-                        <strong>{rate.serviceName ?? rate.serviceCode ?? "DHL Express"}</strong>
-                        {rate.transitDays ? (
-                          <span className="ml-2 text-[#55584e]">
-                            {rate.transitDays} business days
-                          </span>
-                        ) : null}
-                      </span>
-                      <strong>
-                        {rate.currency} {rate.amount.toFixed(2)}
-                      </strong>
-                    </label>
-                  ))}
-                  <select
-                    aria-label="Shipping option"
-                    className="sr-only"
-                    onChange={(event) => selectDhlRate(event.currentTarget.value)}
-                    tabIndex={-1}
-                    value={selectedDhlRate}
+            )}
+            {dhlRates.length > 0 && (
+              <fieldset className="grid gap-2">
+                <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">
+                  DHL shipping service
+                </legend>
+                {dhlRates.map((rate, index) => (
+                  <label
+                    className="flex items-start gap-3 border border-black/10 p-3 text-sm"
+                    key={`${rate.serviceCode ?? "dhl"}-${index}`}
                   >
-                    <option value="">Select a service</option>
-                    {dhlRates.map((rate, index) => (
-                      <option
-                        key={`${rate.serviceCode ?? "dhl"}-compat-${index}`}
-                        value={rate.serviceCode ?? ""}
-                      >
-                        {rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs leading-5 text-[#55584e]">
-                    Shipping is quoted by DHL. Import duties and destination taxes are not included
-                    in this quote and may be collected by customs on delivery.
-                  </p>
-                </fieldset>
-              )}
-            </fieldset>
-          )}
+                    <input
+                      aria-label={rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
+                      className="mt-1 accent-[#65771b]"
+                      checked={selectedDhlRate === rate.serviceCode}
+                      name="shippingService"
+                      onChange={() => selectDhlRate(rate.serviceCode ?? "")}
+                      type="radio"
+                      value={rate.serviceCode ?? ""}
+                    />
+                    <span className="flex-1">
+                      <strong>{rate.serviceName ?? rate.serviceCode ?? "DHL Express"}</strong>
+                      {rate.transitDays ? (
+                        <span className="ml-2 text-[#55584e]">
+                          {rate.transitDays} business days
+                        </span>
+                      ) : null}
+                    </span>
+                    <strong>
+                      {rate.currency} {rate.amount.toFixed(2)}
+                    </strong>
+                  </label>
+                ))}
+                <select
+                  aria-label="Shipping option"
+                  className="sr-only"
+                  onChange={(event) => selectDhlRate(event.currentTarget.value)}
+                  tabIndex={-1}
+                  value={selectedDhlRate}
+                >
+                  <option value="">Select a service</option>
+                  {dhlRates.map((rate, index) => (
+                    <option
+                      key={`${rate.serviceCode ?? "dhl"}-compat-${index}`}
+                      value={rate.serviceCode ?? ""}
+                    >
+                      {rate.serviceName ?? rate.serviceCode ?? "DHL Express"}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs leading-5 text-[#55584e]">
+                  Shipping is quoted by DHL. Import duties and destination taxes are not included in
+                  this quote and may be collected by customs on delivery.
+                </p>
+              </fieldset>
+            )}
+          </fieldset>
         </fieldset>
         <fieldset
           className="grid gap-4 border-t border-[#e5e5dc] pt-6"
@@ -810,7 +801,7 @@ export function CheckoutForm({
             </button>
             <button
               className="button-primary inline-flex min-h-11 items-center justify-center gap-2 px-5 text-sm font-bold text-paper"
-              disabled={loadingDhlRates || (!isDomestic && !canSubmitOnePay)}
+              disabled={!canSubmitOnePay}
               onClick={() => continueToStep(4)}
               type="button"
             >
@@ -837,7 +828,6 @@ export function CheckoutForm({
             <pre className="mt-2 overflow-auto whitespace-pre-wrap">
               {JSON.stringify(
                 {
-                  isDomestic,
                   loadingDhlRates,
                   ratesCount: dhlRates.length,
                   selectedDhlRate,

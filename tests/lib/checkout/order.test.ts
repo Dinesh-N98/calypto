@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   addressCount: vi.fn(),
   addressCreate: vi.fn(),
   orderCreate: vi.fn(),
+  getDHLRates: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
@@ -17,6 +18,18 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: mocks.transaction,
     productVariant: { findMany: mocks.variantFindMany },
   },
+}));
+vi.mock("@/lib/config/dhl", () => ({
+  getDhlConfig: () => ({ defaultPackage: { weightKg: 0.5, lengthCm: 3, widthCm: 2, heightCm: 1 } }),
+}));
+vi.mock("@/lib/dhl/rate", () => ({
+  buildDhlPackage: vi.fn(() => ({
+    weightKg: 0.5,
+    lengthCm: 3,
+    widthCm: 2,
+    heightCm: 1,
+  })),
+  getDHLRates: mocks.getDHLRates,
 }));
 
 import { createPendingCheckoutOrder, parseCheckoutPayload } from "@/lib/checkout/order";
@@ -58,6 +71,7 @@ const payload: CheckoutPayload = {
     country: "Sri Lanka",
   },
   saveAddress: false,
+  shippingServiceCode: "P",
 };
 
 const createdOrder = {
@@ -69,12 +83,16 @@ const createdOrder = {
 };
 
 beforeEach(() => {
+  mocks.getDHLRates.mockClear();
   mocks.auth.mockResolvedValue({ user: { id: "user-1" } });
   mocks.variantFindMany.mockResolvedValue([variant]);
   mocks.variantUpdateMany.mockResolvedValue({ count: 1 });
   mocks.addressCount.mockResolvedValue(1);
   mocks.addressCreate.mockResolvedValue({ id: "address-2" });
   mocks.orderCreate.mockResolvedValue(createdOrder);
+  mocks.getDHLRates.mockResolvedValue([
+    { serviceCode: "P", serviceName: "DHL Express Domestic", currency: "USD", amount: 8.5 },
+  ]);
   mocks.transaction.mockImplementation(async (callback) =>
     callback({
       productVariant: { updateMany: mocks.variantUpdateMany },
@@ -107,7 +125,19 @@ describe("createPendingCheckoutOrder", () => {
           shippingState: "Western",
           shippingPostalCode: "00100",
           shippingCountry: "Sri Lanka",
+          shippingCents: 850,
+          shippingServiceCode: "P",
+          totalCents: 2849,
         }),
+      }),
+    );
+    expect(mocks.getDHLRates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipient: expect.objectContaining({
+          countryCode: "LK",
+          postalCode: "00100",
+        }),
+        packages: [expect.objectContaining({ weightKg: 0.5 })],
       }),
     );
     const orderCreateData = mocks.orderCreate.mock.calls[0][0].data;
