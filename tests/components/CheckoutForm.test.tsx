@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -102,6 +102,45 @@ describe("CheckoutForm", () => {
     expect(await screen.findByText("Checkout unavailable")).toBeInTheDocument();
   });
 
+  it("shows a dynamic calling-code prefix and submits a normalized E.164 phone", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: "Checkout unavailable" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = renderCheckout({ currentStep: 5 });
+    const callingCode = container.querySelector<HTMLSelectElement>('[aria-label="Calling code"]');
+    const phoneInput = container.querySelector<HTMLInputElement>(
+      '[aria-label="Phone number (E.164)"]',
+    );
+    expect(callingCode).not.toBeNull();
+    expect(phoneInput).not.toBeNull();
+    if (!callingCode || !phoneInput) throw new Error("Phone inputs were not rendered.");
+
+    expect(phoneInput).toHaveValue("771234567");
+    expect(phoneInput.parentElement).toHaveTextContent("(+94)");
+
+    fireEvent.change(callingCode, { target: { value: "+1" } });
+    expect(phoneInput.parentElement).toHaveTextContent("(+1)");
+    expect(phoneInput).toHaveValue("771234567");
+
+    fireEvent.change(phoneInput, { target: { value: "202 555 0123" } });
+    expect(phoneInput).toHaveValue("2025550123");
+    const form = container.querySelector("form");
+    if (!form) throw new Error("Checkout form was not rendered.");
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledOnce();
+    });
+    const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+      customer: { phone: string };
+    };
+    expect(requestBody.customer.phone).toBe("+12025550123");
+  });
+
   it("organizes checkout details into accessible sections", () => {
     renderCheckout({ currentStep: 2 });
 
@@ -196,7 +235,8 @@ describe("CheckoutForm", () => {
     expect(screen.getByLabelText("First name")).toHaveValue("Ada");
     expect(screen.getByLabelText("Last name")).toHaveValue("Lovelace");
     expect(screen.getByLabelText("Email")).toHaveValue("ada@example.com");
-    expect(screen.getByLabelText(/Phone number/)).toHaveValue("+94771234567");
+    expect(screen.getByLabelText("Phone number (E.164)")).toHaveValue("771234567");
+    expect(screen.getByLabelText("Phone number (E.164)").parentElement).toHaveTextContent("(+94)");
     expect(screen.getByLabelText("Street address")).toHaveValue("12 River Road");
     expect(screen.getByLabelText("Apartment, suite, etc. (optional)")).toHaveValue("Unit 4");
     expect(screen.getByLabelText("City")).toHaveValue("Colombo");

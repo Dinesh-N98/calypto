@@ -54,6 +54,17 @@ function isDomesticDestination(country: string): boolean {
   return normalized === "LK" || normalized === "SRI LANKA";
 }
 
+function normalizeE164Phone(value: string): string {
+  const digits = value.replace(/\D/gu, "");
+  return digits ? `+${digits}` : "";
+}
+
+function getPhoneSubscriber(value: string, countryCode: string): string {
+  const digits = normalizeE164Phone(value).slice(1);
+  const callingCodeDigits = countryCode.slice(1);
+  return digits.startsWith(callingCodeDigits) ? digits.slice(callingCodeDigits.length) : digits;
+}
+
 const emptyAddress: AddressFields = {
   line1: "",
   line2: "",
@@ -133,7 +144,7 @@ export function CheckoutForm({
     firstName: profile?.firstName ?? "",
     lastName: profile?.lastName ?? "",
     email: profile?.email ?? "",
-    phone: profile?.phone ?? "",
+    phone: profile?.phone ? normalizeE164Phone(profile.phone) : "",
   }));
   const dirtyContactFields = useRef(new Set<keyof ContactFields>());
   const formElementRef = useRef<HTMLFormElement | null>(null);
@@ -157,6 +168,7 @@ export function CheckoutForm({
     selectedRate && hasCurrentQuote ? Math.ceil(selectedRate.amount * 100) : null;
   const canSubmitOnePay =
     isDomestic || (!loadingDhlRates && selectedRate !== undefined && hasCurrentQuote);
+  const maxPhoneSubscriberDigits = 15 - (phoneCountryCode.length - 1);
   const setFormRef = useCallback((element: HTMLFormElement | null) => {
     formElementRef.current = element;
   }, []);
@@ -210,7 +222,7 @@ export function CheckoutForm({
       for (const field of ["firstName", "lastName", "email", "phone"] as const) {
         const value = profile[field];
         if (!fields[field] && !dirtyContactFields.current.has(field) && value) {
-          next[field] = value;
+          next[field] = field === "phone" ? normalizeE164Phone(value) : value;
         }
       }
       return next;
@@ -228,7 +240,9 @@ export function CheckoutForm({
         firstName: String(formData.get("firstName") ?? ""),
         lastName: String(formData.get("lastName") ?? ""),
         email: String(formData.get("email") ?? ""),
-        phone: String(formData.get("phone") ?? ""),
+        phone: normalizeE164Phone(
+          `${phoneCountryCode}${String(formData.get("phoneSubscriber") ?? "")}`,
+        ),
       },
       address: {
         streetAddress: String(formData.get("streetAddress") ?? ""),
@@ -243,7 +257,7 @@ export function CheckoutForm({
         isAuthenticated && selectedAddressId === "new" && formData.get("saveAddress") === "on",
       shippingServiceCode: selectedRate && hasCurrentQuote ? selectedRate.serviceCode : undefined,
     }),
-    [hasCurrentQuote, isAuthenticated, items, selectedAddressId, selectedRate],
+    [hasCurrentQuote, isAuthenticated, items, phoneCountryCode, selectedAddressId, selectedRate],
   );
 
   const getPayPalPayload = useCallback(() => {
@@ -455,11 +469,9 @@ export function CheckoutForm({
                     className="auth-input"
                     onChange={(event) => {
                       const nextCode = event.currentTarget.value;
+                      const subscriber = getPhoneSubscriber(contactFields.phone, phoneCountryCode);
                       setPhoneCountryCode(nextCode);
-                      setContactFields((fields) => ({
-                        ...fields,
-                        phone: fields.phone.replace(/^\+[1-9]\d{0,3}/u, nextCode),
-                      }));
+                      updateContactField("phone", subscriber ? `${nextCode}${subscriber}` : "");
                     }}
                     value={phoneCountryCode}
                   >
@@ -472,17 +484,33 @@ export function CheckoutForm({
                 </label>
                 <label className="grid gap-2 text-[.65rem] font-bold uppercase tracking-[.1em]">
                   Phone number (E.164)
-                  <input
-                    autoComplete="tel"
-                    className="auth-input"
-                    name="phone"
-                    onChange={(event) => updateContactField("phone", event.currentTarget.value)}
-                    pattern="\+[1-9][0-9]{7,14}"
-                    placeholder="+94771234567"
-                    required
-                    type="tel"
-                    value={contactFields.phone}
-                  />
+                  <span className="relative block">
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-base font-semibold text-[#55584e]"
+                    >
+                      ({phoneCountryCode})
+                    </span>
+                    <input
+                      aria-label="Phone number (E.164)"
+                      autoComplete="tel-national"
+                      className="auth-input pl-[5.5rem]"
+                      maxLength={maxPhoneSubscriberDigits}
+                      name="phoneSubscriber"
+                      onChange={(event) => {
+                        const subscriber = event.currentTarget.value.replace(/\D/gu, "");
+                        updateContactField(
+                          "phone",
+                          subscriber ? `${phoneCountryCode}${subscriber}` : "",
+                        );
+                      }}
+                      pattern={`[0-9]{7,${maxPhoneSubscriberDigits}}`}
+                      placeholder="771234567"
+                      required
+                      type="tel"
+                      value={getPhoneSubscriber(contactFields.phone, phoneCountryCode)}
+                    />
+                  </span>
                 </label>
               </div>
             </div>
