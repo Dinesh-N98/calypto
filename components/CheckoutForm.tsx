@@ -143,6 +143,11 @@ export function CheckoutForm({
   }));
   const dirtyContactFields = useRef(new Set<keyof ContactFields>());
   const formElementRef = useRef<HTMLFormElement | null>(null);
+  const quoteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quoteRequestIdRef = useRef(0);
+  const quoteAbortRef = useRef<{ contextKey: string; controller: AbortController } | null>(null);
+  const onShippingCostChangeRef = useRef(onShippingCostChange);
+  onShippingCostChangeRef.current = onShippingCostChange;
   const itemKey = items.map((item) => `${item.variantId}:${item.quantity}`).join("|");
   const addressKey = [
     addressFields.line1,
@@ -153,11 +158,43 @@ export function CheckoutForm({
     addressFields.country,
   ].join("|");
   const quoteContextKey = `${addressKey}|${itemKey}`;
+  const currentQuoteContextRef = useRef({ key: quoteContextKey, step: currentStep });
+  currentQuoteContextRef.current = { key: quoteContextKey, step: currentStep };
+  const previousQuoteContextKeyRef = useRef(quoteContextKey);
+  const rateRequestBody = useMemo(
+    () => ({
+      items,
+      recipient: {
+        streetLines: [addressFields.line1, addressFields.line2, addressFields.line3]
+          .map((line) => line?.trim())
+          .filter((line): line is string => Boolean(line)),
+        city: addressFields.city,
+        postalCode: addressFields.postalCode,
+        countryCode: normalizeCountryCode(addressFields.country),
+        stateOrProvinceCode: addressFields.state ?? "",
+      },
+    }),
+    [addressFields, itemKey, items],
+  );
+  const isAddressValid =
+    Boolean(addressFields.line1.trim()) &&
+    addressFields.line1.trim().length <= 70 &&
+    (!addressFields.line2?.trim() || addressFields.line2.trim().length <= 70) &&
+    (!addressFields.line3?.trim() || addressFields.line3.trim().length <= 70) &&
+    Boolean(addressFields.city.trim()) &&
+    addressFields.city.trim().length <= 100 &&
+    Boolean(addressFields.state?.trim()) &&
+    (addressFields.state?.trim().length ?? 0) <= 100 &&
+    Boolean(addressFields.postalCode.trim()) &&
+    addressFields.postalCode.trim().length <= 30 &&
+    DHL_COUNTRIES.some(([code]) => code === normalizeCountryCode(addressFields.country)) &&
+    items.length > 0;
   const selectedRate = useMemo(
     () => dhlRates.find((rate) => rate.serviceCode === selectedDhlRate),
     [dhlRates, selectedDhlRate],
   );
   const hasCurrentQuote = dhlQuoteItemsKey === quoteContextKey;
+  const currentDhlRates = hasCurrentQuote ? dhlRates : [];
   const selectedShippingCents =
     selectedRate && hasCurrentQuote ? Math.ceil(selectedRate.amount * 100) : null;
   const canSubmitOnePay = !loadingDhlRates && selectedRate !== undefined && hasCurrentQuote;
@@ -199,7 +236,7 @@ export function CheckoutForm({
     if (currentStep === 2 && !validateStep(2)) return;
     if (currentStep === 3) {
       if (!canSubmitOnePay) {
-        setError("Calculate and select a DHL shipping service before continuing.");
+        setError("Select a DHL shipping service before continuing.");
         return;
       }
     }
@@ -258,6 +295,20 @@ export function CheckoutForm({
     return buildCheckoutPayload(new FormData(form));
   }, [buildCheckoutPayload, currentStep]);
 
+  function invalidateQuote() {
+    if (quoteDebounceRef.current) clearTimeout(quoteDebounceRef.current);
+    quoteDebounceRef.current = null;
+    quoteRequestIdRef.current += 1;
+    quoteAbortRef.current?.controller.abort();
+    quoteAbortRef.current = null;
+    setLoadingDhlRates(false);
+    setDhlRates([]);
+    setSelectedDhlRate("");
+    setDhlQuoteItemsKey("");
+    setError(null);
+    onShippingCostChangeRef.current?.(null);
+  }
+
   function selectAddress(value: string) {
     const address = savedAddresses.find((savedAddress) => savedAddress.id === value);
     const nextFields =
@@ -269,52 +320,36 @@ export function CheckoutForm({
     }));
     setSelectedAddressId(value);
     setAddressFields(nextFields);
-    setDhlRates([]);
-    setSelectedDhlRate("");
-    setDhlQuoteItemsKey("");
-    onShippingCostChange?.(null);
+    invalidateQuote();
   }
 
   function updateAddressField(field: keyof AddressFields, value: string) {
     const nextFields = { ...addressFields, [field]: value };
     setAddressDrafts((drafts) => ({ ...drafts, [selectedAddressId]: nextFields }));
     setAddressFields(nextFields);
-    setDhlRates([]);
-    setSelectedDhlRate("");
-    setDhlQuoteItemsKey("");
-    onShippingCostChange?.(null);
+    invalidateQuote();
   }
 
   function selectDhlRate(serviceCode: string) {
     setSelectedDhlRate(serviceCode);
   }
 
-  async function loadDhlRates() {
-    const form = formElementRef.current;
-    if (!form || !form.reportValidity()) return;
+  const loadDhlRates = useCallback(async (contextKey: string) => {
+    if (
+      currentQuoteContextRef.current.key !== contextKey ||
+      currentQuoteContextRef.current.step !== 3
+    ) return;
+    const requestId = ++quoteRequestIdRef.current;
+    const controller = new AbortController();
+    quoteAbortRef.current = { contextKey, controller };
     setLoadingDhlRates(true);
     setError(null);
     try {
-      const payload = buildCheckoutPayload(new FormData(form));
       const response = await fetch("/api/checkout/rates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items,
-          recipient: {
-            streetLines: [
-              payload.address.streetAddress,
-              payload.address.aptSuite,
-              payload.address.addressLine3,
-            ]
-              .map((line) => line?.trim())
-              .filter((line): line is string => Boolean(line)),
-            city: payload.address.city,
-            postalCode: payload.address.postalCode,
-            countryCode: normalizeCountryCode(payload.address.country),
-            stateOrProvinceCode: payload.address.state,
-          },
-        }),
+        body: JSON.stringify(rateRequestBody),
+        signal: controller.signal,
       });
       const result: unknown = await response.json().catch(() => null);
       if (
@@ -336,17 +371,75 @@ export function CheckoutForm({
       const rates = result.rates as DhlRateOption[];
       const selectableRates = rates.filter((rate) => Boolean(rate.serviceCode));
       if (!selectableRates.length) throw new Error("DHL returned no selectable shipping options.");
+      if (
+        requestId !== quoteRequestIdRef.current ||
+        currentQuoteContextRef.current.key !== contextKey ||
+        currentQuoteContextRef.current.step !== 3
+      ) return;
       setDhlRates(selectableRates);
       setSelectedDhlRate(selectableRates[0].serviceCode ?? "");
-      setDhlQuoteItemsKey(quoteContextKey);
+      setDhlQuoteItemsKey(contextKey);
     } catch (rateError) {
+      if (
+        requestId !== quoteRequestIdRef.current ||
+        currentQuoteContextRef.current.key !== contextKey ||
+        currentQuoteContextRef.current.step !== 3
+      ) return;
       setError(
         rateError instanceof Error ? rateError.message : "Unable to calculate DHL shipping rates.",
       );
     } finally {
-      setLoadingDhlRates(false);
+      if (requestId === quoteRequestIdRef.current) {
+        quoteAbortRef.current = null;
+        setLoadingDhlRates(false);
+      }
     }
-  }
+  }, [rateRequestBody]);
+
+  useEffect(() => {
+    const contextChanged = previousQuoteContextKeyRef.current !== quoteContextKey;
+    previousQuoteContextKeyRef.current = quoteContextKey;
+    if (contextChanged) {
+      quoteRequestIdRef.current += 1;
+      quoteAbortRef.current?.controller.abort();
+      quoteAbortRef.current = null;
+      setLoadingDhlRates(false);
+      setDhlRates([]);
+      setSelectedDhlRate("");
+      setDhlQuoteItemsKey("");
+      setError(null);
+      onShippingCostChange?.(null);
+    }
+
+    if (currentStep !== 3 || !isAddressValid) {
+      if (currentStep !== 3) setLoadingDhlRates(false);
+      return;
+    }
+    if (dhlQuoteItemsKey === quoteContextKey && dhlRates.length > 0) return;
+
+    const timer = setTimeout(() => {
+      quoteDebounceRef.current = null;
+      void loadDhlRates(quoteContextKey);
+    }, 300);
+    quoteDebounceRef.current = timer;
+
+    return () => {
+      clearTimeout(timer);
+      if (quoteDebounceRef.current === timer) quoteDebounceRef.current = null;
+      if (quoteAbortRef.current?.contextKey === quoteContextKey) {
+        quoteRequestIdRef.current += 1;
+        quoteAbortRef.current.controller.abort();
+        quoteAbortRef.current = null;
+      }
+    };
+  }, [
+    currentStep,
+    dhlQuoteItemsKey,
+    dhlRates.length,
+    isAddressValid,
+    loadDhlRates,
+    quoteContextKey,
+  ]);
 
   function updateContactField(field: keyof ContactFields, value: string) {
     dirtyContactFields.current.add(field);
@@ -358,7 +451,7 @@ export function CheckoutForm({
     if (paymentProvider !== "ONEPAY") return;
     if (currentStep !== 5) return;
     if (!canSubmitOnePay) {
-      setError("Calculate and select a DHL shipping service before checkout.");
+      setError("Select a DHL shipping service before checkout.");
       return;
     }
     setIsCheckingOut(true);
@@ -634,25 +727,17 @@ export function CheckoutForm({
               Choose a DHL service. For Sri Lankan deliveries, a local rate is offered if DHL has
               no domestic service available.
             </p>
-            <button
-              className="min-h-11 border border-ink/20 px-4 text-[.65rem] font-bold uppercase tracking-[.08em] hover:border-ink disabled:opacity-60"
-              disabled={loadingDhlRates}
-              onClick={() => void loadDhlRates()}
-              type="button"
-            >
-              {loadingDhlRates ? "Calculating shipping…" : "Calculate shipping"}
-            </button>
             {loadingDhlRates && (
               <p aria-live="polite" className="text-sm text-[#55584e]">
                 Checking available shipping services and destination routing…
               </p>
             )}
-            {dhlRates.length > 0 && (
+            {currentDhlRates.length > 0 && (
               <fieldset className="grid gap-2">
                 <legend className="text-[.65rem] font-bold uppercase tracking-[.1em]">
                   Shipping option
                 </legend>
-                {dhlRates.map((rate, index) => (
+                {currentDhlRates.map((rate, index) => (
                   <label
                     className="flex items-start gap-3 border border-black/10 p-3 text-sm"
                     key={`${rate.serviceCode ?? "dhl"}-${index}`}
@@ -687,7 +772,7 @@ export function CheckoutForm({
                   value={selectedDhlRate}
                 >
                   <option value="">Select a service</option>
-                  {dhlRates.map((rate, index) => (
+                  {currentDhlRates.map((rate, index) => (
                     <option
                       key={`${rate.serviceCode ?? "dhl"}-compat-${index}`}
                       value={rate.serviceCode ?? ""}
@@ -784,7 +869,7 @@ export function CheckoutForm({
             PayPal is not configured for this deployment.
           </p>
         )}
-        {!loadingDhlRates && error && dhlRates.length === 0 && (
+        {!loadingDhlRates && error && currentDhlRates.length === 0 && (
           <p className="text-sm text-red-700" role="alert">
             No shipping option was returned. Check the address, postal code, and country, then try
             again.
@@ -830,7 +915,7 @@ export function CheckoutForm({
               {JSON.stringify(
                 {
                   loadingDhlRates,
-                  ratesCount: dhlRates.length,
+                  ratesCount: currentDhlRates.length,
                   selectedDhlRate,
                   dhlQuoteItemsKey,
                   quoteContextKey,

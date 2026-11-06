@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -109,8 +109,7 @@ function stubCheckoutAndShippingFetch() {
 }
 
 describe("CheckoutForm", () => {
-  it("requires a shipping quote for Sri Lankan delivery before continuing", async () => {
-    const user = userEvent.setup();
+  it("automatically quotes Sri Lankan delivery before allowing checkout to continue", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -139,10 +138,10 @@ describe("CheckoutForm", () => {
       ),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
     expect(await screen.findByRole("radio", { name: "DHL Express Domestic" })).toBeChecked();
     expect(continueButton).toBeEnabled();
     expect(screen.getByText("USD 8.50")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Calculate shipping" })).not.toBeInTheDocument();
   });
 
   it("submits OnePay checkout with DHL shipping from the review step", async () => {
@@ -150,7 +149,6 @@ describe("CheckoutForm", () => {
     const fetchMock = stubCheckoutAndShippingFetch();
     renderCheckout({ currentStep: 3 });
 
-    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
     await screen.findByRole("radio", { name: "DHL Express Domestic" });
     await user.click(screen.getByRole("button", { name: "Continue to payment" }));
     await user.click(screen.getByRole("button", { name: "Review order" }));
@@ -192,7 +190,6 @@ describe("CheckoutForm", () => {
     expect(phoneInput).toHaveValue("2025550123");
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Continue to delivery" }));
-    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
     await screen.findByRole("radio", { name: "DHL Express Domestic" });
     await user.click(screen.getByRole("button", { name: "Continue to payment" }));
     await user.click(screen.getByRole("button", { name: "Review order" }));
@@ -225,6 +222,120 @@ describe("CheckoutForm", () => {
     expect(screen.getByRole("group", { name: "Delivery address" })).toBeInTheDocument();
     expect(screen.getByText("Where should we send your order?")).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Contact information" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Calculate shipping" })).not.toBeInTheDocument();
+  });
+
+  it("debounces address changes and requotes when the cart changes", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            rates: [
+              {
+                serviceCode: "P",
+                serviceName: "DHL Express Domestic",
+                currency: "USD",
+                amount: 8.5,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const props: ComponentProps<typeof CheckoutForm> = {
+      defaultAddress: savedAddresses[0],
+      currentStep: 3,
+      isAuthenticated: true,
+      items: [{ variantId: "variant-1", quantity: 1 }],
+      paymentProvider: "ONEPAY",
+      paypalClientId: "",
+      profile,
+      savedAddresses,
+    };
+    const view = render(<StatefulCheckout {...props} />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("radio", { name: "DHL Express Domestic" })).toBeInTheDocument();
+
+    const city = screen.getByLabelText("City");
+    fireEvent.change(city, { target: { value: "Kandy" } });
+    expect(screen.queryByRole("radio", { name: "DHL Express Domestic" })).not.toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    fireEvent.change(city, { target: { value: "Jaffna" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(299);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    view.rerender(
+      <StatefulCheckout
+        {...props}
+        items={[{ variantId: "variant-1", quantity: 2 }]}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
+  });
+
+  it("ignores a stale rate response after the delivery address changes", async () => {
+    vi.useFakeTimers();
+    let resolveFirstRequest!: (response: Response) => void;
+    const firstRequest = new Promise<Response>((resolve) => {
+      resolveFirstRequest = resolve;
+    });
+    const makeRateResponse = (serviceName: string) =>
+      new Response(
+        JSON.stringify({
+          rates: [
+            {
+              serviceCode: "P",
+              serviceName,
+              currency: "USD",
+              amount: 8.5,
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => firstRequest)
+      .mockResolvedValueOnce(makeRateResponse("New address rate"));
+    vi.stubGlobal("fetch", fetchMock);
+    renderCheckout({ currentStep: 3 });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Kandy" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("radio", { name: "New address rate" })).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFirstRequest(makeRateResponse("Stale address rate"));
+    });
+    expect(screen.queryByRole("radio", { name: "Stale address rate" })).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "New address rate" })).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("requires a fresh DHL rate selection for international checkout", async () => {
@@ -264,7 +375,6 @@ describe("CheckoutForm", () => {
     const continueButton = screen.getByRole("button", { name: "Continue to payment" });
     expect(continueButton).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
     expect(await screen.findByRole("option", { name: /DHL Express/ })).toBeInTheDocument();
     expect(continueButton).toBeEnabled();
     expect(screen.getByRole("radio", { name: "DHL Express" })).toBeChecked();
