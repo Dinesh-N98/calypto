@@ -167,7 +167,10 @@ export async function finishPayPalAttemptWithoutPayment({
     return await prisma.$transaction(async (transaction) => {
       const order = await transaction.order.findUnique({
         where: { id: orderId },
-        select: { status: true, items: { select: { variantId: true, quantity: true } } },
+        select: {
+          status: true,
+          items: { select: { variantId: true, quantity: true, inventoryTracked: true } },
+        },
       });
       if (!order || order.status !== "pending") return false;
 
@@ -189,7 +192,7 @@ export async function finishPayPalAttemptWithoutPayment({
       if (orderChanged.count !== 1) throw new ConcurrentPaymentTransitionError();
 
       for (const item of order.items) {
-        if (item.variantId) {
+        if (item.variantId && item.inventoryTracked) {
           await transaction.productVariant.updateMany({
             where: { id: item.variantId },
             data: { stock: { increment: item.quantity } },

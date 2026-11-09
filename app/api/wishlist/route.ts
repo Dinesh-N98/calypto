@@ -20,7 +20,7 @@ export async function GET() {
 
   try {
     const items = await prisma.wishlistItem.findMany({
-      where: { userId: session.user.id },
+      where: { userId: session.user.id, product: { is: { isActive: true } } },
       select: { productId: true },
     });
     return NextResponse.json(
@@ -54,9 +54,10 @@ export async function POST(request: Request) {
   try {
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true },
+      select: { id: true, isActive: true },
     });
-    if (!product) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+    if (!product?.isActive)
+      return NextResponse.json({ error: "Product not found." }, { status: 404 });
     await prisma.wishlistItem.upsert({
       where: { userId_productId: { userId: session.user.id, productId } },
       create: { userId: session.user.id, productId },

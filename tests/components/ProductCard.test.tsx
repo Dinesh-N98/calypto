@@ -127,6 +127,27 @@ describe("ProductCard cart actions", () => {
     expect(window.gtag).not.toHaveBeenCalled();
   });
 
+  it("allows quick-add when inventory tracking is disabled", async () => {
+    const user = userEvent.setup();
+    render(
+      <ProductCard
+        itemListName="Shop"
+        product={{
+          ...product,
+          trackInventory: false,
+          variants: [{ ...product.variants[0]!, stock: 0 }],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Add to Cart/i }));
+
+    expect(mocks.addItem).toHaveBeenCalledWith(
+      expect.objectContaining({ variantId: "variant-1" }),
+      1,
+    );
+  });
+
   it("still adds to the cart without gtag", async () => {
     window.gtag = undefined;
     const user = userEvent.setup();

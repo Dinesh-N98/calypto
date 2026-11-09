@@ -28,6 +28,7 @@ export default async function Home() {
         slug: true,
         image: true,
         products: {
+          where: { isActive: true },
           take: 1,
           orderBy: { createdAt: "asc" },
           select: { imageUrl: true },

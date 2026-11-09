@@ -17,6 +17,7 @@ type OrderItemSnapshot = {
   name: string;
   priceCents: number;
   quantity: number;
+  inventoryTracked: boolean;
 };
 
 type PackageVariant = {
@@ -218,9 +219,14 @@ export async function createPendingCheckoutOrder({
     .map((id) => id.slice("legacy:".length));
   const variants = await prisma.productVariant.findMany({
     where: {
-      OR: [
-        ...(requestedIds.length ? [{ id: { in: requestedIds } }] : []),
-        ...(legacySlugs.length ? [{ product: { slug: { in: legacySlugs } } }] : []),
+      AND: [
+        {
+          OR: [
+            ...(requestedIds.length ? [{ id: { in: requestedIds } }] : []),
+            ...(legacySlugs.length ? [{ product: { slug: { in: legacySlugs } } }] : []),
+          ],
+        },
+        { product: { is: { isActive: true } } },
       ],
     },
     select: {
@@ -242,6 +248,7 @@ export async function createPendingCheckoutOrder({
           imageUrl: true,
           salePriceCents: true,
           saleEndsAt: true,
+          trackInventory: true,
           tieredDiscountsEnabled: true,
           category: { select: { tieredDiscountsEnabled: true } },
           tieredDiscounts: { select: { minQuantity: true, discountPercentage: true } },
@@ -295,6 +302,7 @@ export async function createPendingCheckoutOrder({
             variant.product.category.tieredDiscountsEnabled,
         }),
         quantity,
+        inventoryTracked: variant.product.trackInventory,
       };
     });
   const totalCents = orderItems.reduce((total, item) => total + item.priceCents * item.quantity, 0);
@@ -370,11 +378,17 @@ export async function createPendingCheckoutOrder({
 
   return prisma.$transaction(async (transaction) => {
     for (const item of orderItems) {
-      const reserved = await transaction.productVariant.updateMany({
-        where: { id: item.variantId, stock: { gte: item.quantity } },
-        data: { stock: { decrement: item.quantity } },
-      });
-      if (reserved.count !== 1) throw new InsufficientStockError();
+      if (item.inventoryTracked) {
+        const reserved = await transaction.productVariant.updateMany({
+          where: {
+            id: item.variantId,
+            stock: { gte: item.quantity },
+            product: { is: { isActive: true, trackInventory: true } },
+          },
+          data: { stock: { decrement: item.quantity } },
+        });
+        if (reserved.count !== 1) throw new InsufficientStockError();
+      }
     }
 
     if (userId && payload.saveAddress) {
@@ -422,6 +436,7 @@ export async function createPendingCheckoutOrder({
             name: item.name,
             priceCents: item.priceCents,
             quantity: item.quantity,
+            inventoryTracked: item.inventoryTracked,
           })),
         },
       },
@@ -463,7 +478,10 @@ export async function releaseOrderInventory(
   return prisma.$transaction(async (transaction) => {
     const order = await transaction.order.findUnique({
       where: { id: orderId },
-      select: { status: true, items: { select: { variantId: true, quantity: true } } },
+      select: {
+        status: true,
+        items: { select: { variantId: true, quantity: true, inventoryTracked: true } },
+      },
     });
     if (!order || order.status !== expectedStatus) return false;
 
@@ -474,7 +492,7 @@ export async function releaseOrderInventory(
     if (changed.count !== 1) return false;
 
     for (const item of order.items) {
-      if (item.variantId) {
+      if (item.variantId && item.inventoryTracked) {
         await transaction.productVariant.updateMany({
           where: { id: item.variantId },
           data: { stock: { increment: item.quantity } },

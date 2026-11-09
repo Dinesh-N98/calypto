@@ -9,7 +9,7 @@ export default async function AccountWishlistPage() {
   if (!userId) return null;
 
   const items = await prisma.wishlistItem.findMany({
-    where: { userId },
+    where: { userId, product: { is: { isActive: true } } },
     orderBy: { createdAt: "desc" },
     select: {
       product: {
@@ -19,6 +19,7 @@ export default async function AccountWishlistPage() {
           name: true,
           priceCents: true,
           imageUrl: true,
+          trackInventory: true,
           variants: {
             orderBy: { createdAt: "asc" },
             select: {

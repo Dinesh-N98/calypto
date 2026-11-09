@@ -19,14 +19,17 @@ export async function POST(
   if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
 
   const products = await prisma.product.findMany({
-    where: { slug: { in: order.items.map((item) => item.productSlug) } },
+    where: {
+      slug: { in: order.items.map((item) => item.productSlug) },
+      isActive: true,
+    },
     select: {
       slug: true,
       name: true,
       priceCents: true,
       imageUrl: true,
+      trackInventory: true,
       variants: {
-        where: { stock: { gt: 0 } },
         orderBy: { createdAt: "asc" },
         select: {
           id: true,
@@ -43,10 +46,11 @@ export async function POST(
   const productBySlug = new Map(products.map((product) => [product.slug, product]));
   const items = order.items.flatMap((item) => {
     const product = productBySlug.get(item.productSlug);
+    const isAvailable = (candidate: (typeof products)[number]["variants"][number]) =>
+      !product?.trackInventory || candidate.stock >= item.quantity;
     const variant =
-      product?.variants.find(
-        (candidate) => candidate.sku === item.sku && candidate.stock >= item.quantity,
-      ) ?? product?.variants.find((candidate) => candidate.stock >= item.quantity);
+      product?.variants.find((candidate) => candidate.sku === item.sku && isAvailable(candidate)) ??
+      product?.variants.find(isAvailable);
     return product && variant
       ? [
           {
@@ -65,9 +69,14 @@ export async function POST(
   const unavailable = order.items
     .filter((item) => {
       const product = productBySlug.get(item.productSlug);
-      return !product?.variants.some((variant) => variant.stock >= item.quantity);
+      return !product?.variants.some(
+        (variant) => !product.trackInventory || variant.stock >= item.quantity,
+      );
     })
     .map((item) => item.name);
 
-  return Response.json({ items, unavailable }, { headers: { "Cache-Control": "private, no-store" } });
+  return Response.json(
+    { items, unavailable },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }

@@ -21,6 +21,7 @@ export function ProductCard({
     name: string;
     priceCents: number;
     imageUrl: string;
+    trackInventory?: boolean;
     variants?: {
       id: string;
       sku: string;
@@ -37,23 +38,30 @@ export function ProductCard({
   const { showToast } = useToast();
   const variants = product.variants ?? [];
   const hasMultipleVariants = variants.length > 1;
+  const canPurchaseVariant = (variant: NonNullable<typeof variants>[number]) =>
+    product.trackInventory === false || variant.stock > 0;
   const availableVariant =
-    variants.length === 1 && variants[0].stock > 0 ? variants[0] : null;
+    variants.length === 1 && canPurchaseVariant(variants[0]) ? variants[0] : null;
 
   const handleAdd = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     if (!availableVariant) return;
-    const variantLabel = [availableVariant.color, availableVariant.size].filter(Boolean).join(" / ");
-    addItem({
-      slug: product.slug,
-      variantId: availableVariant.id,
-      sku: availableVariant.sku,
-      variantLabel,
-      name: product.name,
-      priceCents: availableVariant.priceCents,
-      imageUrl: availableVariant.imageUrl ?? product.imageUrl,
-    }, 1);
+    const variantLabel = [availableVariant.color, availableVariant.size]
+      .filter(Boolean)
+      .join(" / ");
+    addItem(
+      {
+        slug: product.slug,
+        variantId: availableVariant.id,
+        sku: availableVariant.sku,
+        variantLabel,
+        name: product.name,
+        priceCents: availableVariant.priceCents,
+        imageUrl: availableVariant.imageUrl ?? product.imageUrl,
+      },
+      1,
+    );
     trackAddToCart(
       {
         itemId: availableVariant.sku,

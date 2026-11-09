@@ -50,6 +50,7 @@ const variant = {
     imageUrl: "/rod.jpg",
     salePriceCents: null,
     saleEndsAt: null,
+    trackInventory: true,
     tieredDiscountsEnabled: false,
     category: { tieredDiscountsEnabled: false },
     tieredDiscounts: [],
@@ -169,6 +170,29 @@ describe("createPendingCheckoutOrder", () => {
           shippingCents: 300,
           shippingServiceCode: "LK-LOCAL-WEIGHT",
           totalCents: 2299,
+        }),
+      }),
+    );
+  });
+
+  it("does not reserve stock for untracked products and snapshots the setting on order items", async () => {
+    mocks.variantFindMany.mockResolvedValueOnce([
+      {
+        ...variant,
+        stock: 0,
+        product: { ...variant.product, trackInventory: false },
+      },
+    ]);
+
+    await createPendingCheckoutOrder({ payload, provider: "ONEPAY" });
+
+    expect(mocks.variantUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.orderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          items: {
+            create: [expect.objectContaining({ inventoryTracked: false })],
+          },
         }),
       }),
     );

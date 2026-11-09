@@ -41,6 +41,7 @@ const product = {
   salePriceCents: null,
   originalPriceCents: null,
   saleEndsAt: null,
+  trackInventory: true,
   tieredDiscountsEnabled: false,
 };
 
@@ -79,7 +80,9 @@ describe("ProductDetailExperience", () => {
     expect(
       screen.queryByText("Price per item after applicable quantity discounts"),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/Informational estimate: 3 monthly installments/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Informational estimate: 3 monthly installments/),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Increase quantity of item" }));
     await user.click(screen.getByRole("button", { name: "Buy Now" }));
@@ -106,6 +109,38 @@ describe("ProductDetailExperience", () => {
           }),
         ],
       }),
+    );
+  });
+
+  it("allows quantities above recorded stock when inventory tracking is disabled", async () => {
+    const user = userEvent.setup();
+    render(
+      <ProductDetailExperience
+        categoryName="Soft Baits"
+        images={[]}
+        product={{ ...product, trackInventory: false }}
+        tieredDiscounts={[]}
+        variants={[
+          {
+            id: "variant-untracked",
+            sku: "SHAD-UNTRACKED",
+            priceCents: 1200,
+            discountPriceCents: null,
+            stock: 0,
+            size: null,
+            color: null,
+            imageUrl: null,
+          },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Increase quantity of item" }));
+    await user.click(screen.getByRole("button", { name: "Add to Cart" }));
+
+    expect(mocks.addItem).toHaveBeenCalledWith(
+      expect.objectContaining({ variantId: "variant-untracked" }),
+      2,
     );
   });
 

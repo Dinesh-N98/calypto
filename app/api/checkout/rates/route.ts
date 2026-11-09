@@ -44,23 +44,29 @@ async function packagesForItems(value: unknown): Promise<DhlPackage[] | null> {
       typeof quantity !== "number" ||
       !Number.isSafeInteger(quantity) ||
       quantity < 1
-    ) return null;
+    )
+      return null;
     quantities.set(item.variantId, (quantities.get(item.variantId) ?? 0) + quantity);
   }
   const ids = [...quantities.keys()].filter((id) => !id.startsWith("legacy:"));
   const variants = await prisma.productVariant.findMany({
-    where: { id: { in: ids } },
+    where: {
+      id: { in: ids },
+      product: { is: { isActive: true } },
+    },
     select: { id: true, weightKg: true, lengthCm: true, widthCm: true, heightCm: true },
   });
   const config = getDhlConfig();
   if (variants.length !== quantities.size) return null;
-  return [buildDhlPackage(
-    variants.map((variant) => ({
-      ...variant,
-      quantity: quantities.get(variant.id) ?? 0,
-    })),
-    config.defaultPackage,
-  )];
+  return [
+    buildDhlPackage(
+      variants.map((variant) => ({
+        ...variant,
+        quantity: quantities.get(variant.id) ?? 0,
+      })),
+      config.defaultPackage,
+    ),
+  ];
 }
 
 export async function POST(request: Request) {
@@ -99,53 +105,75 @@ export async function POST(request: Request) {
       return respond(NextResponse.json({ error: error.message }, { status: error.status }));
     }
     console.error("Unable to read DHL checkout rate request.", error);
-    return respond(NextResponse.json(
-      { error: "The checkout request could not be processed.", kind: "request" },
-      { status: 400 },
-    ));
+    return respond(
+      NextResponse.json(
+        { error: "The checkout request could not be processed.", kind: "request" },
+        { status: 400 },
+      ),
+    );
   }
   if (!isObject(body) || !isObject(body.recipient)) {
-    return respond(NextResponse.json({ error: "A recipient address is required." }, { status: 400 }));
+    return respond(
+      NextResponse.json({ error: "A recipient address is required." }, { status: 400 }),
+    );
   }
   const recipient = body.recipient;
   const streetLines = Array.isArray(recipient.streetLines)
-    ? recipient.streetLines.filter((line): line is string => typeof line === "string").map((line) => line.trim())
-    : typeof recipient.streetLines === "string" ? [recipient.streetLines.trim()] : [];
+    ? recipient.streetLines
+        .filter((line): line is string => typeof line === "string")
+        .map((line) => line.trim())
+    : typeof recipient.streetLines === "string"
+      ? [recipient.streetLines.trim()]
+      : [];
   const city = typeof recipient.city === "string" ? recipient.city.trim() : "";
-  const postalCode = typeof recipient.postalCode === "string"
-    ? recipient.postalCode.trim().replace(/\s+/g, " ").toUpperCase()
-    : "";
+  const postalCode =
+    typeof recipient.postalCode === "string"
+      ? recipient.postalCode.trim().replace(/\s+/g, " ").toUpperCase()
+      : "";
   const countryCode = typeof recipient.countryCode === "string" ? recipient.countryCode.trim() : "";
-  const stateOrProvinceCode = typeof recipient.stateOrProvinceCode === "string"
-    ? recipient.stateOrProvinceCode.trim()
-    : "";
+  const stateOrProvinceCode =
+    typeof recipient.stateOrProvinceCode === "string" ? recipient.stateOrProvinceCode.trim() : "";
   if (
     streetLines.length < 1 ||
     streetLines.length > 3 ||
     streetLines.some((line) => !line || line.length > 70) ||
-    typeof recipient.city !== "string" || !recipient.city.trim() || recipient.city.trim().length > 100 ||
-    typeof recipient.postalCode !== "string" || !recipient.postalCode.trim() || recipient.postalCode.trim().length > 30 ||
-    typeof recipient.countryCode !== "string" || !isDhlCountryCode(recipient.countryCode) ||
+    typeof recipient.city !== "string" ||
+    !recipient.city.trim() ||
+    recipient.city.trim().length > 100 ||
+    typeof recipient.postalCode !== "string" ||
+    !recipient.postalCode.trim() ||
+    recipient.postalCode.trim().length > 30 ||
+    typeof recipient.countryCode !== "string" ||
+    !isDhlCountryCode(recipient.countryCode) ||
     (recipient.stateOrProvinceCode !== undefined &&
-      (typeof recipient.stateOrProvinceCode !== "string" ||
-        stateOrProvinceCode.length > 100))
+      (typeof recipient.stateOrProvinceCode !== "string" || stateOrProvinceCode.length > 100))
   ) {
-    return respond(NextResponse.json({ error: "The recipient address is invalid." }, { status: 400 }));
+    return respond(
+      NextResponse.json({ error: "The recipient address is invalid." }, { status: 400 }),
+    );
   }
   let packages: DhlPackage[] | null;
   try {
-    packages = body.packages !== undefined
-      ? parsePackages(body.packages)
-      : await packagesForItems(body.items);
+    packages =
+      body.packages !== undefined
+        ? parsePackages(body.packages)
+        : await packagesForItems(body.items);
   } catch (error) {
     console.error("Unable to prepare DHL checkout packages.", error);
-    return respond(NextResponse.json(
-      { error: "DHL shipping configuration is temporarily unavailable.", kind: "package_preparation" },
-      { status: 503 },
-    ));
+    return respond(
+      NextResponse.json(
+        {
+          error: "DHL shipping configuration is temporarily unavailable.",
+          kind: "package_preparation",
+        },
+        { status: 503 },
+      ),
+    );
   }
   if (!packages) {
-    return respond(NextResponse.json({ error: "At least one valid package is required." }, { status: 400 }));
+    return respond(
+      NextResponse.json({ error: "At least one valid package is required." }, { status: 400 }),
+    );
   }
 
   try {
@@ -159,25 +187,30 @@ export async function POST(request: Request) {
       },
       packages,
     });
-    return respond(NextResponse.json({ rates }, { headers: { "Cache-Control": "private, no-store" } }));
+    return respond(
+      NextResponse.json({ rates }, { headers: { "Cache-Control": "private, no-store" } }),
+    );
   } catch (error) {
     console.error("Unable to calculate DHL checkout rates.", error);
     const message = error instanceof Error ? error.message : "Unknown DHL integration error.";
     const kind =
-      error && typeof error === "object" && "details" in error &&
-      error.details && typeof error.details === "object" && "kind" in error.details
+      error &&
+      typeof error === "object" &&
+      "details" in error &&
+      error.details &&
+      typeof error.details === "object" &&
+      "kind" in error.details
         ? error.details.kind
         : undefined;
-    const status =
-      kind === "configuration" ? 503
-        : kind === "network" ? 504
-          : 502;
-    return respond(NextResponse.json(
-      {
-        error: `DHL rates are temporarily unavailable: ${message}`,
-        kind: kind ?? "unknown",
-      },
-      { status },
-    ));
+    const status = kind === "configuration" ? 503 : kind === "network" ? 504 : 502;
+    return respond(
+      NextResponse.json(
+        {
+          error: `DHL rates are temporarily unavailable: ${message}`,
+          kind: kind ?? "unknown",
+        },
+        { status },
+      ),
+    );
   }
 }

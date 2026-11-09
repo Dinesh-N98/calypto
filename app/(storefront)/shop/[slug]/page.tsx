@@ -10,7 +10,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const product = await prisma.product.findUnique({
-    where: { slug },
+    where: { slug, isActive: true },
     include: {
       category: {
         select: { name: true, tieredDiscountsEnabled: true },
@@ -46,7 +46,7 @@ export async function generateMetadata({
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await prisma.product.findUnique({
-    where: { slug },
+    where: { slug, isActive: true },
     include: {
       category: {
         select: { name: true, tieredDiscountsEnabled: true },
@@ -91,6 +91,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             salePriceCents: product.salePriceCents,
             originalPriceCents: product.originalPriceCents,
             saleEndsAt: product.saleEndsAt,
+            trackInventory: product.trackInventory,
             tieredDiscountsEnabled:
               product.tieredDiscountsEnabled ?? product.category.tieredDiscountsEnabled,
           }}

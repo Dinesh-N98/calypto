@@ -42,15 +42,17 @@ function parseVariants(
     const raw: unknown = JSON.parse(value || "[]");
     if (!Array.isArray(raw) || raw.length > 100) return null;
     if (raw.length === 0) {
-      return [{
-        sku: `AUTO-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`,
-        size: null,
-        color: null,
-        priceCents: basePriceCents,
-        discountPriceCents: null,
-        stock: defaultStock,
-        imageUrl: baseImageUrl,
-      }];
+      return [
+        {
+          sku: `AUTO-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`,
+          size: null,
+          color: null,
+          priceCents: basePriceCents,
+          discountPriceCents: null,
+          stock: defaultStock,
+          imageUrl: baseImageUrl,
+        },
+      ];
     }
     const variants = raw.map((entry) => {
       if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return null;
@@ -71,16 +73,13 @@ function parseVariants(
         return null;
       }
       const skuInput = typeof item.sku === "string" ? item.sku.trim() : "";
-      const sku = skuInput ||
-        `AUTO-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`;
+      const sku = skuInput || `AUTO-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`;
       const size = typeof item.size === "string" ? item.size.trim() : "";
       const color = typeof item.color === "string" ? item.color.trim() : "";
       const priceCents = typeof item.price === "string" ? parsePriceCents(item.price) : null;
       const discountPriceInput =
         typeof item.discountPrice === "string" ? item.discountPrice.trim() : "";
-      const discountPriceCents = discountPriceInput
-        ? parsePriceCents(discountPriceInput)
-        : null;
+      const discountPriceCents = discountPriceInput ? parsePriceCents(discountPriceInput) : null;
       const stock = typeof item.stock === "number" ? item.stock : Number(item.stock);
       const imageUrl = typeof item.imageUrl === "string" ? item.imageUrl.trim() : "";
       if (
@@ -88,8 +87,7 @@ function parseVariants(
         sku.length > 80 ||
         !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(sku) ||
         !priceCents ||
-        (discountPriceInput &&
-          (discountPriceCents === null || discountPriceCents >= priceCents)) ||
+        (discountPriceInput && (discountPriceCents === null || discountPriceCents >= priceCents)) ||
         !Number.isSafeInteger(stock) ||
         stock < 0 ||
         size.length > 100 ||
@@ -120,10 +118,11 @@ function parseVariants(
     const uniqueOptions =
       new Set(parsedVariants.map((variant) => `${variant.color ?? ""}\u0000${variant.size ?? ""}`))
         .size === parsedVariants.length;
-    const hasOnlyOneHiddenDefault =
-      parsedVariants.some((variant) => variant.color === null && variant.size === null)
-        ? parsedVariants.length === 1
-        : true;
+    const hasOnlyOneHiddenDefault = parsedVariants.some(
+      (variant) => variant.color === null && variant.size === null,
+    )
+      ? parsedVariants.length === 1
+      : true;
     return uniqueSkus && uniqueOptions && hasOnlyOneHiddenDefault ? parsedVariants : null;
   } catch {
     return null;
@@ -134,7 +133,9 @@ function parseImageUrls(value: string, fallback: string) {
   try {
     const raw: unknown = value ? JSON.parse(value) : [];
     if (!Array.isArray(raw) || raw.length > 20) return null;
-    const urls = raw.filter((item): item is string => typeof item === "string").map((url) => url.trim());
+    const urls = raw
+      .filter((item): item is string => typeof item === "string")
+      .map((url) => url.trim());
     if (urls.length !== raw.length || urls.some((url) => !isValidImagePath(url))) return null;
     const result = [...new Set([fallback, ...urls])];
     return result.length <= 20 ? result : null;
@@ -165,7 +166,8 @@ function parseTieredDiscounts(value: string) {
     });
     if (tiers.some((tier) => tier === null)) return null;
     const parsedTiers = tiers.filter((tier) => tier !== null);
-    if (new Set(parsedTiers.map((tier) => tier.minQuantity)).size !== parsedTiers.length) return null;
+    if (new Set(parsedTiers.map((tier) => tier.minQuantity)).size !== parsedTiers.length)
+      return null;
     parsedTiers.sort((a, b) => a.minQuantity - b.minQuantity);
     return parsedTiers.every(
       (tier, index) =>
@@ -173,6 +175,18 @@ function parseTieredDiscounts(value: string) {
     )
       ? parsedTiers
       : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseProductTags(value: string) {
+  try {
+    const raw: unknown = value ? JSON.parse(value) : [];
+    if (!Array.isArray(raw) || raw.length > 30) return null;
+    const tags = raw.map((entry) => (typeof entry === "string" ? entry.trim() : ""));
+    if (tags.some((tag) => !tag || tag.length > 40)) return null;
+    return [...new Set(tags.map((tag) => tag.toLocaleLowerCase()))];
   } catch {
     return null;
   }
@@ -352,7 +366,8 @@ export async function deleteCategory(
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
       return {
         ok: false,
-        error: "This category still has products. Reassign or delete them before deleting the category.",
+        error:
+          "This category still has products. Reassign or delete them before deleting the category.",
       };
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
@@ -391,6 +406,9 @@ function readProduct(formData: FormData) {
   );
   const images = parseImageUrls(getText(formData, "imageUrls"), imageUrl);
   const tieredDiscounts = parseTieredDiscounts(getText(formData, "tieredDiscounts"));
+  const tags = parseProductTags(getText(formData, "tags"));
+  const isActiveInput = getText(formData, "isActive");
+  const trackInventoryInput = getText(formData, "trackInventory");
 
   if (!name || name.length > 160)
     return { error: "Product name is required (max 160 characters)." } as const;
@@ -425,7 +443,8 @@ function readProduct(formData: FormData) {
       : salePriceInputCents;
   if (
     discountAmountCents !== null &&
-    (discountAmountCents >= (originalPriceCents ?? 0) || (originalPriceCents ?? 0) - discountAmountCents <= 0)
+    (discountAmountCents >= (originalPriceCents ?? 0) ||
+      (originalPriceCents ?? 0) - discountAmountCents <= 0)
   ) {
     return { error: "Discount amount must be less than the original price." } as const;
   }
@@ -442,7 +461,8 @@ function readProduct(formData: FormData) {
   }
   if (!variants) {
     return {
-      error: "Variants must have unique SKU and color/size combinations, valid prices, and non-negative stock.",
+      error:
+        "Variants must have unique SKU and color/size combinations, valid prices, and non-negative stock.",
     } as const;
   }
   if (!Number.isSafeInteger(defaultStock) || defaultStock < 0 || defaultStock > 2_147_483_647) {
@@ -456,17 +476,33 @@ function readProduct(formData: FormData) {
       error: "Tier discounts must have unique quantities (2+) and percentages from 1 to 99.",
     } as const;
   }
+  if (!tags) {
+    return { error: "Use up to 30 unique tags, each 40 characters or fewer." } as const;
+  }
+  if (!["true", "false"].includes(isActiveInput)) {
+    return { error: "Choose whether the product is a draft or active." } as const;
+  }
+  if (!["true", "false"].includes(trackInventoryInput)) {
+    return { error: "Choose whether to track product inventory." } as const;
+  }
   const tieredDiscountsEnabledInput = getText(formData, "tieredDiscountsEnabled");
   const tieredDiscountsEnabled =
-    tieredDiscountsEnabledInput === "" ? null
-      : tieredDiscountsEnabledInput === "true" ? true
-        : tieredDiscountsEnabledInput === "false" ? false
-        : undefined;
+    tieredDiscountsEnabledInput === ""
+      ? null
+      : tieredDiscountsEnabledInput === "true"
+        ? true
+        : tieredDiscountsEnabledInput === "false"
+          ? false
+          : undefined;
   if (tieredDiscountsEnabled === undefined) {
-    return { error: "Choose whether quantity discounts are inherited, enabled, or disabled." } as const;
+    return {
+      error: "Choose whether quantity discounts are inherited, enabled, or disabled.",
+    } as const;
   }
   if (tieredDiscounts.length > 0 && tieredDiscountsEnabled === false) {
-    return { error: "Remove quantity discount rules or enable quantity discounts for this product." } as const;
+    return {
+      error: "Remove quantity discount rules or enable quantity discounts for this product.",
+    } as const;
   }
 
   return {
@@ -480,6 +516,9 @@ function readProduct(formData: FormData) {
       originalPriceCents,
       saleEndsAt,
       tieredDiscountsEnabled,
+      isActive: isActiveInput === "true",
+      trackInventory: trackInventoryInput === "true",
+      tags,
       imageUrl,
       categoryId,
       variants,
@@ -516,6 +555,7 @@ export async function createProduct(
     throw error;
   }
 
+  revalidatePath(`/shop/${product.data.slug}`);
   revalidateCatalog();
   return { ok: true, message: "Product created." };
 }
@@ -577,6 +617,7 @@ export async function updateProduct(
     throw error;
   }
 
+  revalidatePath(`/shop/${product.data.slug}`);
   revalidateCatalog();
   return { ok: true, message: "Product updated." };
 }

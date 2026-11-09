@@ -60,6 +60,9 @@ model Product {
   originalPriceCents     Int?
   saleEndsAt             DateTime?
   tieredDiscountsEnabled Boolean?
+  isActive               Boolean          @default(true)
+  trackInventory         Boolean          @default(true)
+  tags                   String[]         @default([])
   categoryId             String
   category               Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   imageUrl               String
@@ -402,6 +405,7 @@ model OrderItem {
   productSlug String
   variantId   String?
   sku         String?
+  inventoryTracked Boolean @default(true)
   name        String
   priceCents  Int
   quantity    Int

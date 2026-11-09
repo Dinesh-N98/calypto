@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Share2, ShoppingBag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/CartProvider";
 import { QuantitySelector } from "@/components/QuantitySelector";
+import { MarkdownDescription } from "@/components/MarkdownDescription";
 import { useToast } from "@/components/ToastProvider";
 import { WishlistButton } from "@/components/WishlistButton";
 import { formatPrice } from "@/lib/currency";
@@ -37,6 +38,7 @@ type ProductDetailExperienceProps = {
     salePriceCents: number | null;
     originalPriceCents: number | null;
     saleEndsAt: Date | null;
+    trackInventory: boolean;
     tieredDiscountsEnabled: boolean;
   };
   images: { id: string; url: string; altText: string | null }[];
@@ -88,18 +90,23 @@ export function ProductDetailExperience({
       altText: images.find((image) => image.url === url)?.altText || product.name,
     }));
   }, [images, product.imageUrl, product.name]);
-  const firstAvailable = variants.find((variant) => variant.stock > 0) ?? variants[0];
+  const canPurchaseVariant = (variant: Variant) => !product.trackInventory || variant.stock > 0;
+  const firstAvailable = variants.find(canPurchaseVariant) ?? variants[0];
   const [selectedVariantId, setSelectedVariantId] = useState(firstAvailable?.id ?? "");
   const [activeImageIndex, setActiveImageIndex] = useState(() => {
     const variantImageUrl = firstAvailable?.imageUrl;
-    const index = variantImageUrl ? gallery.findIndex((image) => image.url === variantImageUrl) : -1;
+    const index = variantImageUrl
+      ? gallery.findIndex((image) => image.url === variantImageUrl)
+      : -1;
     return index >= 0 ? index : 0;
   });
   const [quantity, setQuantity] = useState(1);
   const [remainingMs, setRemainingMs] = useState(0);
   const lastViewedProductId = useRef<string | null>(null);
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
-  const colors = [...new Set(variants.flatMap((variant) => (variant.color ? [variant.color] : [])))];
+  const colors = [
+    ...new Set(variants.flatMap((variant) => (variant.color ? [variant.color] : []))),
+  ];
   const sizes = [...new Set(variants.flatMap((variant) => (variant.size ? [variant.size] : [])))];
   const selectedColor = selectedVariant?.color ?? null;
   const hasActiveSale = remainingMs > 0;
@@ -177,16 +184,22 @@ export function ProductDetailExperience({
   ]);
 
   function chooseColor(color: string) {
-    const matching = variants.find(
-      (variant) => variant.color === color && variant.size === selectedVariant?.size && variant.stock > 0,
-    ) ?? variants.find((variant) => variant.color === color && variant.stock > 0);
+    const matching =
+      variants.find(
+        (variant) =>
+          variant.color === color &&
+          variant.size === selectedVariant?.size &&
+          canPurchaseVariant(variant),
+      ) ?? variants.find((variant) => variant.color === color && canPurchaseVariant(variant));
     if (matching) selectVariant(matching);
   }
 
   function chooseSize(size: string) {
-    const matching = variants.find(
-      (variant) => variant.size === size && variant.color === selectedColor && variant.stock > 0,
-    ) ?? variants.find((variant) => variant.size === size && variant.stock > 0);
+    const matching =
+      variants.find(
+        (variant) =>
+          variant.size === size && variant.color === selectedColor && canPurchaseVariant(variant),
+      ) ?? variants.find((variant) => variant.size === size && canPurchaseVariant(variant));
     if (matching) selectVariant(matching);
   }
 
@@ -199,7 +212,7 @@ export function ProductDetailExperience({
   }
 
   function addSelectedItem(goToCheckout: boolean) {
-    if (!selectedVariant || selectedVariant.stock < quantity) {
+    if (!selectedVariant || (product.trackInventory && selectedVariant.stock < quantity)) {
       showToast("Choose an available variant and quantity.", "error");
       return;
     }
@@ -331,7 +344,10 @@ export function ProductDetailExperience({
             />
           </div>
         </div>
-        <p className="mt-5 text-sm leading-7 text-[#55584e] sm:text-base">{product.description}</p>
+        <MarkdownDescription
+          className="mt-5 text-sm leading-7 text-[#55584e] sm:text-base"
+          description={product.description}
+        />
 
         {savingPercent > 0 && (
           <div className="mt-6 rounded-md bg-[#fff2e5] p-4">
@@ -341,14 +357,17 @@ export function ProductDetailExperience({
             </p>
             {hasActiveSale && product.saleEndsAt && saleUnitPrice < referencePrice && (
               <p className="mt-1 text-sm text-[#71330f]">
-                Deal ends in <strong className="tabular-nums">{formatCountdown(remainingMs)}</strong>
+                Deal ends in{" "}
+                <strong className="tabular-nums">{formatCountdown(remainingMs)}</strong>
               </p>
             )}
           </div>
         )}
 
         <div className="mt-5 flex flex-wrap items-baseline gap-3">
-          <p className="text-[clamp(1.5rem,6vw,1.875rem)] font-black">{formatPrice(currentUnitPrice)}</p>
+          <p className="text-[clamp(1.5rem,6vw,1.875rem)] font-black">
+            {formatPrice(currentUnitPrice)}
+          </p>
           {referencePrice > saleUnitPrice && (
             <>
               <p className="text-base text-[#777b70] line-through">{formatPrice(referencePrice)}</p>
@@ -364,9 +383,10 @@ export function ProductDetailExperience({
             <div className="flex flex-wrap gap-2">
               {colors.map((color) => {
                 const matchingColorVariants = variants.filter((variant) => variant.color === color);
-                const representative = matchingColorVariants.find((variant) => variant.imageUrl) ??
+                const representative =
+                  matchingColorVariants.find((variant) => variant.imageUrl) ??
                   matchingColorVariants[0];
-                const disabled = !matchingColorVariants.some((variant) => variant.stock > 0);
+                const disabled = !matchingColorVariants.some(canPurchaseVariant);
                 const swatch = colorValue(color);
                 return (
                   <button
@@ -415,7 +435,10 @@ export function ProductDetailExperience({
                   (variant) => variant.size === size && variant.color === selectedColor,
                 );
                 const disabled = !variants.some(
-                  (variant) => variant.size === size && variant.color === selectedColor && variant.stock > 0,
+                  (variant) =>
+                    variant.size === size &&
+                    variant.color === selectedColor &&
+                    canPurchaseVariant(variant),
                 );
                 return (
                   <button
@@ -427,7 +450,9 @@ export function ProductDetailExperience({
                     type="button"
                   >
                     {size}
-                    {matching && matching.stock === 0 ? " · Out of stock" : ""}
+                    {product.trackInventory && matching && matching.stock === 0
+                      ? " · Out of stock"
+                      : ""}
                   </button>
                 );
               })}
@@ -441,7 +466,11 @@ export function ProductDetailExperience({
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {tieredDiscounts.map((tier) => (
                 <li
-                  className={applicableTier?.minQuantity === tier.minQuantity ? "font-bold text-[#536519]" : ""}
+                  className={
+                    applicableTier?.minQuantity === tier.minQuantity
+                      ? "font-bold text-[#536519]"
+                      : ""
+                  }
                   key={tier.minQuantity}
                 >
                   Buy {tier.minQuantity}, save {tier.discountPercentage}%
@@ -455,15 +484,24 @@ export function ProductDetailExperience({
           <QuantitySelector
             value={quantity}
             onChange={(nextQuantity) =>
-              setQuantity(Math.max(1, Math.min(nextQuantity, selectedVariant?.stock ?? nextQuantity)))
+              setQuantity(
+                Math.max(
+                  1,
+                  product.trackInventory
+                    ? Math.min(nextQuantity, selectedVariant?.stock ?? nextQuantity)
+                    : nextQuantity,
+                ),
+              )
             }
           />
         </div>
-        
+
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#a3bd32] px-5 text-sm font-extrabold uppercase tracking-[.08em] text-ink hover:bg-[#b6cf45] disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!selectedVariant || selectedVariant.stock < quantity}
+            disabled={
+              !selectedVariant || (product.trackInventory && selectedVariant.stock < quantity)
+            }
             onClick={() => addSelectedItem(true)}
             type="button"
           >
@@ -471,7 +509,9 @@ export function ProductDetailExperience({
           </button>
           <button
             className="inline-flex min-h-12 items-center justify-center gap-2 border border-ink px-5 text-sm font-extrabold uppercase tracking-[.08em] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!selectedVariant || selectedVariant.stock < quantity}
+            disabled={
+              !selectedVariant || (product.trackInventory && selectedVariant.stock < quantity)
+            }
             onClick={() => addSelectedItem(false)}
             type="button"
           >

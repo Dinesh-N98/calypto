@@ -35,7 +35,7 @@ function ProductGridSkeleton() {
 
 async function ProductGrid({ categoryId, sort }: { categoryId?: string; sort: SortOption }) {
   const products = await prisma.product.findMany({
-    where: categoryId ? { categoryId } : undefined,
+    where: { isActive: true, ...(categoryId ? { categoryId } : {}) },
     orderBy:
       sort === "price-asc"
         ? { priceCents: "asc" }
@@ -48,6 +48,7 @@ async function ProductGrid({ categoryId, sort }: { categoryId?: string; sort: So
       name: true,
       priceCents: true,
       imageUrl: true,
+      trackInventory: true,
       variants: {
         orderBy: { createdAt: "asc" },
         select: {
