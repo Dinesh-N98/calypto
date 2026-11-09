@@ -112,6 +112,9 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
   const [salePriceInput, setSalePriceInput] = useState("");
   const [discountAmountInput, setDiscountAmountInput] = useState("");
   const [originalPriceInput, setOriginalPriceInput] = useState("");
+  const [pieceLengthInches, setPieceLengthInches] = useState("5");
+  const [piecesPerPack, setPiecesPerPack] = useState("6");
+  const [packWeightGrams, setPackWeightGrams] = useState("55");
   const [description, setDescription] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -460,6 +463,89 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                     />
                   </details>
                 )}
+              </div>
+            </div>
+          </FormCard>
+
+          <FormCard
+            description="Specify the dimensions and net weight for a single retail pack."
+            title="Packaging & specifications"
+          >
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <FieldLabel htmlFor="piece-length-inches">Piece length</FieldLabel>
+                <div className="flex items-center rounded-md border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
+                  <input
+                    aria-describedby={errors.pieceLengthInches ? "piece-length-error" : undefined}
+                    aria-invalid={Boolean(errors.pieceLengthInches)}
+                    className="min-h-11 min-w-0 flex-1 rounded-l-md border-0 bg-transparent px-3 text-sm outline-none"
+                    id="piece-length-inches"
+                    min="0.01"
+                    name="pieceLengthInches"
+                    onChange={(event) => setPieceLengthInches(event.target.value)}
+                    placeholder="5.0"
+                    required
+                    step="any"
+                    type="number"
+                    value={pieceLengthInches}
+                  />
+                  <span aria-hidden="true" className="px-3 text-xs font-semibold text-[#73786b]">
+                    in
+                  </span>
+                </div>
+                <span id="piece-length-error">
+                  <FieldError>{errors.pieceLengthInches}</FieldError>
+                </span>
+              </div>
+              <div>
+                <FieldLabel htmlFor="pieces-per-pack">Package count</FieldLabel>
+                <div className="flex items-center rounded-md border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
+                  <input
+                    aria-describedby={errors.piecesPerPack ? "pieces-per-pack-error" : undefined}
+                    aria-invalid={Boolean(errors.piecesPerPack)}
+                    className="min-h-11 min-w-0 flex-1 rounded-l-md border-0 bg-transparent px-3 text-sm outline-none"
+                    id="pieces-per-pack"
+                    min="1"
+                    name="piecesPerPack"
+                    onChange={(event) => setPiecesPerPack(event.target.value)}
+                    placeholder="6"
+                    required
+                    step="1"
+                    type="number"
+                    value={piecesPerPack}
+                  />
+                  <span aria-hidden="true" className="px-3 text-xs font-semibold text-[#73786b]">
+                    pcs
+                  </span>
+                </div>
+                <span id="pieces-per-pack-error">
+                  <FieldError>{errors.piecesPerPack}</FieldError>
+                </span>
+              </div>
+              <div>
+                <FieldLabel htmlFor="pack-weight-grams">Package weight</FieldLabel>
+                <div className="flex items-center rounded-md border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
+                  <input
+                    aria-describedby={errors.packWeightGrams ? "pack-weight-error" : undefined}
+                    aria-invalid={Boolean(errors.packWeightGrams)}
+                    className="min-h-11 min-w-0 flex-1 rounded-l-md border-0 bg-transparent px-3 text-sm outline-none"
+                    id="pack-weight-grams"
+                    min="0.01"
+                    name="packWeightGrams"
+                    onChange={(event) => setPackWeightGrams(event.target.value)}
+                    placeholder="55"
+                    required
+                    step="any"
+                    type="number"
+                    value={packWeightGrams}
+                  />
+                  <span aria-hidden="true" className="px-3 text-xs font-semibold text-[#73786b]">
+                    g
+                  </span>
+                </div>
+                <span id="pack-weight-error">
+                  <FieldError>{errors.packWeightGrams}</FieldError>
+                </span>
               </div>
             </div>
           </FormCard>

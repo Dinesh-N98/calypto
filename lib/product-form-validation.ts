@@ -1,5 +1,20 @@
 import { z } from "zod";
 
+const positiveNumberWithDefault = (defaultValue: number) =>
+  z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce.number().finite().positive().default(defaultValue),
+  );
+
+export const productPackagingSchema = z.object({
+  pieceLengthInches: positiveNumberWithDefault(5),
+  piecesPerPack: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce.number().int().positive().default(6),
+  ),
+  packWeightGrams: positiveNumberWithDefault(55),
+});
+
 const optionalPrice = z
   .string()
   .regex(/^(?:\d{1,8}(?:\.\d{1,2})?)?$/u, "Enter a valid price.")
@@ -38,6 +53,7 @@ export const productCreateFormSchema = z
     isActive: z.enum(["true", "false"]),
     trackInventory: z.enum(["true", "false"]),
     tieredDiscountsEnabled: z.enum(["", "true", "false"]),
+    ...productPackagingSchema.shape,
   })
   .superRefine((values, context) => {
     if (values.salePrice && values.discountAmount) {

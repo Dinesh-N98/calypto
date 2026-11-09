@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { productCreateFormSchema } from "@/lib/product-form-validation";
+import { productCreateFormSchema, productPackagingSchema } from "@/lib/product-form-validation";
 
 const validProduct = {
   name: "River Shad",
@@ -20,6 +20,21 @@ const validProduct = {
 };
 
 describe("productCreateFormSchema", () => {
+  it("defaults packaging specifications when omitted and rejects non-positive values", () => {
+    expect(productPackagingSchema.parse({})).toEqual({
+      pieceLengthInches: 5,
+      piecesPerPack: 6,
+      packWeightGrams: 55,
+    });
+    expect(
+      productPackagingSchema.safeParse({
+        pieceLengthInches: "0",
+        piecesPerPack: "1.5",
+        packWeightGrams: "-4",
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts a draft with untracked stock and tags", () => {
     expect(productCreateFormSchema.safeParse(validProduct).success).toBe(true);
   });

@@ -37,6 +37,9 @@ type ProductRecord = {
   isActive: boolean;
   trackInventory: boolean;
   tags: string[];
+  pieceLengthInches: number;
+  piecesPerPack: number;
+  packWeightGrams: number;
   categoryTieredDiscountsEnabled: boolean;
   imageUrl: string;
   images: { url: string }[];
@@ -195,6 +198,42 @@ function ProductFormFields({
             maxLength={100}
             name="brand"
             placeholder="Brand name"
+          />
+        </label>
+        <label className="text-xs font-bold text-[#55594f]">
+          Piece length (in)
+          <input
+            className="admin-catalog-input"
+            defaultValue={product?.pieceLengthInches ?? 5}
+            min="0.01"
+            name="pieceLengthInches"
+            required
+            step="any"
+            type="number"
+          />
+        </label>
+        <label className="text-xs font-bold text-[#55594f]">
+          Pieces per pack
+          <input
+            className="admin-catalog-input"
+            defaultValue={product?.piecesPerPack ?? 6}
+            min="1"
+            name="piecesPerPack"
+            required
+            step="1"
+            type="number"
+          />
+        </label>
+        <label className="text-xs font-bold text-[#55594f]">
+          Pack weight (g)
+          <input
+            className="admin-catalog-input"
+            defaultValue={product?.packWeightGrams ?? 55}
+            min="0.01"
+            name="packWeightGrams"
+            required
+            step="any"
+            type="number"
           />
         </label>
         <label className="text-xs font-bold text-[#55594f]">

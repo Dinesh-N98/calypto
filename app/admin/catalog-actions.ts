@@ -5,6 +5,15 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+import { productPackagingSchema } from "@/lib/product-form-validation";
+import type { CreateProductInput, ProductPackagingSpecifications } from "@/lib/product-types";
+
+type ProductMutationSuccess = {
+  ok: true;
+  message: string;
+  product: ProductPackagingSpecifications & { id: string };
+};
+type ProductMutationResult = ProductMutationSuccess | { ok: false; error: string };
 
 function getText(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -409,6 +418,11 @@ function readProduct(formData: FormData) {
   const tags = parseProductTags(getText(formData, "tags"));
   const isActiveInput = getText(formData, "isActive");
   const trackInventoryInput = getText(formData, "trackInventory");
+  const packaging = productPackagingSchema.safeParse({
+    pieceLengthInches: getText(formData, "pieceLengthInches"),
+    piecesPerPack: getText(formData, "piecesPerPack"),
+    packWeightGrams: getText(formData, "packWeightGrams"),
+  });
 
   if (!name || name.length > 160)
     return { error: "Product name is required (max 160 characters)." } as const;
@@ -485,6 +499,11 @@ function readProduct(formData: FormData) {
   if (!["true", "false"].includes(trackInventoryInput)) {
     return { error: "Choose whether to track product inventory." } as const;
   }
+  if (!packaging.success) {
+    return {
+      error: "Enter a positive piece length, package count, and package weight.",
+    } as const;
+  }
   const tieredDiscountsEnabledInput = getText(formData, "tieredDiscountsEnabled");
   const tieredDiscountsEnabled =
     tieredDiscountsEnabledInput === ""
@@ -505,22 +524,27 @@ function readProduct(formData: FormData) {
     } as const;
   }
 
+  const productData: CreateProductInput = {
+    name,
+    slug,
+    description,
+    brand: brand || null,
+    priceCents,
+    salePriceCents,
+    originalPriceCents,
+    saleEndsAt,
+    tieredDiscountsEnabled,
+    isActive: isActiveInput === "true",
+    trackInventory: trackInventoryInput === "true",
+    tags,
+    imageUrl,
+    categoryId,
+    ...packaging.data,
+  };
+
   return {
     data: {
-      name,
-      slug,
-      description,
-      brand: brand || null,
-      priceCents,
-      salePriceCents,
-      originalPriceCents,
-      saleEndsAt,
-      tieredDiscountsEnabled,
-      isActive: isActiveInput === "true",
-      trackInventory: trackInventoryInput === "true",
-      tags,
-      imageUrl,
-      categoryId,
+      ...productData,
       variants,
       images: images.map((url, order) => ({ url, order, altText: name })),
       tieredDiscounts,
@@ -528,23 +552,30 @@ function readProduct(formData: FormData) {
   } as const;
 }
 
-export async function createProduct(
-  formData: FormData,
-): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+export async function createProduct(formData: FormData): Promise<ProductMutationResult> {
   await requireAdminPage("/admin/products");
   const product = readProduct(formData);
   if (product.error) return { ok: false, error: product.error };
 
   try {
     const { variants, images, tieredDiscounts, ...data } = product.data;
-    await prisma.product.create({
+    const createdProduct = await prisma.product.create({
       data: {
         ...data,
         variants: { create: variants },
         images: { create: images },
         tieredDiscounts: { create: tieredDiscounts },
       },
+      select: {
+        id: true,
+        pieceLengthInches: true,
+        piecesPerPack: true,
+        packWeightGrams: true,
+      },
     });
+    revalidatePath(`/shop/${product.data.slug}`);
+    revalidateCatalog();
+    return { ok: true, message: "Product created.", product: createdProduct };
   } catch (error) {
     if (isUniqueConstraintError(error)) {
       return { ok: false, error: "A product slug or variant SKU already exists." };
@@ -554,15 +585,9 @@ export async function createProduct(
     }
     throw error;
   }
-
-  revalidatePath(`/shop/${product.data.slug}`);
-  revalidateCatalog();
-  return { ok: true, message: "Product created." };
 }
 
-export async function updateProduct(
-  formData: FormData,
-): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+export async function updateProduct(formData: FormData): Promise<ProductMutationResult> {
   await requireAdminPage("/admin/products");
   const id = getText(formData, "id");
   if (!id) return { ok: false, error: "Choose a valid product." };
@@ -570,9 +595,10 @@ export async function updateProduct(
   const product = readProduct(formData);
   if (product.error) return { ok: false, error: product.error };
 
+  let updatedProduct: ProductMutationSuccess["product"];
   try {
     const { variants, images, tieredDiscounts, ...data } = product.data;
-    await prisma.$transaction(async (transaction) => {
+    updatedProduct = await prisma.$transaction(async (transaction) => {
       const currentVariants = await transaction.productVariant.findMany({
         where: { productId: id },
         select: { id: true, sku: true },
@@ -584,12 +610,18 @@ export async function updateProduct(
       await transaction.productVariant.deleteMany({
         where: { productId: id, sku: { notIn: requestedSkus } },
       });
-      await transaction.product.update({
+      const savedProduct = await transaction.product.update({
         where: { id },
         data: {
           ...data,
           images: { deleteMany: {}, create: images },
           tieredDiscounts: { deleteMany: {}, create: tieredDiscounts },
+        },
+        select: {
+          id: true,
+          pieceLengthInches: true,
+          piecesPerPack: true,
+          packWeightGrams: true,
         },
       });
       for (const variant of variants) {
@@ -603,6 +635,7 @@ export async function updateProduct(
           await transaction.productVariant.create({ data: { ...variant, productId: id } });
         }
       }
+      return savedProduct;
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
@@ -619,7 +652,7 @@ export async function updateProduct(
 
   revalidatePath(`/shop/${product.data.slug}`);
   revalidateCatalog();
-  return { ok: true, message: "Product updated." };
+  return { ok: true, message: "Product updated.", product: updatedProduct };
 }
 
 export async function deleteProduct(

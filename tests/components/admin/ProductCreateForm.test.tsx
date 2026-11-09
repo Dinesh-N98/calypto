@@ -39,8 +39,12 @@ describe("ProductCreateForm", () => {
     expect(screen.getByRole("heading", { name: "General information" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Media & assets" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pricing & discounts" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Packaging & specifications" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Product organization" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Inventory & settings" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Piece length")).toHaveValue(5);
+    expect(screen.getByLabelText("Package count")).toHaveValue(6);
+    expect(screen.getByLabelText("Package weight")).toHaveValue(55);
 
     await user.type(screen.getByLabelText("Product name"), "River Shad");
     const slug = screen.getByLabelText("URL slug");
