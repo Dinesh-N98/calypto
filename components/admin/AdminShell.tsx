@@ -13,15 +13,15 @@ export function AdminShell({ children, user }: AdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#f4f5f1] text-[#161812] lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
+    <div className="admin-shell flex h-[100dvh] min-h-0 overflow-hidden bg-[#f4f5f1] text-[#161812] lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       <AdminSidebar
         isOpen={sidebarOpen}
         onNavigate={() => setSidebarOpen(false)}
         onClose={() => setSidebarOpen(false)}
       />
-      <div className="min-w-0">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <AdminHeader user={user} onMenuClick={() => setSidebarOpen(true)} />
-        <main className="mx-auto w-full max-w-[90rem] px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-8">
           {children}
         </main>
       </div>

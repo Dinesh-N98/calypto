@@ -58,7 +58,7 @@ export function AdminSidebar({ isOpen, onNavigate, onClose }: AdminSidebarProps)
       )}
       <aside
         aria-label="Admin sidebar"
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-[#171a14] px-5 py-6 text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:w-auto lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-64 flex-col overflow-y-auto overscroll-contain bg-[#171a14] px-5 py-6 text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-[100dvh] lg:w-auto lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex items-center justify-between">
           <Link className="text-lg font-black tracking-[.12em]" href="/admin" onClick={onNavigate}>

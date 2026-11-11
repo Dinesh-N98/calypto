@@ -13,7 +13,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { deleteProduct, updateProduct } from "@/app/admin/catalog-actions";
 import { useToast } from "@/components/ToastProvider";
 import { formatPrice } from "@/lib/currency";
@@ -159,6 +159,12 @@ function ProductFormFields({
       <input name="imageUrls" type="hidden" value={JSON.stringify(galleryUrls)} />
       <input name="tags" type="hidden" value={JSON.stringify(product?.tags ?? [])} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="border-b border-black/10 pb-2 md:col-span-2">
+          <h3 className="text-sm font-extrabold text-[#25281f]">General information</h3>
+          <p className="mt-1 text-xs font-normal text-[#73786b]">
+            Product identity and storefront details.
+          </p>
+        </div>
         <label className="text-xs font-bold text-[#55594f] md:col-span-2">
           Product name
           <input
@@ -200,6 +206,12 @@ function ProductFormFields({
             placeholder="Brand name"
           />
         </label>
+        <div className="border-b border-black/10 pb-2 pt-3 md:col-span-2">
+          <h3 className="text-sm font-extrabold text-[#25281f]">Physical specifications</h3>
+          <p className="mt-1 text-xs font-normal text-[#73786b]">
+            Pack dimensions and quantities used for shipping.
+          </p>
+        </div>
         <label className="text-xs font-bold text-[#55594f]">
           Piece length (in)
           <input
@@ -236,6 +248,12 @@ function ProductFormFields({
             type="number"
           />
         </label>
+        <div className="border-b border-black/10 pb-2 pt-3 md:col-span-2">
+          <h3 className="text-sm font-extrabold text-[#25281f]">Pricing &amp; discounts</h3>
+          <p className="mt-1 text-xs font-normal text-[#73786b]">
+            Set the regular price and optional promotional pricing.
+          </p>
+        </div>
         <label className="text-xs font-bold text-[#55594f]">
           Price (USD)
           <input
@@ -302,6 +320,12 @@ function ProductFormFields({
             ? "Enter a valid original price and lower sale/discount value to preview savings."
             : `Sale price: $${discountSalePrice.toFixed(2)} · ${discountPercent}% off`}
         </p>
+        <div className="border-b border-black/10 pb-2 pt-3 md:col-span-2">
+          <h3 className="text-sm font-extrabold text-[#25281f]">Inventory &amp; scheduling</h3>
+          <p className="mt-1 text-xs font-normal text-[#73786b]">
+            Schedule promotions and control product availability.
+          </p>
+        </div>
         <label className="text-xs font-bold text-[#55594f] md:col-span-2">
           Sale ends at
           <input
@@ -616,9 +640,66 @@ function ProductDrawer({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [closing, setClosing] = useState(false);
   const product = mode.product;
   const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
   const [galleryUrls, setGalleryUrls] = useState(product?.images.map((image) => image.url) ?? []);
+  const drawerRef = useRef<HTMLElement>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
+  const requestClose = useCallback(() => {
+    if (pending || closing) return;
+    setClosing(true);
+    closeTimerRef.current = window.setTimeout(onClose, 180);
+  }, [closing, onClose, pending]);
+
+  useEffect(() => {
+    const activeElement = document.activeElement;
+    previousActiveElementRef.current =
+      activeElement instanceof HTMLElement ? activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+      document.body.style.overflow = previousOverflow;
+      previousActiveElementRef.current?.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        requestClose();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const focusableElements = drawerRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusableElements?.length) {
+        event.preventDefault();
+        return;
+      }
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      if (!drawerRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        firstElement.focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [requestClose]);
 
   async function uploadImage(file: File): Promise<string> {
     const uploadData = new FormData();
@@ -723,38 +804,44 @@ function ProductDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-black/45"
+      className="admin-product-drawer-backdrop fixed inset-0 z-50 flex justify-end bg-black/45"
+      data-closing={closing}
       onClick={(event) => {
-        if (event.target === event.currentTarget && !pending) onClose();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <section
         aria-labelledby="product-drawer-title"
         aria-modal="true"
-        className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl"
+        className="admin-product-drawer flex h-[100dvh] w-full max-w-3xl flex-col bg-white shadow-2xl"
+        ref={drawerRef}
         role="dialog"
       >
-        <header className="flex items-start justify-between border-b border-black/10 px-6 py-5">
+        <header className="sticky top-0 z-10 flex shrink-0 items-start justify-between border-b border-black/10 bg-white/95 px-5 py-4 backdrop-blur sm:px-8 sm:py-5">
           <div>
-            <p className="text-[.65rem] font-bold uppercase tracking-[.13em] text-[#718126]">
-              Product catalog
-            </p>
+            <nav aria-label="Breadcrumb" className="text-xs font-semibold text-[#73786b]">
+              <Link className="transition-colors hover:text-[#53641d]" href="/admin/products">
+                Products
+              </Link>
+              <span aria-hidden="true" className="px-2">/</span>
+              <span className="text-[#53641d]">{product.name}</span>
+            </nav>
             <h2 className="mt-1 text-xl font-black" id="product-drawer-title">
               Edit product
             </h2>
           </div>
           <button
             aria-label="Close product form"
-            className="grid h-10 w-10 place-items-center rounded-md text-[#55594f] hover:bg-black/5"
+            className="grid h-10 w-10 place-items-center rounded-lg text-[#55594f] transition-colors hover:bg-black/5"
             disabled={pending}
-            onClick={onClose}
+            onClick={requestClose}
             type="button"
           >
             <X aria-hidden="true" className="h-5 w-5" />
           </button>
         </header>
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-5 sm:px-8">
             {error && (
               <p
                 aria-live="assertive"
@@ -772,11 +859,11 @@ function ProductDrawer({
               product={product}
             />
           </div>
-          <footer className="flex justify-end gap-3 border-t border-black/10 px-6 py-4">
+          <footer className="sticky bottom-0 z-10 flex shrink-0 justify-end gap-3 border-t border-black/10 bg-white/95 px-5 py-4 shadow-[0_-8px_20px_-20px_rgba(0,0,0,.4)] backdrop-blur sm:px-8">
             <button
               className="min-h-11 rounded-md border border-black/15 px-4 text-xs font-bold hover:bg-[#f4f5f1]"
               disabled={pending}
-              onClick={onClose}
+              onClick={requestClose}
               type="button"
             >
               Cancel
@@ -886,6 +973,29 @@ export function AdminProductsTable({
   const [drawer, setDrawer] = useState<DrawerMode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductRecord | null>(null);
 
+  useEffect(() => {
+    function handleSearchShortcut(event: KeyboardEvent) {
+      const target = event.target;
+      if (
+        drawer ||
+        deleteTarget ||
+        event.key !== "/" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        (target instanceof HTMLElement &&
+          (target.isContentEditable || target.matches("input, textarea, select")))
+      ) {
+        return;
+      }
+      event.preventDefault();
+      searchRef.current?.focus();
+    }
+
+    document.addEventListener("keydown", handleSearchShortcut);
+    return () => document.removeEventListener("keydown", handleSearchShortcut);
+  }, [deleteTarget, drawer]);
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return products.filter((product) => {
@@ -914,7 +1024,7 @@ export function AdminProductsTable({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-full flex-col gap-5">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link className="text-xs font-bold text-[#687b26] hover:underline" href="/admin">
@@ -944,8 +1054,8 @@ export function AdminProductsTable({
         </p>
       )}
 
-      <section className="overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-black/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="flex min-h-[30rem] flex-1 flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
+        <div className="flex shrink-0 flex-col gap-3 border-b border-black/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <label className="relative min-w-0 flex-1 sm:max-w-sm">
             <span className="sr-only">Search products</span>
             <Search
@@ -953,7 +1063,8 @@ export function AdminProductsTable({
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#73786b]"
             />
             <input
-              className="min-h-10 w-full rounded-md border border-black/15 bg-white pl-9 pr-9 text-sm outline-none focus:border-[#718126]"
+              aria-keyshortcuts="/"
+              className="min-h-10 w-full rounded-lg border border-black/15 bg-white pl-9 pr-14 text-sm outline-none transition focus:border-[#718126] focus:ring-2 focus:ring-[#718126]/20"
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
@@ -977,12 +1088,20 @@ export function AdminProductsTable({
                 <X aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
+            {!search && (
+              <kbd
+                aria-hidden="true"
+                className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-black/10 bg-[#f7f8f5] px-1.5 py-0.5 text-[.65rem] font-semibold text-[#73786b]"
+              >
+                /
+              </kbd>
+            )}
           </label>
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-xs font-bold text-[#55594f]">
               Category
               <select
-                className="min-h-10 rounded-md border border-black/15 bg-white px-3 text-xs font-semibold"
+                className="min-h-10 rounded-lg border border-black/15 bg-white px-3 text-xs font-semibold transition focus:border-[#718126] focus:outline-none focus:ring-2 focus:ring-[#718126]/20"
                 onChange={(event) => {
                   setCategoryId(event.target.value);
                   setPage(1);
@@ -1000,7 +1119,7 @@ export function AdminProductsTable({
             <label className="flex items-center gap-2 text-xs font-bold text-[#55594f]">
               Rows
               <select
-                className="min-h-10 rounded-md border border-black/15 bg-white px-3 text-xs font-semibold"
+                className="min-h-10 rounded-lg border border-black/15 bg-white px-3 text-xs font-semibold transition focus:border-[#718126] focus:outline-none focus:ring-2 focus:ring-[#718126]/20"
                 onChange={(event) => {
                   setPageSize(Number(event.target.value) as (typeof PAGE_SIZES)[number]);
                   setPage(1);
@@ -1017,9 +1136,9 @@ export function AdminProductsTable({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
           <table className="w-full min-w-[760px] border-collapse text-left">
-            <thead className="bg-[#f7f8f5] text-[.65rem] uppercase tracking-[.1em] text-[#73786b]">
+            <thead className="sticky top-0 z-10 bg-[#f7f8f5] text-[.65rem] uppercase tracking-[.1em] text-[#73786b] shadow-[0_1px_0_rgba(0,0,0,.08)]">
               <tr>
                 <th className="px-4 py-3 font-bold">Product</th>
                 <th className="px-4 py-3 font-bold">Category</th>
@@ -1029,10 +1148,10 @@ export function AdminProductsTable({
             </thead>
             <tbody className="divide-y divide-black/5">
               {visibleProducts.map((product) => (
-                <tr className="hover:bg-[#fafbf8]" key={product.id}>
+                <tr className="transition-colors hover:bg-[#fafbf8] focus-within:bg-[#fafbf8]" key={product.id}>
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-[#e4e4d9]">
+                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-black/5 bg-[#f2f3ee]">
                         <Image
                           alt=""
                           className="object-cover"
@@ -1048,21 +1167,23 @@ export function AdminProductsTable({
                             {product.name}
                           </p>
                           <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-[.58rem] font-bold uppercase ${
+                            className={`shrink-0 rounded-full border px-2.5 py-1 text-[.58rem] font-extrabold uppercase tracking-wide ${
                               product.isActive
-                                ? "bg-[#eef2df] text-[#53641d]"
-                                : "bg-[#f3eee4] text-[#79602e]"
+                                ? "border-[#dfe8bb] bg-[#f0f5dd] text-[#53641d]"
+                                : "border-[#e8dfce] bg-[#f8f4ec] text-[#79602e]"
                             }`}
                           >
                             {product.isActive ? "Active" : "Draft"}
                           </span>
                         </div>
-                        <p className="mt-0.5 truncate text-xs text-[#73786b]">/{product.slug}</p>
+                        <p className="mt-1 truncate font-mono text-[.68rem] text-[#73786b]">
+                          /{product.slug}
+                        </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex max-w-48 truncate rounded-full bg-[#eef2df] px-2.5 py-1 text-[.68rem] font-bold text-[#53641d]">
+                    <span className="inline-flex max-w-48 truncate rounded-md border border-[#e4e9d4] bg-[#f6f8ef] px-2.5 py-1 text-[.68rem] font-bold text-[#53641d]">
                       {product.categoryName}
                     </span>
                   </td>
@@ -1134,7 +1255,7 @@ export function AdminProductsTable({
           </table>
         </div>
 
-        <footer className="flex flex-col gap-3 border-t border-black/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex shrink-0 flex-col gap-3 border-t border-black/10 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[#73786b]">
             Showing{" "}
             <span className="font-semibold text-[#42463b]">
