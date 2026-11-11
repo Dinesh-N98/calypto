@@ -13,17 +13,27 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { deleteProduct, updateProduct } from "@/app/admin/catalog-actions";
 import { useToast } from "@/components/ToastProvider";
+import {
+  ProductDiscountTierBuilder,
+  ProductTagInput,
+  ProductVariantBuilder,
+  type VariantValue,
+} from "@/components/admin/ProductVisualFields";
 import { formatPrice } from "@/lib/currency";
+import {
+  productCreateFormSchema,
+  type ProductCreateFieldErrors,
+} from "@/lib/product-form-validation";
 
-type CategoryOption = {
+export type CategoryOption = {
   id: string;
   name: string;
   tieredDiscountsEnabled: boolean;
 };
-type ProductRecord = {
+export type ProductRecord = {
   id: string;
   name: string;
   slug: string;
@@ -61,10 +71,17 @@ type ProductRecord = {
   categoryName: string;
 };
 type ActionResult = { ok: true; message: string } | { ok: false; error: string };
-type DrawerMode = { type: "edit"; product: ProductRecord };
-
 const PAGE_SIZES = [10, 20] as const;
 const MAX_PRODUCT_IMAGE_SIZE = 10 * 1024 * 1024;
+
+function ProductFieldError({ children }: { children?: string }) {
+  if (!children) return null;
+  return (
+    <span className="mt-1 block text-xs font-medium text-red-700" role="alert">
+      {children}
+    </span>
+  );
+}
 
 function slugifyProductName(value: string): string {
   return value
@@ -82,13 +99,15 @@ function ProductFormFields({
   onImageUrlChange,
   galleryUrls,
   onGalleryUrlsChange,
+  errors,
 }: {
   categories: CategoryOption[];
-  product?: ProductRecord;
+  product: ProductRecord;
   imageUrl: string;
   onImageUrlChange: (imageUrl: string) => void;
   galleryUrls: string[];
   onGalleryUrlsChange: (urls: string[]) => void;
+  errors: ProductCreateFieldErrors;
 }) {
   const [name, setName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
@@ -157,410 +176,528 @@ function ProductFormFields({
       {product && <input name="id" type="hidden" value={product.id} />}
       <input name="imageUrl" type="hidden" value={imageUrl} />
       <input name="imageUrls" type="hidden" value={JSON.stringify(galleryUrls)} />
-      <input name="tags" type="hidden" value={JSON.stringify(product?.tags ?? [])} />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="border-b border-black/10 pb-2 md:col-span-2">
-          <h3 className="text-sm font-extrabold text-[#25281f]">General information</h3>
-          <p className="mt-1 text-xs font-normal text-[#73786b]">
-            Product identity and storefront details.
-          </p>
-        </div>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          Product name
-          <input
-            autoFocus
-            className="admin-catalog-input"
-            onChange={(event) => {
-              const value = event.target.value;
-              setName(value);
-              if (!slugManuallyEdited) setSlug(slugifyProductName(value));
-            }}
-            maxLength={160}
-            name="name"
-            required
-            value={name}
-          />
-        </label>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          URL slug
-          <input
-            className="admin-catalog-input"
-            onChange={(event) => {
-              setSlugManuallyEdited(true);
-              setSlug(event.target.value);
-            }}
-            maxLength={120}
-            name="slug"
-            pattern="[a-z0-9]+(-[a-z0-9]+)*"
-            required
-            value={slug}
-          />
-        </label>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          Brand
-          <input
-            className="admin-catalog-input"
-            defaultValue={product?.brand ?? ""}
-            maxLength={100}
-            name="brand"
-            placeholder="Brand name"
-          />
-        </label>
-        <div className="border-b border-black/10 pb-2 pt-3 md:col-span-2">
-          <h3 className="text-sm font-extrabold text-[#25281f]">Physical specifications</h3>
-          <p className="mt-1 text-xs font-normal text-[#73786b]">
-            Pack dimensions and quantities used for shipping.
-          </p>
-        </div>
-        <label className="text-xs font-bold text-[#55594f]">
-          Piece length (in)
-          <input
-            className="admin-catalog-input"
-            defaultValue={product?.pieceLengthInches ?? 5}
-            min="0.01"
-            name="pieceLengthInches"
-            required
-            step="any"
-            type="number"
-          />
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Pieces per pack
-          <input
-            className="admin-catalog-input"
-            defaultValue={product?.piecesPerPack ?? 6}
-            min="1"
-            name="piecesPerPack"
-            required
-            step="1"
-            type="number"
-          />
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Pack weight (g)
-          <input
-            className="admin-catalog-input"
-            defaultValue={product?.packWeightGrams ?? 55}
-            min="0.01"
-            name="packWeightGrams"
-            required
-            step="any"
-            type="number"
-          />
-        </label>
-        <div className="border-b border-black/10 pb-2 pt-3 md:col-span-2">
-          <h3 className="text-sm font-extrabold text-[#25281f]">Pricing &amp; discounts</h3>
-          <p className="mt-1 text-xs font-normal text-[#73786b]">
-            Set the regular price and optional promotional pricing.
-          </p>
-        </div>
-        <label className="text-xs font-bold text-[#55594f]">
-          Price (USD)
-          <input
-            className="admin-catalog-input"
-            onChange={(event) => setPriceInput(event.target.value)}
-            inputMode="decimal"
-            min="0.01"
-            name="price"
-            placeholder="9.99"
-            required
-            step="0.01"
-            type="number"
-            value={priceInput}
-          />
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Sale price (USD)
-          <input
-            className="admin-catalog-input"
-            onChange={(event) => {
-              setSalePriceInput(event.target.value);
-              if (event.target.value) setDiscountAmountInput("");
-            }}
-            min="0.01"
-            name="salePrice"
-            placeholder="Optional"
-            step="0.01"
-            type="number"
-            value={salePriceInput}
-          />
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Discount amount (USD)
-          <input
-            className="admin-catalog-input"
-            min="0.01"
-            name="discountAmount"
-            onChange={(event) => {
-              setDiscountAmountInput(event.target.value);
-              if (event.target.value) setSalePriceInput("");
-            }}
-            placeholder="Optional"
-            step="0.01"
-            type="number"
-            value={discountAmountInput}
-          />
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Original price (USD)
-          <input
-            className="admin-catalog-input"
-            onChange={(event) => setOriginalPriceInput(event.target.value)}
-            min="0.01"
-            name="originalPrice"
-            placeholder="Optional"
-            step="0.01"
-            type="number"
-            value={originalPriceInput}
-          />
-        </label>
-        <p className="text-xs font-normal text-[#73786b] md:col-span-2">
-          Enter either a sale price or discount amount.{" "}
-          {discountPercent === null
-            ? "Enter a valid original price and lower sale/discount value to preview savings."
-            : `Sale price: $${discountSalePrice.toFixed(2)} · ${discountPercent}% off`}
-        </p>
-        <div className="border-b border-black/10 pb-2 pt-3 md:col-span-2">
-          <h3 className="text-sm font-extrabold text-[#25281f]">Inventory &amp; scheduling</h3>
-          <p className="mt-1 text-xs font-normal text-[#73786b]">
-            Schedule promotions and control product availability.
-          </p>
-        </div>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          Sale ends at
-          <input
-            className="admin-catalog-input"
-            defaultValue={
-              product?.saleEndsAt
-                ? new Date(
-                    product.saleEndsAt.getTime() - product.saleEndsAt.getTimezoneOffset() * 60_000,
-                  )
-                    .toISOString()
-                    .slice(0, 16)
-                : ""
-            }
-            name="saleEndsAt"
-            type="datetime-local"
-          />
-          <span className="mt-1 block text-[11px] font-normal">
-            Required when a sale price is set.
-          </span>
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Category
-          <select
-            className="admin-catalog-input"
-            name="categoryId"
-            onChange={(event) => setSelectedCategoryId(event.target.value)}
-            required
-            value={selectedCategoryId}
-          >
-            <option disabled value="">
-              Select a category
-            </option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Quantity discount setting
-          <select
-            className="admin-catalog-input"
-            defaultValue={
-              product?.tieredDiscountsEnabled === null ||
-              product?.tieredDiscountsEnabled === undefined
-                ? ""
-                : String(product.tieredDiscountsEnabled)
-            }
-            name="tieredDiscountsEnabled"
-          >
-            <option value="">Inherit category default</option>
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
-          </select>
-          <span className="mt-1 block text-[11px] font-normal">
-            Category setting:{" "}
-            {(selectedCategory?.tieredDiscountsEnabled ??
-            product?.categoryTieredDiscountsEnabled ??
-            false)
-              ? "enabled"
-              : "disabled"}
-            .
-          </span>
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Status
-          <select
-            className="admin-catalog-input"
-            name="isActive"
-            defaultValue={String(product?.isActive ?? true)}
-          >
-            <option value="false">Draft</option>
-            <option value="true">Active</option>
-          </select>
-        </label>
-        <label className="text-xs font-bold text-[#55594f]">
-          Inventory tracking
-          <select
-            className="admin-catalog-input"
-            name="trackInventory"
-            defaultValue={String(product?.trackInventory ?? true)}
-          >
-            <option value="true">Track quantity</option>
-            <option value="false">Do not track quantity</option>
-          </select>
-        </label>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          Collections & tags (comma-separated)
-          <input
-            className="admin-catalog-input"
-            defaultValue={product?.tags.join(", ") ?? ""}
-            name="tagInput"
-            placeholder="soft bait, river, seasonal"
-          />
-        </label>
-        <div className="text-xs font-bold text-[#55594f] md:col-span-2">
-          <span>Product image</span>
-          <input
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="sr-only"
-            id="product-image-file"
-            name="imageFile"
-            onChange={(event) => selectImage(event.target.files?.[0])}
-            ref={imageInputRef}
-            required={!imageUrl && !selectedImage}
-            type="file"
-          />
-          <label
-            className="mt-1 flex min-h-32 cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-black/20 bg-[#fafaf8] p-4 text-center text-sm font-medium text-[#55594f] transition hover:border-[#718126] hover:bg-[#f4f5f1]"
-            htmlFor="product-image-file"
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              selectImage(event.dataTransfer.files[0]);
-            }}
-          >
-            {previewUrl ? (
-              <span className="relative block h-28 w-full max-w-56 overflow-hidden rounded">
-                <Image
-                  alt="Product image preview"
-                  className="object-contain"
-                  fill
-                  src={previewUrl}
-                  unoptimized
-                />
-              </span>
-            ) : (
-              <span>
-                Drop an image here or <span className="font-bold underline">browse files</span>
-                <span className="mt-1 block text-xs font-normal text-[#73786b]">
-                  JPG, PNG, WEBP, or GIF · up to 10 MB
-                </span>
-              </span>
-            )}
-          </label>
-          {(selectedImage || imageUrl) && (
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-xs font-normal text-[#73786b]">
-                {selectedImage?.name ?? imageUrl}
-              </span>
-              <button
-                className="shrink-0 text-xs font-bold text-[#55594f] underline hover:text-[#161812]"
-                onClick={() => {
-                  setSelectedImage(null);
-                  onImageUrlChange("");
-                  setImageError("");
-                  if (previewObjectUrlRef.current) {
-                    URL.revokeObjectURL(previewObjectUrlRef.current);
-                    previewObjectUrlRef.current = null;
-                  }
-                  setPreviewUrl("");
-                  if (imageInputRef.current) imageInputRef.current.value = "";
-                }}
-                type="button"
-              >
-                Remove image
-              </button>
-            </div>
-          )}
-          <div className="text-xs font-bold text-[#55594f] md:col-span-2">
-            <label htmlFor="product-gallery-files">Additional gallery images</label>
-            <input
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="admin-catalog-input mt-1"
-              id="product-gallery-files"
-              multiple
-              name="galleryImages"
-              onChange={(event) => {
-                const files = [...(event.target.files ?? [])];
-                const invalid = files.find(
-                  (file) =>
-                    file.size > MAX_PRODUCT_IMAGE_SIZE ||
-                    (file.type &&
-                      !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)),
-                );
-                if (invalid) {
-                  setImageError("Gallery images must be JPG, PNG, WEBP, or GIF files up to 10 MB.");
-                  event.target.value = "";
-                  setGalleryFiles([]);
-                  return;
-                }
-                setImageError("");
-                setGalleryFiles(files);
-              }}
-              ref={galleryInputRef}
-              type="file"
-            />
-            <span className="mt-1 block text-[11px] font-normal">
-              {galleryFiles.length
-                ? `${galleryFiles.length} image${galleryFiles.length === 1 ? "" : "s"} selected`
-                : `${galleryUrls.length} saved image${galleryUrls.length === 1 ? "" : "s"}`}
-            </span>
-            {galleryUrls.length > 0 && (
-              <ul className="mt-2 grid gap-1">
-                {galleryUrls.map((url) => (
-                  <li className="flex items-center justify-between gap-2 font-normal" key={url}>
-                    <span className="min-w-0 truncate">{url}</span>
-                    <button
-                      className="shrink-0 underline"
-                      onClick={() =>
-                        onGalleryUrlsChange(galleryUrls.filter((galleryUrl) => galleryUrl !== url))
-                      }
-                      type="button"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {imageError && (
-            <p aria-live="polite" className="mt-2 text-xs font-normal text-red-800">
-              {imageError}
+      <input name="defaultStock" type="hidden" value="0" />
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(18rem,1fr)]">
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-1">
+          <div className="mb-5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
+              General information
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[#73786b]">
+              Product name, storefront URL, and product description.
             </p>
-          )}
-        </div>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          Description
-          <textarea
-            className="admin-catalog-input min-h-28 py-3"
-            defaultValue={product?.description}
-            maxLength={5000}
-            name="description"
-            required
-            rows={5}
-          />
-        </label>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          Variants (JSON)
-          <textarea
-            className="admin-catalog-input min-h-36 py-3 font-mono text-xs"
-            defaultValue={JSON.stringify(
-              product?.variants.map((variant) => ({
+          </div>
+          <div className="grid gap-4">
+            <label className="text-xs font-bold text-[#55594f] md:col-span-2">
+              Product name
+              <input
+                aria-invalid={Boolean(errors.name)}
+                autoFocus
+                className="admin-catalog-input"
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setName(value);
+                  if (!slugManuallyEdited) setSlug(slugifyProductName(value));
+                }}
+                maxLength={160}
+                name="name"
+                required
+                value={name}
+              />
+              <ProductFieldError>{errors.name}</ProductFieldError>
+            </label>
+            <label className="text-xs font-bold text-[#55594f] md:col-span-2">
+              URL slug
+              <input
+                aria-invalid={Boolean(errors.slug)}
+                className="admin-catalog-input"
+                onChange={(event) => {
+                  setSlugManuallyEdited(true);
+                  setSlug(event.target.value);
+                }}
+                maxLength={120}
+                name="slug"
+                pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                required
+                value={slug}
+              />
+              <ProductFieldError>{errors.slug}</ProductFieldError>
+            </label>
+            <label className="text-xs font-bold text-[#55594f] md:col-span-2">
+              Description
+              <textarea
+                aria-invalid={Boolean(errors.description)}
+                className="admin-catalog-input min-h-28 py-3"
+                defaultValue={product?.description}
+                maxLength={5000}
+                name="description"
+                required
+                rows={5}
+              />
+              <ProductFieldError>{errors.description}</ProductFieldError>
+              <span className="mt-1 block text-[11px] font-normal">
+                Markdown headings, emphasis, links, and lists are supported.
+              </span>
+            </label>
+          </div>
+        </section>
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-2 lg:row-start-3">
+          <div className="mb-5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
+              Physical &amp; shipping specifications
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[#73786b]">
+              Pack dimensions and quantities used for shipping.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-xs font-bold text-[#55594f]">
+              Piece length (in)
+              <input
+                aria-invalid={Boolean(errors.pieceLengthInches)}
+                className="admin-catalog-input"
+                defaultValue={product?.pieceLengthInches ?? 5}
+                min="0.01"
+                name="pieceLengthInches"
+                required
+                step="any"
+                type="number"
+              />
+              <ProductFieldError>{errors.pieceLengthInches}</ProductFieldError>
+            </label>
+            <label className="text-xs font-bold text-[#55594f]">
+              Pieces per pack
+              <input
+                aria-invalid={Boolean(errors.piecesPerPack)}
+                className="admin-catalog-input"
+                defaultValue={product?.piecesPerPack ?? 6}
+                min="1"
+                name="piecesPerPack"
+                required
+                step="1"
+                type="number"
+              />
+              <ProductFieldError>{errors.piecesPerPack}</ProductFieldError>
+            </label>
+            <label className="text-xs font-bold text-[#55594f]">
+              Pack weight (g)
+              <input
+                aria-invalid={Boolean(errors.packWeightGrams)}
+                className="admin-catalog-input"
+                defaultValue={product?.packWeightGrams ?? 55}
+                min="0.01"
+                name="packWeightGrams"
+                required
+                step="any"
+                type="number"
+              />
+              <ProductFieldError>{errors.packWeightGrams}</ProductFieldError>
+            </label>
+          </div>
+        </section>
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-3">
+          <div className="mb-5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
+              Pricing &amp; discounts
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[#73786b]">
+              Pricing, promotions, and inventory controls.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-xs font-bold text-[#55594f]">
+              Price (USD)
+              <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
+                <span aria-hidden="true" className="pl-3 text-sm font-semibold text-[#73786b]">
+                  $
+                </span>
+                <input
+                  aria-invalid={Boolean(errors.price)}
+                  className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
+                  inputMode="decimal"
+                  min="0.01"
+                  name="price"
+                  onChange={(event) => setPriceInput(event.target.value)}
+                  placeholder="9.99"
+                  required
+                  step="0.01"
+                  type="number"
+                  value={priceInput}
+                />
+              </div>
+              <ProductFieldError>{errors.price}</ProductFieldError>
+            </label>
+            <label className="text-xs font-bold text-[#55594f]">
+              Sale price (USD)
+              <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
+                <span aria-hidden="true" className="pl-3 text-sm font-semibold text-[#73786b]">
+                  $
+                </span>
+                <input
+                  aria-invalid={Boolean(errors.salePrice)}
+                  className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
+                  onChange={(event) => {
+                    setSalePriceInput(event.target.value);
+                    if (event.target.value) setDiscountAmountInput("");
+                  }}
+                  min="0.01"
+                  name="salePrice"
+                  placeholder="Optional"
+                  step="0.01"
+                  type="number"
+                  value={salePriceInput}
+                />
+              </div>
+              <ProductFieldError>{errors.salePrice}</ProductFieldError>
+            </label>
+            <label className="text-xs font-bold text-[#55594f]">
+              Discount amount (USD)
+              <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
+                <span aria-hidden="true" className="pl-3 text-sm font-semibold text-[#73786b]">
+                  $
+                </span>
+                <input
+                  aria-invalid={Boolean(errors.discountAmount)}
+                  className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
+                  min="0.01"
+                  name="discountAmount"
+                  onChange={(event) => {
+                    setDiscountAmountInput(event.target.value);
+                    if (event.target.value) setSalePriceInput("");
+                  }}
+                  placeholder="Optional"
+                  step="0.01"
+                  type="number"
+                  value={discountAmountInput}
+                />
+              </div>
+              <ProductFieldError>{errors.discountAmount}</ProductFieldError>
+            </label>
+            <label className="text-xs font-bold text-[#55594f]">
+              Original price (USD)
+              <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
+                <span aria-hidden="true" className="pl-3 text-sm font-semibold text-[#73786b]">
+                  $
+                </span>
+                <input
+                  aria-invalid={Boolean(errors.originalPrice)}
+                  className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
+                  onChange={(event) => setOriginalPriceInput(event.target.value)}
+                  min="0.01"
+                  name="originalPrice"
+                  placeholder="Optional"
+                  step="0.01"
+                  type="number"
+                  value={originalPriceInput}
+                />
+              </div>
+              <ProductFieldError>{errors.originalPrice}</ProductFieldError>
+            </label>
+            <p className="text-xs font-normal text-[#73786b] sm:col-span-2">
+              Enter either a sale price or discount amount.{" "}
+              {discountPercent === null
+                ? "Enter a valid original price and lower sale/discount value to preview savings."
+                : `Sale price: $${discountSalePrice.toFixed(2)} · ${discountPercent}% off`}
+            </p>
+            <label className="text-xs font-bold text-[#55594f] sm:col-span-2">
+              Sale ends at
+              <input
+                aria-invalid={Boolean(errors.saleEndsAt)}
+                className="admin-catalog-input"
+                defaultValue={
+                  product?.saleEndsAt
+                    ? new Date(
+                        product.saleEndsAt.getTime() -
+                          product.saleEndsAt.getTimezoneOffset() * 60_000,
+                      )
+                        .toISOString()
+                        .slice(0, 16)
+                    : ""
+                }
+                name="saleEndsAt"
+                type="datetime-local"
+              />
+              <ProductFieldError>{errors.saleEndsAt}</ProductFieldError>
+              <span className="mt-1 block text-[11px] font-normal">
+                Promotional pricing applies until this date and time. Required for a sale.
+              </span>
+            </label>
+          </div>
+        </section>
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-2 lg:row-start-1">
+          <div className="mb-5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
+              Product organization
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[#73786b]">
+              Category, brand, and collection tags.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <label className="text-xs font-bold text-[#55594f]">
+              Category
+              <select
+                aria-invalid={Boolean(errors.categoryId)}
+                className="admin-catalog-input"
+                name="categoryId"
+                onChange={(event) => setSelectedCategoryId(event.target.value)}
+                required
+                value={selectedCategoryId}
+              >
+                <option disabled value="">
+                  Select a category
+                </option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <ProductFieldError>{errors.categoryId}</ProductFieldError>
+            </label>
+            <label className="text-xs font-bold text-[#55594f]">
+              Brand / vendor
+              <input
+                aria-invalid={Boolean(errors.brand)}
+                className="admin-catalog-input"
+                defaultValue={product?.brand ?? ""}
+                maxLength={100}
+                name="brand"
+                placeholder="Brand name"
+              />
+              <ProductFieldError>{errors.brand}</ProductFieldError>
+            </label>
+            <div className="text-xs font-bold text-[#55594f] md:col-span-2">
+              Collections &amp; tags
+              <ProductTagInput initialTags={product.tags} />
+              <ProductFieldError>{errors.tags}</ProductFieldError>
+            </div>
+          </div>
+        </section>
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-2 lg:row-start-2">
+          <div className="mb-5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
+              Inventory &amp; settings
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[#73786b]">
+              Configure storefront availability and quantity tracking.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <label className="text-xs font-bold text-[#55594f]">
+              Status
+              <select
+                className="admin-catalog-input"
+                name="isActive"
+                defaultValue={String(product.isActive)}
+              >
+                <option value="false">Draft</option>
+                <option value="true">Active</option>
+              </select>
+            </label>
+            <label className="text-xs font-bold text-[#55594f]">
+              Inventory tracking
+              <select
+                className="admin-catalog-input"
+                name="trackInventory"
+                defaultValue={String(product.trackInventory)}
+              >
+                <option value="true">Track quantity</option>
+                <option value="false">Do not track quantity</option>
+              </select>
+            </label>
+            <label className="text-xs font-bold text-[#55594f]">
+              Quantity discount setting
+              <select
+                className="admin-catalog-input"
+                defaultValue={
+                  product.tieredDiscountsEnabled === null
+                    ? ""
+                    : String(product.tieredDiscountsEnabled)
+                }
+                name="tieredDiscountsEnabled"
+              >
+                <option value="">Inherit category default</option>
+                <option value="true">Enabled</option>
+                <option value="false">Disabled</option>
+              </select>
+              <span className="mt-1 block text-[11px] font-normal">
+                Category setting:{" "}
+                {selectedCategory?.tieredDiscountsEnabled ? "enabled" : "disabled"}.
+              </span>
+            </label>
+          </div>
+        </section>
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-2">
+          <div className="mb-5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
+              Media &amp; assets
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[#73786b]">
+              Update the primary image and product gallery.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <div className="text-xs font-bold text-[#55594f] md:col-span-2">
+              <span>Product image</span>
+              <input
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="sr-only"
+                id="product-image-file"
+                name="imageFile"
+                onChange={(event) => selectImage(event.target.files?.[0])}
+                ref={imageInputRef}
+                required={!imageUrl && !selectedImage}
+                type="file"
+              />
+              <label
+                className="mt-1 flex min-h-32 cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-black/20 bg-[#fafaf8] p-4 text-center text-sm font-medium text-[#55594f] transition hover:border-[#718126] hover:bg-[#f4f5f1]"
+                htmlFor="product-image-file"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  selectImage(event.dataTransfer.files[0]);
+                }}
+              >
+                {previewUrl ? (
+                  <span className="relative block h-28 w-full max-w-56 overflow-hidden rounded">
+                    <Image
+                      alt="Product image preview"
+                      className="object-contain"
+                      fill
+                      src={previewUrl}
+                      unoptimized
+                    />
+                  </span>
+                ) : (
+                  <span>
+                    Drop an image here or <span className="font-bold underline">browse files</span>
+                    <span className="mt-1 block text-xs font-normal text-[#73786b]">
+                      JPG, PNG, WEBP, or GIF · up to 10 MB
+                    </span>
+                  </span>
+                )}
+              </label>
+              {(selectedImage || imageUrl) && (
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-xs font-normal text-[#73786b]">
+                    {selectedImage?.name ?? imageUrl}
+                  </span>
+                  <button
+                    className="shrink-0 text-xs font-bold text-[#55594f] underline hover:text-[#161812]"
+                    onClick={() => {
+                      setSelectedImage(null);
+                      onImageUrlChange("");
+                      setImageError("");
+                      if (previewObjectUrlRef.current) {
+                        URL.revokeObjectURL(previewObjectUrlRef.current);
+                        previewObjectUrlRef.current = null;
+                      }
+                      setPreviewUrl("");
+                      if (imageInputRef.current) imageInputRef.current.value = "";
+                    }}
+                    type="button"
+                  >
+                    Remove image
+                  </button>
+                </div>
+              )}
+              <div className="text-xs font-bold text-[#55594f] md:col-span-2">
+                <label htmlFor="product-gallery-files">Additional gallery images</label>
+                <input
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="admin-catalog-input mt-1"
+                  id="product-gallery-files"
+                  multiple
+                  name="galleryImages"
+                  onChange={(event) => {
+                    const files = [...(event.target.files ?? [])];
+                    const invalid = files.find(
+                      (file) =>
+                        file.size > MAX_PRODUCT_IMAGE_SIZE ||
+                        (file.type &&
+                          !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(
+                            file.type,
+                          )),
+                    );
+                    if (invalid) {
+                      setImageError(
+                        "Gallery images must be JPG, PNG, WEBP, or GIF files up to 10 MB.",
+                      );
+                      event.target.value = "";
+                      setGalleryFiles([]);
+                      return;
+                    }
+                    setImageError("");
+                    setGalleryFiles(files);
+                  }}
+                  ref={galleryInputRef}
+                  type="file"
+                />
+                <span className="mt-1 block text-[11px] font-normal">
+                  {galleryFiles.length
+                    ? `${galleryFiles.length} image${galleryFiles.length === 1 ? "" : "s"} selected`
+                    : `${galleryUrls.length} saved image${galleryUrls.length === 1 ? "" : "s"}`}
+                </span>
+                {galleryUrls.length > 0 && (
+                  <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {galleryUrls.map((url) => (
+                      <li
+                        className="overflow-hidden rounded-lg border border-black/10 bg-white"
+                        key={url}
+                      >
+                        <div className="relative aspect-square bg-[#f4f5f1]">
+                          <Image
+                            alt="Saved product gallery image"
+                            className="object-contain p-2"
+                            fill
+                            sizes="(max-width: 640px) 50vw, 33vw"
+                            src={url}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-2 px-2 py-2">
+                          <span className="min-w-0 truncate text-[.65rem] font-normal">{url}</span>
+                          <button
+                            aria-label={`Remove gallery image ${url}`}
+                            className="shrink-0 underline"
+                            onClick={() =>
+                              onGalleryUrlsChange(
+                                galleryUrls.filter((galleryUrl) => galleryUrl !== url),
+                              )
+                            }
+                            type="button"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {imageError && (
+                <p aria-live="polite" className="mt-2 text-xs font-normal text-red-800">
+                  {imageError}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-4">
+          <div className="mb-5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">Variants</h3>
+            <p className="mt-1 text-xs leading-5 text-[#73786b]">
+              Configure option combinations, individual pricing, and stock.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <ProductVariantBuilder
+              basePrice={priceInput}
+              initialVariants={product.variants.map((variant): VariantValue => ({
+                title:
+                  variant.size && variant.color
+                    ? `${variant.size} · ${variant.color}`
+                    : (variant.size ?? variant.color ?? ""),
                 sku: variant.sku,
                 size: variant.size ?? "",
                 color: variant.color ?? "",
@@ -568,138 +705,51 @@ function ProductFormFields({
                 discountPrice: variant.discountPriceCents
                   ? (variant.discountPriceCents / 100).toFixed(2)
                   : "",
-                stock: variant.stock,
+                stock: String(variant.stock),
                 imageUrl: variant.imageUrl ?? "",
-                weightKg: variant.weightKg ?? null,
-                lengthCm: variant.lengthCm ?? null,
-                widthCm: variant.widthCm ?? null,
-                heightCm: variant.heightCm ?? null,
-              })) ?? [],
-              null,
-              2,
-            )}
-            name="variants"
-            spellCheck={false}
-            placeholder="[]"
+                weightKg: variant.weightKg === null ? "" : String(variant.weightKg),
+                lengthCm: variant.lengthCm === null ? "" : String(variant.lengthCm),
+                widthCm: variant.widthCm === null ? "" : String(variant.widthCm),
+                heightCm: variant.heightCm === null ? "" : String(variant.heightCm),
+              }))}
+            />
+          </div>
+        </section>
+        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-5">
+          <div className="mb-5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
+              Volume discounts
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[#73786b]">
+              Reward customers who purchase larger quantities.
+            </p>
+          </div>
+          <ProductDiscountTierBuilder
+            initialTiers={product.tieredDiscounts.map((tier) => ({
+              minQuantity: String(tier.minQuantity),
+              discountPercentage: String(tier.discountPercentage),
+            }))}
           />
-          <span className="mt-1 block text-[11px] font-normal">
-            Leave empty to create a hidden default variant using the product price and default
-            stock. Otherwise each row needs a price and non-negative stock; SKU is optional and
-            generated automatically. Size, color, discountPrice, imageUrl, and DHL metrics are
-            optional. DHL metrics use kilograms and centimetres; soft-bait lengths in inches must be
-            converted before entry.
-          </span>
-        </label>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          Default variant stock
-          <input
-            className="admin-catalog-input"
-            defaultValue={
-              product?.variants.length === 1 &&
-              !product.variants[0].size &&
-              !product.variants[0].color
-                ? product.variants[0].stock
-                : 0
-            }
-            min="0"
-            name="defaultStock"
-            step="1"
-            type="number"
-          />
-          <span className="mt-1 block text-[11px] font-normal">
-            Used when the variant list is empty. Stock remains zero until you enter inventory.
-          </span>
-        </label>
-        <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-          Quantity discounts (JSON)
-          <textarea
-            className="admin-catalog-input min-h-20 py-3 font-mono text-xs"
-            defaultValue={JSON.stringify(product?.tieredDiscounts ?? [], null, 2)}
-            name="tieredDiscounts"
-            spellCheck={false}
-          />
-          <span className="mt-1 block text-[11px] font-normal">
-            Example: [{"{"}&quot;minQuantity&quot;:2,&quot;discountPercentage&quot;:10{"}"}]
-          </span>
-        </label>
+        </section>
       </div>
     </>
   );
 }
 
-function ProductDrawer({
+export function ProductEditForm({
   categories,
-  mode,
-  onClose,
-  onComplete,
+  product,
 }: {
   categories: CategoryOption[];
-  mode: DrawerMode;
-  onClose: () => void;
-  onComplete: (result: ActionResult) => void;
+  product: ProductRecord;
 }) {
+  const router = useRouter();
+  const { showToast } = useToast();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
-  const [closing, setClosing] = useState(false);
-  const product = mode.product;
-  const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
-  const [galleryUrls, setGalleryUrls] = useState(product?.images.map((image) => image.url) ?? []);
-  const drawerRef = useRef<HTMLElement>(null);
-  const closeTimerRef = useRef<number | null>(null);
-  const previousActiveElementRef = useRef<HTMLElement | null>(null);
-
-  const requestClose = useCallback(() => {
-    if (pending || closing) return;
-    setClosing(true);
-    closeTimerRef.current = window.setTimeout(onClose, 180);
-  }, [closing, onClose, pending]);
-
-  useEffect(() => {
-    const activeElement = document.activeElement;
-    previousActiveElementRef.current =
-      activeElement instanceof HTMLElement ? activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
-      document.body.style.overflow = previousOverflow;
-      previousActiveElementRef.current?.focus();
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        requestClose();
-        return;
-      }
-
-      if (event.key !== "Tab") return;
-      const focusableElements = drawerRef.current?.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focusableElements?.length) {
-        event.preventDefault();
-        return;
-      }
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-      if (!drawerRef.current?.contains(document.activeElement)) {
-        event.preventDefault();
-        firstElement.focus();
-      } else if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      } else if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [requestClose]);
+  const [fieldErrors, setFieldErrors] = useState<ProductCreateFieldErrors>({});
+  const [imageUrl, setImageUrl] = useState(product.imageUrl);
+  const [galleryUrls, setGalleryUrls] = useState(product.images.map((image) => image.url));
 
   async function uploadImage(file: File): Promise<string> {
     const uploadData = new FormData();
@@ -731,8 +781,29 @@ function ProductDrawer({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    if (!form.reportValidity()) return;
     const formData = new FormData(form);
+    const parsed = productCreateFormSchema.safeParse(Object.fromEntries(formData.entries()));
+    const nextFieldErrors: ProductCreateFieldErrors = {};
+    if (!parsed.success) {
+      for (const [key, issues] of Object.entries(parsed.error.flatten().fieldErrors)) {
+        if (issues?.[0]) {
+          nextFieldErrors[key as keyof ProductCreateFieldErrors] = issues[0];
+        }
+      }
+    }
+    setFieldErrors(nextFieldErrors);
+    setError("");
+    if (Object.keys(nextFieldErrors).length > 0) {
+      const firstInvalidField = form.elements.namedItem(Object.keys(nextFieldErrors)[0]);
+      if (
+        firstInvalidField instanceof HTMLElement &&
+        !(firstInvalidField instanceof HTMLInputElement && firstInvalidField.type === "hidden")
+      ) {
+        firstInvalidField.focus();
+      }
+      return;
+    }
+    if (!form.reportValidity()) return;
     const uploadedImageUrls: string[] = [];
     const uploadedGalleryImageUrls: string[] = [];
 
@@ -759,33 +830,34 @@ function ProductDrawer({
         const savedGallery = Array.isArray(currentGallery)
           ? currentGallery.filter((url): url is string => typeof url === "string")
           : [];
-        const nextGallery = [...new Set([...uploadedImageUrls, ...savedGallery])];
+        const nextGallery = [...new Set([...uploadedGalleryImageUrls, ...savedGallery])];
         setGalleryUrls(nextGallery);
         formData.set("imageUrls", JSON.stringify(nextGallery));
         formData.delete("imageFile");
         formData.delete("galleryImages");
 
-        const tagInput = String(formData.get("tagInput") ?? "");
         formData.set(
           "tags",
           JSON.stringify(
-            tagInput
+            String(formData.get("tags") ?? "")
               .split(",")
               .map((tag) => tag.trim())
               .filter(Boolean),
           ),
         );
-        formData.delete("tagInput");
         const result = await updateProduct(formData);
-        if (result.ok) onComplete(result);
-        else {
+        if (result.ok) {
+          showToast(result.message);
+          router.push("/admin/products");
+          router.refresh();
+        } else {
           if (uploadedImageUrls.length > 0) {
             setError(`${result.error} The uploaded images are still stored and can be reused.`);
           } else {
             setError(result.error);
           }
         }
-      } catch {
+      } catch (caughtError) {
         if (uploadedGalleryImageUrls.length > 0) {
           setGalleryUrls((current) => [...new Set([...current, ...uploadedGalleryImageUrls])]);
         }
@@ -793,59 +865,58 @@ function ProductDrawer({
         if (imageInput instanceof HTMLInputElement) imageInput.value = "";
         const galleryInput = form.elements.namedItem("galleryImages");
         if (galleryInput instanceof HTMLInputElement) galleryInput.value = "";
+        const detail =
+          caughtError instanceof Error
+            ? caughtError.message
+            : "The product could not be saved. Please try again.";
         setError(
           uploadedImageUrls.length > 0
-            ? "The product could not be saved. Uploaded images are still stored and can be reused."
-            : "The product could not be saved. Please try again.",
+            ? `${detail} Uploaded images are still stored and can be reused.`
+            : detail,
         );
       }
     });
   }
 
   return (
-    <div
-      className="admin-product-drawer-backdrop fixed inset-0 z-50 flex justify-end bg-black/45"
-      data-closing={closing}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) requestClose();
-      }}
-    >
-      <section
-        aria-labelledby="product-drawer-title"
-        aria-modal="true"
-        className="admin-product-drawer flex h-[100dvh] w-full max-w-3xl flex-col bg-white shadow-2xl"
-        ref={drawerRef}
-        role="dialog"
-      >
-        <header className="sticky top-0 z-10 flex shrink-0 items-start justify-between border-b border-black/10 bg-white/95 px-5 py-4 backdrop-blur sm:px-8 sm:py-5">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <header className="sticky top-0 z-30 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/10 bg-[#f4f5f1]/95 px-4 py-3 backdrop-blur sm:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            aria-label="Back to products"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-black/10 bg-white text-[#42463b] transition hover:bg-[#eef2df] focus-visible:outline-2 focus-visible:outline-[#718126]"
+            href="/admin/products"
+          >
+            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+          </Link>
           <div>
             <nav aria-label="Breadcrumb" className="text-xs font-semibold text-[#73786b]">
               <Link className="transition-colors hover:text-[#53641d]" href="/admin/products">
                 Products
               </Link>
-              <span aria-hidden="true" className="px-2">/</span>
-              <span className="text-[#53641d]">{product.name}</span>
+              <span aria-hidden="true" className="px-2">
+                /
+              </span>
+              <span aria-current="page" className="text-[#53641d]">
+                Edit product
+              </span>
             </nav>
-            <h2 className="mt-1 text-xl font-black" id="product-drawer-title">
-              Edit product
-            </h2>
+            <h1 className="mt-1 max-w-[min(60vw,48rem)] truncate text-lg font-black tracking-tight sm:text-xl">
+              Edit {product.name}
+            </h1>
           </div>
-          <button
-            aria-label="Close product form"
-            className="grid h-10 w-10 place-items-center rounded-lg text-[#55594f] transition-colors hover:bg-black/5"
-            disabled={pending}
-            onClick={requestClose}
-            type="button"
-          >
-            <X aria-hidden="true" className="h-5 w-5" />
-          </button>
-        </header>
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-5 sm:px-8">
+        </div>
+      </header>
+      <form className="flex min-h-0 flex-1 flex-col" id="product-edit-form" onSubmit={handleSubmit}>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 pb-28 sm:px-8 lg:px-10">
+          <div className="mx-auto max-w-6xl">
+            <p className="mb-5 text-sm text-[#65695f]">
+              Update product details, pricing, and inventory.
+            </p>
             {error && (
               <p
                 aria-live="assertive"
-                className="rounded-md border border-red-700/20 bg-red-50 px-3 py-2 text-sm text-red-800"
+                className="mb-5 rounded-lg border border-red-700/20 bg-red-50 px-4 py-3 text-sm text-red-800"
               >
                 {error}
               </p>
@@ -856,28 +927,30 @@ function ProductDrawer({
               galleryUrls={galleryUrls}
               onImageUrlChange={setImageUrl}
               onGalleryUrlsChange={setGalleryUrls}
+              errors={fieldErrors}
               product={product}
             />
           </div>
-          <footer className="sticky bottom-0 z-10 flex shrink-0 justify-end gap-3 border-t border-black/10 bg-white/95 px-5 py-4 shadow-[0_-8px_20px_-20px_rgba(0,0,0,.4)] backdrop-blur sm:px-8">
-            <button
-              className="min-h-11 rounded-md border border-black/15 px-4 text-xs font-bold hover:bg-[#f4f5f1]"
-              disabled={pending}
-              onClick={requestClose}
-              type="button"
-            >
-              Cancel
-            </button>
-            <button
-              className="min-h-11 rounded-md bg-[#a3bd32] px-5 text-xs font-extrabold uppercase tracking-[.08em] text-[#171a14] hover:bg-[#b6cf45]"
-              disabled={pending}
-              type="submit"
-            >
-              {pending ? "Saving..." : "Save changes"}
-            </button>
-          </footer>
-        </form>
-      </section>
+        </div>
+        <footer className="sticky bottom-0 z-30 flex shrink-0 items-center gap-3 border-t border-black/10 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,.06)] backdrop-blur sm:px-8">
+          <p className="mr-auto hidden text-xs font-medium text-[#65695f] sm:block">
+            Editing <span className="font-bold text-[#42463b]">{product.name}</span>
+          </p>
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-black/15 bg-white px-4 text-xs font-bold text-[#42463b] transition hover:bg-[#f4f5f1]"
+            href="/admin/products"
+          >
+            Cancel
+          </Link>
+          <button
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#a3bd32] px-5 text-xs font-extrabold uppercase tracking-[.08em] text-[#171a14] transition hover:bg-[#b6cf45]"
+            disabled={pending}
+            type="submit"
+          >
+            {pending ? "Saving…" : "Save changes"}
+          </button>
+        </footer>
+      </form>
     </div>
   );
 }
@@ -970,14 +1043,12 @@ export function AdminProductsTable({
   const [categoryId, setCategoryId] = useState("all");
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(10);
   const [page, setPage] = useState(1);
-  const [drawer, setDrawer] = useState<DrawerMode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductRecord | null>(null);
 
   useEffect(() => {
     function handleSearchShortcut(event: KeyboardEvent) {
       const target = event.target;
       if (
-        drawer ||
         deleteTarget ||
         event.key !== "/" ||
         event.metaKey ||
@@ -994,7 +1065,7 @@ export function AdminProductsTable({
 
     document.addEventListener("keydown", handleSearchShortcut);
     return () => document.removeEventListener("keydown", handleSearchShortcut);
-  }, [deleteTarget, drawer]);
+  }, [deleteTarget]);
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -1148,7 +1219,10 @@ export function AdminProductsTable({
             </thead>
             <tbody className="divide-y divide-black/5">
               {visibleProducts.map((product) => (
-                <tr className="transition-colors hover:bg-[#fafbf8] focus-within:bg-[#fafbf8]" key={product.id}>
+                <tr
+                  className="transition-colors hover:bg-[#fafbf8] focus-within:bg-[#fafbf8]"
+                  key={product.id}
+                >
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-black/5 bg-[#f2f3ee]">
@@ -1192,15 +1266,14 @@ export function AdminProductsTable({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      <button
+                      <Link
                         aria-label={`Edit ${product.name}`}
                         className="grid h-9 w-9 place-items-center rounded-md text-[#55594f] hover:bg-[#eef2df] hover:text-[#53641d]"
-                        onClick={() => setDrawer({ type: "edit", product })}
+                        href={`/admin/products/${product.id}/edit`}
                         title="Edit product"
-                        type="button"
                       >
                         <Pencil aria-hidden="true" className="h-4 w-4" />
-                      </button>
+                      </Link>
                       <Link
                         aria-label={`View ${product.name} in storefront`}
                         className="grid h-9 w-9 place-items-center rounded-md text-[#55594f] hover:bg-[#eef2df] hover:text-[#53641d]"
@@ -1290,14 +1363,6 @@ export function AdminProductsTable({
         </footer>
       </section>
 
-      {drawer && (
-        <ProductDrawer
-          categories={categories}
-          mode={drawer}
-          onClose={() => setDrawer(null)}
-          onComplete={(result) => completeAction(result, () => setDrawer(null))}
-        />
-      )}
       {deleteTarget && (
         <ProductDeleteDialog
           onCancel={() => setDeleteTarget(null)}

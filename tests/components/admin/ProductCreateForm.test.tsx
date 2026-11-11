@@ -39,12 +39,14 @@ describe("ProductCreateForm", () => {
     expect(screen.getByRole("heading", { name: "General information" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Media & assets" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pricing & discounts" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Packaging & specifications" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Physical & shipping specifications" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Product organization" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Inventory & settings" })).toBeInTheDocument();
     expect(screen.getByLabelText("Piece length")).toHaveValue(5);
-    expect(screen.getByLabelText("Package count")).toHaveValue(6);
-    expect(screen.getByLabelText("Package weight")).toHaveValue(55);
+    expect(screen.getByLabelText("Pieces per pack")).toHaveValue(6);
+    expect(screen.getByLabelText("Pack weight")).toHaveValue(55);
 
     await user.type(screen.getByLabelText("Product name"), "River Shad");
     const slug = screen.getByLabelText("URL slug");
@@ -65,5 +67,31 @@ describe("ProductCreateForm", () => {
 
     expect(screen.getByText("Enter a product name.")).toBeInTheDocument();
     expect(mocks.createProduct).not.toHaveBeenCalled();
+  });
+
+  it("builds variants, discount tiers, and tags with visual controls", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ProductCreateForm categories={categories} />);
+
+    await user.click(screen.getByRole("button", { name: "Add variant" }));
+    await user.type(screen.getByLabelText("Variant title"), "Green");
+    await user.type(screen.getByLabelText(/SKU/u), "GREEN-01");
+    const variantsInput = container.querySelector<HTMLInputElement>('input[name="variants"]');
+    expect(JSON.parse(variantsInput!.value)).toMatchObject([{ title: "Green", sku: "GREEN-01" }]);
+
+    await user.click(screen.getByRole("button", { name: "Add discount tier" }));
+    await user.type(screen.getByLabelText("Minimum quantity"), "10");
+    await user.type(screen.getByLabelText("Discount (%)"), "15");
+    const discountsInput = container.querySelector<HTMLInputElement>(
+      'input[name="tieredDiscounts"]',
+    );
+    expect(JSON.parse(discountsInput!.value)).toEqual([
+      { minQuantity: "10", discountPercentage: "15" },
+    ]);
+
+    await user.type(screen.getByLabelText("Add tag"), "river{Enter}");
+    const tagsInput = container.querySelector<HTMLInputElement>('input[name="tags"]');
+    expect(tagsInput).toHaveValue("river");
+    expect(screen.getByText("river")).toBeInTheDocument();
   });
 });

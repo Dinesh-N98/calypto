@@ -68,6 +68,7 @@ function parseVariants(
       const item = entry as Record<string, unknown>;
       if (
         (item.sku !== undefined && typeof item.sku !== "string") ||
+        (item.title !== undefined && typeof item.title !== "string") ||
         (item.size !== undefined && typeof item.size !== "string") ||
         (item.color !== undefined && typeof item.color !== "string") ||
         (item.discountPrice !== undefined && typeof item.discountPrice !== "string") ||
@@ -83,8 +84,10 @@ function parseVariants(
       }
       const skuInput = typeof item.sku === "string" ? item.sku.trim() : "";
       const sku = skuInput || `AUTO-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`;
-      const size = typeof item.size === "string" ? item.size.trim() : "";
       const color = typeof item.color === "string" ? item.color.trim() : "";
+      const sizeInput = typeof item.size === "string" ? item.size.trim() : "";
+      const title = typeof item.title === "string" ? item.title.trim() : "";
+      const size = sizeInput || (!color ? title : "");
       const priceCents = typeof item.price === "string" ? parsePriceCents(item.price) : null;
       const discountPriceInput =
         typeof item.discountPrice === "string" ? item.discountPrice.trim() : "";
@@ -101,6 +104,7 @@ function parseVariants(
         stock < 0 ||
         size.length > 100 ||
         color.length > 100 ||
+        title.length > 100 ||
         (imageUrl && !isValidImagePath(imageUrl))
       ) {
         return null;
