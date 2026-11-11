@@ -9,11 +9,11 @@ import { QuantitySelector } from "@/components/QuantitySelector";
 import { MarkdownDescription } from "@/components/MarkdownDescription";
 import { useToast } from "@/components/ToastProvider";
 import { WishlistButton } from "@/components/WishlistButton";
+import { ProductCutoutImage } from "@/components/ui/ProductCutoutImage";
 import { formatPrice } from "@/lib/currency";
 import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
 import { GA_READY_EVENT, trackAddToCart, trackViewItem } from "@/lib/ga-events";
 import { calculateUnitPriceCents } from "@/lib/product-pricing";
-import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 
 type Variant = {
   id: string;
@@ -264,14 +264,11 @@ export function ProductDetailExperience({
     <section className="grid w-full min-w-0 grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] lg:gap-12">
       <div className="min-w-0">
         <div className="relative aspect-square overflow-hidden rounded-sm bg-[#f0f0e8]">
-          <Image
+          <ProductCutoutImage
             alt={gallery[activeImageIndex]?.altText ?? product.name}
-            blurDataURL={productImageBlurDataURL}
-            className="object-contain p-5"
-            fill
             priority
-            sizes="(max-width: 1023px) 90vw, 52vw"
             src={gallery[activeImageIndex]?.url ?? product.imageUrl}
+            variant="detail"
           />
           {gallery.length > 1 && (
             <>
@@ -302,12 +299,12 @@ export function ProductDetailExperience({
               <button
                 aria-label={`Show product image ${index + 1}`}
                 aria-pressed={index === activeImageIndex}
-                className={`relative h-16 w-16 shrink-0 overflow-hidden border-2 bg-[#f0f0e8] ${index === activeImageIndex ? "border-[#708323]" : "border-transparent"}`}
+                className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-[#f0f0e8] ${index === activeImageIndex ? "border-[#708323]" : "border-transparent"}`}
                 key={image.url}
                 onClick={() => setActiveImageIndex(index)}
                 type="button"
               >
-                <Image alt="" className="object-contain p-1" fill sizes="64px" src={image.url} />
+                <ProductCutoutImage alt={image.altText || product.name} src={image.url} variant="thumbnail" />
               </button>
             ))}
           </div>

@@ -718,10 +718,49 @@ export function CheckoutForm({
           )}
           <fieldset className="grid gap-3 border-t border-[#e5e5dc] pt-6">
             <legend className="text-base font-bold">Shipping fee</legend>
+            <button
+              className="inline-flex min-h-11 w-fit items-center justify-center rounded-lg border border-[#c9cabe] px-3 text-sm font-semibold text-ink transition-colors hover:border-olive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-olive disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={loadingDhlRates || !isAddressValid}
+              onClick={() => void loadDhlRates(quoteContextKey)}
+              type="button"
+            >
+              {loadingDhlRates ? "Calculating shipping..." : "Calculate shipping"}
+            </button>
             {loadingDhlRates && (
               <p aria-live="polite" className="text-sm text-[#55584e]">
                 Checking available shipping services and destination routing…
               </p>
+            )}
+            {currentDhlRates.length > 0 && (
+              <div className="grid gap-2">
+                {currentDhlRates.map((rate) => (
+                  <label
+                    className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${selectedDhlRate === rate.serviceCode ? "border-olive bg-[#f7f8f1]" : "border-[#ddddd3] hover:border-olive/60"}`}
+                    key={rate.serviceCode ?? `${rate.currency}-${rate.amount}`}
+                  >
+                    <input
+                      aria-label={rate.serviceName ?? rate.serviceCode ?? "Shipping option"}
+                      checked={selectedDhlRate === rate.serviceCode}
+                      className="h-4 w-4 accent-olive"
+                      name="shippingRate"
+                      onChange={() => setSelectedDhlRate(rate.serviceCode ?? "")}
+                      type="radio"
+                      value={rate.serviceCode ?? ""}
+                    />
+                    <span className="grid gap-0.5">
+                      <span className="font-bold">{rate.serviceName ?? rate.serviceCode}</span>
+                      {rate.transitDays && (
+                        <span className="text-xs font-normal text-[#62665b]">
+                          {rate.transitDays} business days
+                        </span>
+                      )}
+                    </span>
+                    <span aria-hidden="true" className="ml-auto text-sm font-semibold">
+                      {rate.currency} {rate.amount.toFixed(2)}
+                    </span>
+                  </label>
+                ))}
+              </div>
             )}
             {selectedRate && hasCurrentQuote && (
               <p className="text-sm font-semibold">

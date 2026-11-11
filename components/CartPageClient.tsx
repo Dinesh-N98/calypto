@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, Check, LockKeyhole, Pencil, Tag, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
@@ -13,8 +12,8 @@ import {
   type CheckoutReviewData,
 } from "@/components/CheckoutForm";
 import { QuantitySelector } from "@/components/QuantitySelector";
+import { ProductCutoutImage } from "@/components/ui/ProductCutoutImage";
 import { formatPrice } from "@/lib/currency";
-import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 
 type CheckoutSummaryItem = {
   variantId: string;
@@ -185,18 +184,12 @@ export default function CartPageClient({
                       className="grid grid-cols-[5.25rem_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-xl border border-[#ddddd3] bg-white p-3 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-5 sm:p-4"
                       key={item.variantId}
                     >
-                      <div className="relative row-span-2 aspect-square w-full self-start overflow-hidden rounded-lg bg-[#efeee7]">
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name}
-                          fill
-                          loading="lazy"
-                          placeholder="blur"
-                          blurDataURL={productImageBlurDataURL}
-                          sizes="(min-width: 640px) 112px, 84px"
-                          className="object-contain p-1"
-                        />
-                      </div>
+                      <ProductCutoutImage
+                        alt={item.name}
+                        className="row-span-2 h-full w-full self-start rounded-lg"
+                        src={item.imageUrl}
+                        variant="card"
+                      />
                       <div className="min-w-0 self-end">
                         <h2 className="line-clamp-2 text-sm font-bold leading-snug sm:text-base">
                           {item.name}
@@ -362,17 +355,12 @@ export default function CartPageClient({
                   <div className="mt-4 max-h-64 space-y-3 overflow-y-auto border-b border-[#e5e5dc] pb-4">
                     {purchaseItems.map((item) => (
                       <div className="flex gap-3 text-sm" key={item.variantId}>
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#efeee7]">
-                          <Image
-                            alt=""
-                            fill
-                            sizes="56px"
-                            src={item.imageUrl}
-                            className="object-contain p-1"
-                            placeholder="blur"
-                            blurDataURL={productImageBlurDataURL}
-                          />
-                        </div>
+                        <ProductCutoutImage
+                          alt={item.name}
+                          className="h-14 w-14 shrink-0 rounded-lg"
+                          src={item.imageUrl}
+                          variant="thumbnail"
+                        />
                         <span className="min-w-0 flex-1 text-[#62665b]">
                           <span className="block font-semibold text-ink">{item.name}</span>
                           <span className="mt-0.5 block text-xs">
@@ -617,17 +605,12 @@ function MobileCheckoutSummary({
       <div className="mt-4 space-y-3 border-t border-[#e5e5dc] pt-4">
         {items.map((item) => (
           <div className="flex gap-3 text-sm" key={item.variantId}>
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#efeee7]">
-              <Image
-                alt=""
-                fill
-                sizes="56px"
-                src={item.imageUrl}
-                className="object-contain p-1"
-                placeholder="blur"
-                blurDataURL={productImageBlurDataURL}
-              />
-            </div>
+            <ProductCutoutImage
+              alt={item.name}
+              className="h-14 w-14 shrink-0 rounded-lg"
+              src={item.imageUrl}
+              variant="thumbnail"
+            />
             <span className="min-w-0 flex-1 text-[#62665b]">
               <span className="block font-semibold text-ink">{item.name}</span>
               {item.variantLabel && (

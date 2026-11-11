@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ProductCutoutImage } from "@/components/ui/ProductCutoutImage";
 
 type CategoryCarouselItem = {
   name: string;
@@ -206,13 +206,11 @@ export function CategoryCarousel({ categories }: { categories: CategoryCarouselI
               role="group"
             >
               {category.image && (
-                <Image
-                  alt=""
-                  className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
-                  fill
-                  sizes="(max-width: 639px) 82vw, (max-width: 1023px) 54vw, 32vw"
+                <ProductCutoutImage
+                  alt={category.name}
+                  className="h-full w-full"
                   src={category.image}
-                  unoptimized
+                  variant="carousel"
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/5 transition-colors duration-300 group-hover:from-black/90" />

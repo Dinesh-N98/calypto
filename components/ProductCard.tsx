@@ -1,15 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
 import { WishlistButton } from "@/components/WishlistButton";
 import { useToast } from "@/components/ToastProvider";
+import { ProductCutoutImage } from "@/components/ui/ProductCutoutImage";
 import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
 import { formatPrice } from "@/lib/currency";
 import { trackAddToCart } from "@/lib/ga-events";
-import { productImageBlurDataURL } from "@/lib/productImagePlaceholder";
 
 export function ProductCard({
   product,
@@ -79,18 +78,7 @@ export function ProductCard({
   return (
     <article className="group relative overflow-hidden bg-[#e4e4d9] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(0,0,0,0.25)] motion-reduce:transform-none motion-reduce:transition-none">
       <Link className="block" href={`/shop/${product.slug}`}>
-        <div className="relative aspect-square overflow-hidden">
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            loading="lazy"
-            placeholder="blur"
-            blurDataURL={productImageBlurDataURL}
-            sizes="(max-width: 767px) 43vw, (max-width: 1023px) 26vw, 19vw"
-            className="object-contain transition-transform duration-[400ms] ease-in-out group-hover:scale-105"
-          />
-        </div>
+        <ProductCutoutImage alt={product.name} src={product.imageUrl} variant="card" />
         <div className="grid gap-1 p-2">
           <strong className="line-clamp-2 text-[.7rem] uppercase leading-tight text-ink sm:text-[.8rem]">
             {product.name}
