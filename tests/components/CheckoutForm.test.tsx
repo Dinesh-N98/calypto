@@ -109,7 +109,7 @@ function stubCheckoutAndShippingFetch() {
 }
 
 describe("CheckoutForm", () => {
-  it("automatically quotes Sri Lankan delivery and shows only the shipping fee", async () => {
+  it("automatically quotes Sri Lankan delivery and shows the read-only DHL method", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -118,7 +118,7 @@ describe("CheckoutForm", () => {
             rates: [
               {
                 serviceCode: "P",
-                serviceName: "DHL Express Domestic",
+                serviceName: "P",
                 currency: "USD",
                 amount: 8.5,
               },
@@ -134,14 +134,11 @@ describe("CheckoutForm", () => {
     expect(continueButton).toBeDisabled();
     expect(await screen.findByText("USD 8.50")).toBeInTheDocument();
     expect(continueButton).toBeEnabled();
-    expect(screen.getByText("Shipping fee")).toBeInTheDocument();
-    expect(screen.queryByText("DHL Express Domestic")).not.toBeInTheDocument();
-    expect(screen.queryByText("Shipping method")).not.toBeInTheDocument();
-    expect(screen.queryByText("Shipping option")).not.toBeInTheDocument();
+    expect(screen.getByText("Shipping method")).toBeInTheDocument();
+    expect(screen.getByText("DHL Express Worldwide")).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Shipping option" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/customs on delivery/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Calculate shipping" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry DHL quote" })).not.toBeInTheDocument();
   });
 
   it("submits OnePay checkout with DHL shipping from the review step", async () => {
@@ -164,6 +161,11 @@ describe("CheckoutForm", () => {
       expect.objectContaining({ method: "POST" }),
     );
     expect(await screen.findByText("Checkout unavailable")).toBeInTheDocument();
+    const checkoutCall = fetchMock.mock.calls.find((call) => call[0] === "/api/checkout");
+    if (!checkoutCall) throw new Error("OnePay checkout request was not sent.");
+    expect(JSON.parse(checkoutCall[1].body as string)).toMatchObject({
+      shippingServiceCode: "P",
+    });
   });
 
   it("shows a dynamic calling-code prefix and submits a normalized E.164 phone", async () => {
@@ -217,14 +219,23 @@ describe("CheckoutForm", () => {
   });
 
   it("shows the delivery address and shipping fee label on the delivery step", () => {
-    renderCheckout({ currentStep: 3 });
+    renderCheckout({
+      currentProfile: null,
+      addresses: [],
+      defaultAddress: null,
+      isAuthenticated: false,
+      currentStep: 3,
+    });
 
     expect(screen.getByRole("group", { name: "Delivery address" })).toBeInTheDocument();
     expect(screen.getByText("Where should we send your order?")).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Contact information" })).not.toBeInTheDocument();
-    expect(screen.getByText("Shipping fee")).toBeInTheDocument();
-    expect(screen.queryByText("Shipping method")).not.toBeInTheDocument();
-    expect(screen.queryByText("Shipping option")).not.toBeInTheDocument();
+    expect(screen.getByText("Shipping method")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Enter your destination country and postal code above to view shipping fee.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Calculate shipping" })).not.toBeInTheDocument();
   });
@@ -284,10 +295,7 @@ describe("CheckoutForm", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     view.rerender(
-      <StatefulCheckout
-        {...props}
-        items={[{ variantId: "variant-1", quantity: 2 }]}
-      />,
+      <StatefulCheckout {...props} items={[{ variantId: "variant-1", quantity: 2 }]} />,
     );
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
@@ -358,7 +366,7 @@ describe("CheckoutForm", () => {
             rates: [
               {
                 serviceCode: "P",
-                serviceName: "DHL Express",
+                serviceName: "P",
                 currency: "USD",
                 amount: 25,
               },
@@ -386,8 +394,7 @@ describe("CheckoutForm", () => {
 
     expect(await screen.findByText("USD 25.00")).toBeInTheDocument();
     expect(continueButton).toBeEnabled();
-    expect(screen.queryByText("DHL Express")).not.toBeInTheDocument();
-    expect(screen.queryByText("DHL Express Worldwide")).not.toBeInTheDocument();
+    expect(screen.getByText("DHL Express Worldwide")).toBeInTheDocument();
     expect(screen.queryByText("USD 40.57")).not.toBeInTheDocument();
     expect(screen.queryByText("P")).not.toBeInTheDocument();
     expect(onShippingCostChange).toHaveBeenLastCalledWith(2500);

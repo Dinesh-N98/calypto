@@ -148,7 +148,7 @@ describe("CartPageClient", () => {
             rates: [
               {
                 serviceCode: "P",
-                serviceName: "DHL Express",
+                serviceName: "P",
                 currency: "USD",
                 amount: 31.27,
               },
@@ -184,12 +184,12 @@ describe("CartPageClient", () => {
     const checkoutButton = screen.getByRole("button", { name: /Continue to payment/ });
     expect(checkoutButton).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Calculate shipping" }));
-
     await waitFor(() => {
-      expect(screen.getByRole("radio", { name: "DHL Express" })).toBeChecked();
+      expect(screen.getByText("DHL Express Worldwide")).toBeInTheDocument();
       expect(checkoutButton).toBeEnabled();
     });
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Calculate shipping" })).not.toBeInTheDocument();
     await user.click(checkoutButton);
     expect(screen.getByRole("button", { name: "Review order" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Review order" }));
