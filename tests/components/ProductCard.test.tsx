@@ -46,49 +46,21 @@ const product = {
 beforeEach(() => {
   mocks.addItem.mockClear();
   mocks.showToast.mockClear();
-  window.gtag = vi.fn();
 });
 
-describe("ProductCard cart actions", () => {
+describe("ProductCard actions", () => {
   it.each(["Shop", "Wishlist"] as const)(
-    "tracks each single-variant quick-add from the %s list",
-    async (listName) => {
-      const user = userEvent.setup();
+    "links to the product detail page from the %s list",
+    (listName) => {
       render(<ProductCard itemListName={listName} product={product} />);
 
-      const addButton = screen.getByRole("button", { name: /Quick add/i });
-      await user.click(addButton);
-      await user.click(addButton);
-
-      expect(mocks.addItem).toHaveBeenCalledTimes(2);
-      expect(mocks.addItem).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({ variantId: "variant-1", sku: "SHAD-01", priceCents: 1250 }),
-        1,
-      );
-      expect(window.gtag).toHaveBeenCalledTimes(2);
-      expect(window.gtag).toHaveBeenNthCalledWith(
-        1,
-        "event",
-        "add_to_cart",
-        expect.objectContaining({
-          currency: "USD",
-          value: 12.5,
-          items: [
-            expect.objectContaining({
-              item_id: "SHAD-01",
-              item_variant: "Green / 4 in",
-              item_list_name: listName,
-              price: 12.5,
-              quantity: 1,
-            }),
-          ],
-        }),
-      );
+      const exploreLink = screen.getByRole("link", { name: "View product details for River Shad" });
+      expect(exploreLink).toHaveAttribute("href", "/shop/river-shad");
+      expect(mocks.addItem).not.toHaveBeenCalled();
     },
   );
 
-  it("opens quick select for multiple variants without adding any to the cart", async () => {
+  it("keeps quick view available for products with multiple variants", async () => {
     const user = userEvent.setup();
     render(
       <ProductCard
@@ -103,14 +75,15 @@ describe("ProductCard cart actions", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Quick select/i }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Quick view/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
     expect(screen.getByRole("button", { name: "5 in" })).toBeInTheDocument();
     expect(mocks.addItem).not.toHaveBeenCalled();
-    expect(window.gtag).not.toHaveBeenCalled();
   });
 
-  it("disables quick add when the variant is out of stock", () => {
+  it("links to product details when the variant is out of stock", () => {
     render(
       <ProductCard
         itemListName="Shop"
@@ -121,13 +94,14 @@ describe("ProductCard cart actions", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /Quick add/i })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "View product details for River Shad" })).toHaveAttribute(
+      "href",
+      "/shop/river-shad",
+    );
     expect(mocks.addItem).not.toHaveBeenCalled();
-    expect(window.gtag).not.toHaveBeenCalled();
   });
 
-  it("allows quick-add when inventory tracking is disabled", async () => {
-    const user = userEvent.setup();
+  it("links to product details when inventory tracking is disabled", () => {
     render(
       <ProductCard
         itemListName="Shop"
@@ -139,22 +113,10 @@ describe("ProductCard cart actions", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Quick add/i }));
-
-    expect(mocks.addItem).toHaveBeenCalledWith(
-      expect.objectContaining({ variantId: "variant-1" }),
-      1,
+    expect(screen.getByRole("link", { name: "View product details for River Shad" })).toHaveAttribute(
+      "href",
+      "/shop/river-shad",
     );
-  });
-
-  it("still adds to the cart without gtag", async () => {
-    window.gtag = undefined;
-    const user = userEvent.setup();
-    render(<ProductCard itemListName="Shop" product={product} />);
-
-    await user.click(screen.getByRole("button", { name: /Quick add/i }));
-
-    expect(mocks.addItem).toHaveBeenCalledTimes(1);
-    expect(mocks.showToast).toHaveBeenCalledOnce();
+    expect(mocks.addItem).not.toHaveBeenCalled();
   });
 });

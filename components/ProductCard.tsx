@@ -3,14 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpRight, Check, Plus, Star } from "lucide-react";
-import { useCart } from "@/components/CartProvider";
+import { ArrowUpRight, Check, Star } from "lucide-react";
 import { QuickViewModal, type QuickViewProduct } from "@/components/shop/QuickViewModal";
 import { WishlistButton } from "@/components/WishlistButton";
-import { useToast } from "@/components/ToastProvider";
-import { CHECKOUT_CURRENCY } from "@/lib/checkout/constants";
 import { formatPrice } from "@/lib/currency";
-import { trackAddToCart } from "@/lib/ga-events";
 import { calculateUnitPriceCents } from "@/lib/product-pricing";
 
 type ProductCardProduct = QuickViewProduct & {
@@ -45,17 +41,13 @@ export function ProductCard({
   product: ProductCardProduct;
   itemListName: "Shop" | "Wishlist";
 }) {
-  const { addItem } = useCart();
-  const { showToast } = useToast();
   const variants = product.variants ?? [];
   const [selectedVariantId, setSelectedVariantId] = useState(
     variants.find((variant) => product.trackInventory === false || variant.stock > 0)?.id ?? "",
   );
   const [quickViewOpen, setQuickViewOpen] = useState(false);
-  const [added, setAdded] = useState(false);
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
   const colors = [...new Set(variants.flatMap((variant) => (variant.color ? [variant.color] : [])))];
-  const hasMultipleVariants = variants.length > 1;
   const saleEndsAt = product.saleEndsAt ? new Date(product.saleEndsAt) : null;
   const price = selectedVariant
     ? calculateUnitPriceCents({
@@ -103,38 +95,6 @@ export function ProductCard({
           variant.color === color && (product.trackInventory === false || variant.stock > 0),
       );
     if (candidate) setSelectedVariantId(candidate.id);
-  }
-
-  function handleAdd() {
-    if (!selectedVariant || (product.trackInventory !== false && selectedVariant.stock < 1)) return;
-    const variantLabel = [selectedVariant.color, selectedVariant.size].filter(Boolean).join(" / ");
-    addItem(
-      {
-        slug: product.slug,
-        variantId: selectedVariant.id,
-        sku: selectedVariant.sku,
-        variantLabel,
-        name: product.name,
-        priceCents: price,
-        imageUrl: selectedVariant.imageUrl ?? imageSrc,
-      },
-      1,
-    );
-    trackAddToCart(
-      {
-        itemId: selectedVariant.sku,
-        itemName: product.name,
-        itemCategory: product.categoryName,
-        itemVariant: variantLabel,
-        itemListName,
-        priceCents: price,
-        quantity: 1,
-      },
-      CHECKOUT_CURRENCY,
-    );
-    showToast(`${product.name} added to cart.`);
-    setAdded(true);
-    window.setTimeout(() => setAdded(false), 1400);
   }
 
   return (
@@ -202,8 +162,10 @@ export function ProductCard({
             </p>
           )}
 
-          <div className="mt-3 flex min-h-8 items-center justify-between gap-2">
-            {colors.length > 0 ? (
+          <div
+            className={`mt-3 flex min-h-8 items-center gap-2 ${colors.length > 0 ? "justify-between" : "justify-end"}`}
+          >
+            {colors.length > 0 && (
               <div aria-label="Available colors" className="flex flex-wrap gap-1.5">
                 {colors.slice(0, 5).map((color) => (
                   <button
@@ -226,8 +188,6 @@ export function ProductCard({
                   <span className="self-center text-[.62rem] font-bold text-muted">+{colors.length - 5}</span>
                 )}
               </div>
-            ) : (
-              <span className="text-[.6rem] font-bold uppercase tracking-wider text-muted">Calypto tackle</span>
             )}
             <button
               className="inline-flex min-h-8 shrink-0 items-center gap-1 text-[.58rem] font-extrabold uppercase tracking-wide text-muted transition hover:text-lime"
@@ -238,19 +198,18 @@ export function ProductCard({
             </button>
           </div>
 
-          <button
-            className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md bg-lime px-2 py-2 text-[.62rem] font-black uppercase tracking-[.06em] text-ink transition-[background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-[#b6cf45] active:translate-y-0 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted motion-reduce:transform-none"
-            disabled={!hasMultipleVariants && (!selectedVariant || (product.trackInventory !== false && selectedVariant.stock < 1))}
-            onClick={hasMultipleVariants ? () => setQuickViewOpen(true) : handleAdd}
-            type="button"
+          <Link
+            aria-label={`View product details for ${product.name}`}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-olive bg-olive px-3 py-2 text-xs font-black uppercase tracking-[.12em] text-paper transition-[background-color,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-lime/60 hover:bg-olive-bright active:translate-y-0 active:scale-[.98] motion-reduce:transform-none"
+            href={`/shop/${product.slug}`}
+            prefetch
           >
-            {hasMultipleVariants ? "Quick select" : added ? "Added · 1" : "Quick add"}
-            {added && !hasMultipleVariants ? (
-              <Check aria-hidden="true" className="h-3.5 w-3.5" />
-            ) : (
-              <Plus aria-hidden="true" className="h-3.5 w-3.5" />
-            )}
-          </button>
+            View product
+            <ArrowUpRight
+              aria-hidden="true"
+              className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none"
+            />
+          </Link>
         </div>
       </article>
       {quickViewOpen && (

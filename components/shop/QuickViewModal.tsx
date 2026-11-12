@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
 import { useToast } from "@/components/ToastProvider";
@@ -81,6 +82,7 @@ export function QuickViewModal({
   );
   const [selectedVariantId, setSelectedVariantId] = useState(availableVariant?.id ?? "");
   const [activeImage, setActiveImage] = useState(0);
+  const [mounted, setMounted] = useState(false);
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
   const colors = [...new Set(variants.flatMap((variant) => (variant.color ? [variant.color] : [])))];
   const sizes = [...new Set(variants.flatMap((variant) => (variant.size ? [variant.size] : [])))];
@@ -97,6 +99,12 @@ export function QuickViewModal({
       })
     : product.priceCents;
   const colorSizes = selectedVariant?.size ? selectedVariant.size : "";
+
+  useEffect(() => {
+    // The portal must wait for hydration before accessing document.body.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -175,7 +183,9 @@ export function QuickViewModal({
     onClose();
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-5"
       onClick={(event) => {
@@ -185,7 +195,7 @@ export function QuickViewModal({
       <section
         aria-labelledby="quick-view-title"
         aria-modal="true"
-        className="relative max-h-[92dvh] w-full max-w-4xl overflow-y-auto rounded-t-2xl border border-white/10 bg-[#141712] text-paper shadow-2xl sm:rounded-xl"
+        className="relative mx-auto max-h-[92dvh] w-full max-w-4xl overflow-y-auto rounded-t-2xl border border-white/10 bg-[#141712] text-paper shadow-2xl sm:rounded-xl"
         role="dialog"
       >
         <button
@@ -325,7 +335,8 @@ export function QuickViewModal({
           </div>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

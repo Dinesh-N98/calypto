@@ -15,34 +15,20 @@ type ShopSearchParams = {
   q?: SearchParam;
   inStock?: SearchParam;
   onSale?: SearchParam;
-  minPrice?: SearchParam;
-  maxPrice?: SearchParam;
-  view?: SearchParam;
 };
-type SortOption = "newest" | "price-asc" | "price-desc" | "top-rated";
+type SortOption = "newest" | "price-asc" | "price-desc";
 
 function firstParam(value: SearchParam): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
 function getSortOption(value: string | undefined): SortOption {
-  return value === "price-asc" || value === "price-desc" || value === "top-rated"
-    ? value
-    : "newest";
+  return value === "price-asc" || value === "price-desc" ? value : "newest";
 }
 
-function parsePrice(value: string | undefined): number | undefined {
-  if (!value || !/^\d{1,9}$/.test(value)) return undefined;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) ? parsed : undefined;
-}
-
-function ProductGridSkeleton({ compact }: { compact: boolean }) {
+function ProductGridSkeleton() {
   return (
-    <div
-      className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${compact ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
-      aria-hidden="true"
-    >
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" aria-hidden="true">
       {Array.from({ length: 8 }, (_, index) => (
         <div className="animate-pulse overflow-hidden rounded-xl border border-white/10 bg-[#141712]" key={index}>
           <div className="aspect-square bg-[#1a1d17]" />
@@ -59,19 +45,13 @@ function ProductGridSkeleton({ compact }: { compact: boolean }) {
 
 async function ProductGrid({
   categoryId,
-  compact,
   inStockOnly,
-  maxPrice,
-  minPrice,
   onSaleOnly,
   query,
   sort,
 }: {
   categoryId?: string;
-  compact: boolean;
   inStockOnly: boolean;
-  maxPrice?: number;
-  minPrice?: number;
   onSaleOnly: boolean;
   query?: string;
   sort: SortOption;
@@ -101,25 +81,6 @@ async function ProductGrid({
       OR: [
         { salePriceCents: { not: null } },
         { variants: { some: { discountPriceCents: { not: null } } } },
-      ],
-    });
-  }
-  if (minPrice !== undefined || maxPrice !== undefined) {
-    const priceRange = {
-      ...(minPrice !== undefined ? { gte: minPrice } : {}),
-      ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
-    };
-    conditions.push({
-      OR: [
-        { priceCents: priceRange },
-        { salePriceCents: priceRange },
-        {
-          variants: {
-            some: {
-              OR: [{ priceCents: priceRange }, { discountPriceCents: priceRange }],
-            },
-          },
-        },
       ],
     });
   }
@@ -168,20 +129,6 @@ async function ProductGrid({
     },
   });
 
-  if (sort === "top-rated") {
-    products.sort((left, right) => {
-      const leftRating =
-        left.reviews.length > 0
-          ? left.reviews.reduce((sum, review) => sum + review.rating, 0) / left.reviews.length
-          : 0;
-      const rightRating =
-        right.reviews.length > 0
-          ? right.reviews.reduce((sum, review) => sum + review.rating, 0) / right.reviews.length
-          : 0;
-      return rightRating - leftRating || right.reviews.length - left.reviews.length;
-    });
-  }
-
   if (products.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-[#141712] px-5 py-14 text-center md:px-6 md:py-16">
@@ -200,7 +147,7 @@ async function ProductGrid({
   }
 
   return (
-    <RevealStagger className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${compact ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+    <RevealStagger className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       {products.map((product) => {
         const averageRating = product.reviews.length
           ? product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length
@@ -231,9 +178,6 @@ export default async function ShopPage({
   const categorySlug = firstParam(params.category);
   const sort = getSortOption(firstParam(params.sort));
   const query = firstParam(params.q)?.trim().slice(0, 100) || undefined;
-  const minPrice = parsePrice(firstParam(params.minPrice));
-  const maxPrice = parsePrice(firstParam(params.maxPrice));
-  const compact = firstParam(params.view) !== "large";
   const inStockOnly = firstParam(params.inStock) === "1";
   const onSaleOnly = firstParam(params.onSale) === "1";
   const [categories, totalCount] = await Promise.all([
@@ -270,11 +214,7 @@ export default async function ShopPage({
 
         <Suspense fallback={<div className="my-8 h-32 animate-pulse rounded-xl bg-[#141712]" />}>
           <ShopHeaderToolbar
-            key={[
-              firstParam(params.q) ?? "",
-              firstParam(params.minPrice) ?? "",
-              firstParam(params.maxPrice) ?? "",
-            ].join(":")}
+            key={firstParam(params.q) ?? ""}
             categories={categories.map((category) => ({
               name: category.name,
               slug: category.slug,
@@ -284,13 +224,10 @@ export default async function ShopPage({
           />
         </Suspense>
 
-        <Suspense fallback={<ProductGridSkeleton compact={compact} />}>
+        <Suspense fallback={<ProductGridSkeleton />}>
           <ProductGrid
             categoryId={selectedCategory?.id}
-            compact={compact}
             inStockOnly={inStockOnly}
-            maxPrice={maxPrice}
-            minPrice={minPrice}
             onSaleOnly={onSaleOnly}
             query={query}
             sort={sort}
