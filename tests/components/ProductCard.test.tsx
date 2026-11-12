@@ -56,7 +56,7 @@ describe("ProductCard cart actions", () => {
       const user = userEvent.setup();
       render(<ProductCard itemListName={listName} product={product} />);
 
-      const addButton = screen.getByRole("button", { name: /Add to Cart/i });
+      const addButton = screen.getByRole("button", { name: /Quick add/i });
       await user.click(addButton);
       await user.click(addButton);
 
@@ -88,7 +88,8 @@ describe("ProductCard cart actions", () => {
     },
   );
 
-  it("offers Select options for multiple variants without adding any to the cart", () => {
+  it("opens quick select for multiple variants without adding any to the cart", async () => {
+    const user = userEvent.setup();
     render(
       <ProductCard
         itemListName="Shop"
@@ -102,13 +103,14 @@ describe("ProductCard cart actions", () => {
       />,
     );
 
-    const optionsLink = screen.getByRole("link", { name: "Select options" });
-    expect(optionsLink).toHaveAttribute("href", "/shop/river-shad");
+    await user.click(screen.getByRole("button", { name: /Quick select/i }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "5 in" })).toBeInTheDocument();
     expect(mocks.addItem).not.toHaveBeenCalled();
     expect(window.gtag).not.toHaveBeenCalled();
   });
 
-  it("keeps the no-stock action and does not send an event", () => {
+  it("disables quick add when the variant is out of stock", () => {
     render(
       <ProductCard
         itemListName="Shop"
@@ -119,10 +121,7 @@ describe("ProductCard cart actions", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: "Out of Stock" })).toHaveAttribute(
-      "href",
-      "/shop/river-shad",
-    );
+    expect(screen.getByRole("button", { name: /Quick add/i })).toBeDisabled();
     expect(mocks.addItem).not.toHaveBeenCalled();
     expect(window.gtag).not.toHaveBeenCalled();
   });
@@ -140,7 +139,7 @@ describe("ProductCard cart actions", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /Add to Cart/i }));
+    await user.click(screen.getByRole("button", { name: /Quick add/i }));
 
     expect(mocks.addItem).toHaveBeenCalledWith(
       expect.objectContaining({ variantId: "variant-1" }),
@@ -153,7 +152,7 @@ describe("ProductCard cart actions", () => {
     const user = userEvent.setup();
     render(<ProductCard itemListName="Shop" product={product} />);
 
-    await user.click(screen.getByRole("button", { name: /Add to Cart/i }));
+    await user.click(screen.getByRole("button", { name: /Quick add/i }));
 
     expect(mocks.addItem).toHaveBeenCalledTimes(1);
     expect(mocks.showToast).toHaveBeenCalledOnce();
