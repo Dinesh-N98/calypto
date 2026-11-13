@@ -84,12 +84,16 @@ export function ProductDetailExperience({
   const router = useRouter();
   const { showToast } = useToast();
   const gallery = useMemo(() => {
-    const values = [product.imageUrl, ...images.map((image) => image.url)];
+    const values = [
+      product.imageUrl,
+      ...images.map((image) => image.url),
+      ...variants.flatMap((variant) => (variant.imageUrl ? [variant.imageUrl] : [])),
+    ];
     return [...new Set(values)].map((url) => ({
       url,
       altText: images.find((image) => image.url === url)?.altText || product.name,
     }));
-  }, [images, product.imageUrl, product.name]);
+  }, [images, product.imageUrl, product.name, variants]);
   const canPurchaseVariant = (variant: Variant) => !product.trackInventory || variant.stock > 0;
   const firstAvailable = variants.find(canPurchaseVariant) ?? variants[0];
   const [selectedVariantId, setSelectedVariantId] = useState(firstAvailable?.id ?? "");
@@ -341,13 +345,19 @@ export function ProductDetailExperience({
             />
           </div>
         </div>
-        <MarkdownDescription
-          className="mt-5 text-sm leading-7 text-[#55584e] sm:text-base"
-          description={product.description}
-        />
-
+        <div className="mt-5 flex flex-wrap items-baseline gap-3">
+          <p className="text-[clamp(1.5rem,6vw,1.875rem)] font-black">
+            {formatPrice(currentUnitPrice)}
+          </p>
+          {referencePrice > saleUnitPrice && (
+            <>
+              <p className="text-base text-[#777b70] line-through">{formatPrice(referencePrice)}</p>
+              <p className="text-sm font-bold text-[#c54b14]">-{savingPercent}%</p>
+            </>
+          )}
+        </div>
         {savingPercent > 0 && (
-          <div className="mt-6 rounded-md bg-[#fff2e5] p-4">
+          <div className="mt-4 rounded-md bg-[#fff2e5] p-4">
             <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#c54b14]">
               {hasActiveSale ? "Limited-time deal" : "Special price"}
               <span className="ml-2">-{savingPercent}%</span>
@@ -360,18 +370,6 @@ export function ProductDetailExperience({
             )}
           </div>
         )}
-
-        <div className="mt-5 flex flex-wrap items-baseline gap-3">
-          <p className="text-[clamp(1.5rem,6vw,1.875rem)] font-black">
-            {formatPrice(currentUnitPrice)}
-          </p>
-          {referencePrice > saleUnitPrice && (
-            <>
-              <p className="text-base text-[#777b70] line-through">{formatPrice(referencePrice)}</p>
-              <p className="text-sm font-bold text-[#c54b14]">-{savingPercent}%</p>
-            </>
-          )}
-        </div>
         {colors.length > 0 && (
           <fieldset className="mt-6">
             <legend className="mb-2 text-xs font-extrabold uppercase tracking-[.1em]">
@@ -515,6 +513,11 @@ export function ProductDetailExperience({
             Add to Cart
           </button>
         </div>
+
+        <MarkdownDescription
+          className="mt-8 border-t border-ink/10 pt-6 text-sm leading-7 text-[#55584e] sm:text-base"
+          description={product.description}
+        />
       </div>
     </section>
   );
