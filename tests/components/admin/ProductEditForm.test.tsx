@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   deleteProduct: vi.fn(),
   push: vi.fn(),
+  reorderProducts: vi.fn(),
   refresh: vi.fn(),
   showToast: vi.fn(),
   updateProduct: vi.fn(),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/app/admin/catalog-actions", () => ({
   deleteProduct: mocks.deleteProduct,
+  reorderProducts: mocks.reorderProducts,
   updateProduct: mocks.updateProduct,
 }));
 vi.mock("@/components/ToastProvider", () => ({

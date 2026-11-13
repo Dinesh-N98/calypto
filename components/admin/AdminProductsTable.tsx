@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  GripVertical,
   Pencil,
   Plus,
   Search,
@@ -14,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { deleteProduct, updateProduct } from "@/app/admin/catalog-actions";
+import { deleteProduct, reorderProducts, updateProduct } from "@/app/admin/catalog-actions";
 import { useToast } from "@/components/ToastProvider";
 import {
   CurrencyInput,
@@ -992,6 +993,10 @@ export function AdminProductsTable({
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(10);
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<ProductRecord | null>(null);
+  const [draftOrder, setDraftOrder] = useState<ProductRecord[] | null>(null);
+  const [draggedProductId, setDraggedProductId] = useState<string | null>(null);
+  const [dragOverProductId, setDragOverProductId] = useState<string | null>(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   useEffect(() => {
     function handleSearchShortcut(event: KeyboardEvent) {
@@ -1032,8 +1037,49 @@ export function AdminProductsTable({
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
+  const productsToDisplay = draftOrder ?? visibleProducts;
+  const hasOrderChanged =
+    draftOrder?.some((product, index) => product.id !== products[index]?.id) ?? false;
   const firstResult = filteredProducts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const lastResult = Math.min(currentPage * pageSize, filteredProducts.length);
+
+  function moveProduct(sourceId: string, targetId: string) {
+    if (!draftOrder || isSavingOrder || sourceId === targetId) return;
+
+    const nextOrder = [...draftOrder];
+    const sourceIndex = nextOrder.findIndex((product) => product.id === sourceId);
+    const targetIndex = nextOrder.findIndex((product) => product.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const [movedProduct] = nextOrder.splice(sourceIndex, 1);
+    nextOrder.splice(targetIndex, 0, movedProduct);
+    setDraftOrder(nextOrder);
+  }
+
+  async function saveProductOrder() {
+    if (!draftOrder || !hasOrderChanged || isSavingOrder) return;
+    setIsSavingOrder(true);
+
+    try {
+      const result = await reorderProducts(
+        draftOrder.map((product, displayOrder) => ({ id: product.id, displayOrder })),
+      );
+      if (!result.ok) {
+        showToast(result.error, "error");
+        return;
+      }
+
+      setDraftOrder(null);
+      showToast(result.message);
+      router.refresh();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Unable to save product order.", "error");
+    } finally {
+      setIsSavingOrder(false);
+      setDraggedProductId(null);
+      setDragOverProductId(null);
+    }
+  }
 
   function completeAction(result: ActionResult, close?: () => void) {
     if (!result.ok) return;
@@ -1051,17 +1097,36 @@ export function AdminProductsTable({
           </Link>
           <h1 className="mt-2 text-3xl font-black tracking-[-.04em] sm:text-4xl">Products</h1>
           <p className="mt-2 text-sm leading-6 text-[#65695f]">
-            Search, organize, and manage your storefront catalog.
+            Search, organize, and manage your storefront catalog. Use reorder mode to set the
+            storefront product order.
           </p>
         </div>
-        <Link
-          className="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-md bg-[#a3bd32] px-4 text-xs font-extrabold uppercase tracking-[.08em] text-[#171a14] hover:bg-[#b6cf45] sm:self-auto"
-          aria-disabled={categories.length === 0}
-          href={categories.length === 0 ? "/admin/categories" : "/admin/products/new"}
-        >
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          Add product
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {!draftOrder && products.length > 0 && (
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-black/15 bg-white px-4 text-xs font-extrabold uppercase tracking-[.08em] text-[#42463b] hover:bg-[#f7f8f5]"
+              onClick={() => {
+                setSearch("");
+                setCategoryId("all");
+                setPage(1);
+                setDraftOrder(products);
+              }}
+              type="button"
+            >
+              Reorder storefront
+            </button>
+          )}
+          {!draftOrder && (
+            <Link
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#a3bd32] px-4 text-xs font-extrabold uppercase tracking-[.08em] text-[#171a14] hover:bg-[#b6cf45]"
+              aria-disabled={categories.length === 0}
+              href={categories.length === 0 ? "/admin/categories" : "/admin/products/new"}
+            >
+              <Plus aria-hidden="true" className="h-4 w-4" />
+              Add product
+            </Link>
+          )}
+        </div>
       </header>
 
       {categories.length === 0 && (
@@ -1074,7 +1139,13 @@ export function AdminProductsTable({
       )}
 
       <section className="flex min-h-[30rem] flex-1 flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
-        <div className="flex shrink-0 flex-col gap-3 border-b border-black/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className={
+            draftOrder
+              ? "hidden"
+              : "flex shrink-0 flex-col gap-3 border-b border-black/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+          }
+        >
           <label className="relative min-w-0 flex-1 sm:max-w-sm">
             <span className="sr-only">Search products</span>
             <Search
@@ -1154,23 +1225,100 @@ export function AdminProductsTable({
             </label>
           </div>
         </div>
+        {draftOrder && (
+          <div className="flex shrink-0 flex-col gap-3 border-b border-black/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm leading-6 text-[#55594f]">
+              Drag a product grip or use the arrow keys to arrange all products, including drafts.
+              Save when you are done.
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                className="min-h-10 rounded-md border border-black/15 px-4 text-xs font-bold uppercase tracking-wide text-[#42463b] hover:bg-[#f7f8f5] disabled:opacity-50"
+                disabled={isSavingOrder}
+                onClick={() => {
+                  setDraftOrder(null);
+                  setDraggedProductId(null);
+                  setDragOverProductId(null);
+                }}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="min-h-10 rounded-md bg-[#a3bd32] px-4 text-xs font-extrabold uppercase tracking-wide text-[#171a14] hover:bg-[#b6cf45] disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!hasOrderChanged || isSavingOrder}
+                onClick={() => void saveProductOrder()}
+                type="button"
+              >
+                {isSavingOrder ? "Saving..." : "Save order"}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
           <table className="w-full min-w-[760px] border-collapse text-left">
             <thead className="sticky top-0 z-10 bg-[#f7f8f5] text-[.65rem] uppercase tracking-[.1em] text-[#73786b] shadow-[0_1px_0_rgba(0,0,0,.08)]">
               <tr>
+                {draftOrder && (
+                  <th className="w-12 px-2 py-3 font-bold">
+                    <span className="sr-only">Reorder</span>
+                  </th>
+                )}
                 <th className="px-4 py-3 font-bold">Product</th>
                 <th className="px-4 py-3 font-bold">Category</th>
                 <th className="px-4 py-3 text-right font-bold">Price</th>
-                <th className="px-4 py-3 text-right font-bold">Actions</th>
+                <th
+                  className={draftOrder ? "hidden" : "px-4 py-3 text-right font-bold"}
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
-              {visibleProducts.map((product) => (
+              {productsToDisplay.map((product, index) => (
                 <tr
-                  className="transition-colors hover:bg-[#fafbf8] focus-within:bg-[#fafbf8]"
+                  className={`transition-colors hover:bg-[#fafbf8] focus-within:bg-[#fafbf8] ${dragOverProductId === product.id ? "border-t-2 border-[#718126]" : ""} ${draggedProductId === product.id ? "opacity-50" : ""}`}
                   key={product.id}
+                  onDragOver={(event) => {
+                    if (!draftOrder || isSavingOrder || !draggedProductId) return;
+                    event.preventDefault();
+                    setDragOverProductId(product.id);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (draggedProductId) moveProduct(draggedProductId, product.id);
+                  }}
                 >
+                  {draftOrder && (
+                    <td className="px-2 py-3">
+                      <button
+                        aria-label={`Reorder ${product.name}; position ${index + 1} of ${draftOrder.length}. Use arrow keys to move.`}
+                        className="grid h-9 w-9 cursor-grab place-items-center rounded-md text-[#73786b] hover:bg-[#eef2df] hover:text-[#53641d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#718126] active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={isSavingOrder}
+                        draggable={!isSavingOrder}
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", product.id);
+                          setDraggedProductId(product.id);
+                        }}
+                        onDragEnd={() => {
+                          setDraggedProductId(null);
+                          setDragOverProductId(null);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+                          event.preventDefault();
+                          const target = draftOrder[index + (event.key === "ArrowUp" ? -1 : 1)];
+                          if (target) moveProduct(product.id, target.id);
+                        }}
+                        title="Drag to reorder, or use the arrow keys"
+                        type="button"
+                      >
+                        <GripVertical aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-black/5 bg-[#f2f3ee]">
@@ -1212,7 +1360,7 @@ export function AdminProductsTable({
                   <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold tabular-nums">
                     {formatPrice(product.priceCents)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={draftOrder ? "hidden" : "px-4 py-3"}>
                     <div className="flex justify-end gap-1">
                       <Link
                         aria-label={`Edit ${product.name}`}
@@ -1245,7 +1393,7 @@ export function AdminProductsTable({
                   </td>
                 </tr>
               ))}
-              {visibleProducts.length === 0 && (
+              {productsToDisplay.length === 0 && (
                 <tr>
                   <td className="px-4 py-14 text-center" colSpan={4}>
                     <p className="text-sm font-bold text-[#42463b]">
@@ -1278,14 +1426,26 @@ export function AdminProductsTable({
 
         <footer className="flex shrink-0 flex-col gap-3 border-t border-black/10 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[#73786b]">
-            Showing{" "}
-            <span className="font-semibold text-[#42463b]">
-              {firstResult}–{lastResult}
-            </span>{" "}
-            of <span className="font-semibold text-[#42463b]">{filteredProducts.length}</span>{" "}
-            products
+            {draftOrder ? (
+              <>
+                Showing all{" "}
+                <span className="font-semibold text-[#42463b]">{draftOrder.length}</span> products
+              </>
+            ) : (
+              <>
+                Showing{" "}
+                <span className="font-semibold text-[#42463b]">
+                  {firstResult}–{lastResult}
+                </span>{" "}
+                of <span className="font-semibold text-[#42463b]">{filteredProducts.length}</span>{" "}
+                products
+              </>
+            )}
           </p>
-          <nav aria-label="Product table pagination" className="flex items-center gap-2">
+          <nav
+            aria-label="Product table pagination"
+            className={`${draftOrder ? "hidden" : "flex"} items-center gap-2`}
+          >
             <button
               aria-label="Previous page"
               className="grid h-9 w-9 place-items-center rounded-md border border-black/15 disabled:opacity-40"

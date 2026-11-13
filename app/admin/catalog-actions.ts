@@ -340,6 +340,73 @@ export async function reorderCategories(
   return { ok: true, message: "Category order saved." };
 }
 
+export async function reorderProducts(
+  value: unknown,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  await requireAdminPage("/admin/products");
+
+  if (
+    !Array.isArray(value) ||
+    value.length > 10_000 ||
+    !value.every(
+      (item) =>
+        item !== null &&
+        typeof item === "object" &&
+        !Array.isArray(item) &&
+        typeof item.id === "string" &&
+        item.id.length > 0 &&
+        Number.isSafeInteger(item.displayOrder) &&
+        item.displayOrder >= 0,
+    )
+  ) {
+    return { ok: false, error: "The product order is invalid." };
+  }
+
+  const order = value as { id: string; displayOrder: number }[];
+  if (
+    new Set(order.map((item) => item.id)).size !== order.length ||
+    order.some((item, index) => item.displayOrder !== index)
+  ) {
+    return {
+      ok: false,
+      error: "The product order must contain unique IDs and consecutive positions.",
+    };
+  }
+
+  const saved = await prisma.$transaction(async (transaction) => {
+    const existingProducts = await transaction.product.findMany({
+      select: { id: true },
+    });
+    const existingIds = new Set(existingProducts.map((product) => product.id));
+    if (
+      existingIds.size !== order.length ||
+      order.some((product) => !existingIds.has(product.id))
+    ) {
+      return false;
+    }
+
+    if (order.length > 0) {
+      await transaction.$executeRaw`
+        UPDATE "Product" AS product
+        SET "displayOrder" = ordering."displayOrder"
+        FROM (VALUES ${Prisma.join(
+          order.map(
+            (product) =>
+              Prisma.sql`(${product.id}::text, ${product.displayOrder}::integer)`,
+          ),
+        )}) AS ordering("id", "displayOrder")
+        WHERE product."id" = ordering."id"
+      `;
+    }
+    return true;
+  });
+
+  if (!saved) return { ok: false, error: "The product list changed. Refresh and try again." };
+
+  revalidateCatalog();
+  return { ok: true, message: "Product order saved." };
+}
+
 export async function updateCategory(
   formData: FormData,
 ): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
@@ -563,19 +630,23 @@ export async function createProduct(formData: FormData): Promise<ProductMutation
 
   try {
     const { variants, images, tieredDiscounts, ...data } = product.data;
-    const createdProduct = await prisma.product.create({
-      data: {
-        ...data,
-        variants: { create: variants },
-        images: { create: images },
-        tieredDiscounts: { create: tieredDiscounts },
-      },
-      select: {
-        id: true,
-        pieceLengthInches: true,
-        piecesPerPack: true,
-        packWeightGrams: true,
-      },
+    const createdProduct = await prisma.$transaction(async (transaction) => {
+      const lastProduct = await transaction.product.aggregate({ _max: { displayOrder: true } });
+      return transaction.product.create({
+        data: {
+          ...data,
+          displayOrder: (lastProduct._max.displayOrder ?? -1) + 1,
+          variants: { create: variants },
+          images: { create: images },
+          tieredDiscounts: { create: tieredDiscounts },
+        },
+        select: {
+          id: true,
+          pieceLengthInches: true,
+          piecesPerPack: true,
+          packWeightGrams: true,
+        },
+      });
     });
     revalidatePath(`/shop/${product.data.slug}`);
     revalidateCatalog();

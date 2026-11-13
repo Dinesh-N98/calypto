@@ -10,7 +10,7 @@ export default async function AdminProductsPage() {
       select: { id: true, name: true, tieredDiscountsEnabled: true },
     }),
     prisma.product.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
       include: {
         category: {
           select: { id: true, name: true, tieredDiscountsEnabled: true },

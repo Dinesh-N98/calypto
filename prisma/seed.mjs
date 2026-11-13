@@ -34,6 +34,7 @@ for (const category of categories) {
   for (const [index, file] of files.entries()) {
     const number = String(index + 1).padStart(2, "0");
     products.push({
+      displayOrder: products.length,
       slug: `${category.slug}-${number}`,
       name: `${category.displayName} Color ${number}`,
       categoryId: categoryIds.get(category.slug),

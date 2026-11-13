@@ -45,7 +45,7 @@ async function ProductGrid({
 
   const products = await prisma.product.findMany({
     where,
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
     select: {
       id: true,
       slug: true,

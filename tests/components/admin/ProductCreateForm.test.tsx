@@ -7,12 +7,14 @@ import { describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createProduct: vi.fn(),
   push: vi.fn(),
+  reorderProducts: vi.fn(),
   refresh: vi.fn(),
   showToast: vi.fn(),
 }));
 
 vi.mock("@/app/admin/catalog-actions", () => ({
   createProduct: mocks.createProduct,
+  reorderProducts: mocks.reorderProducts,
 }));
 vi.mock("@/components/ToastProvider", () => ({
   useToast: () => ({ showToast: mocks.showToast }),

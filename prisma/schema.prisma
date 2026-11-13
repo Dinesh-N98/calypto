@@ -61,6 +61,7 @@ model Product {
   saleEndsAt             DateTime?
   tieredDiscountsEnabled Boolean?
   isActive               Boolean          @default(true)
+  displayOrder           Int              @default(0)
   trackInventory         Boolean          @default(true)
   tags                   String[]         @default([])
   pieceLengthInches      Float            @default(5.0) @map("piece_length_inches")
@@ -77,6 +78,7 @@ model Product {
   tieredDiscounts        TieredDiscount[]
 
   @@index([categoryId])
+  @@index([isActive, displayOrder])
   @@index([saleEndsAt])
 }
 
