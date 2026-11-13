@@ -297,22 +297,6 @@ export function ProductDetailExperience({
             </>
           )}
         </div>
-        {gallery.length > 1 && (
-          <div aria-label="Product images" className="mt-3 flex gap-2 overflow-x-auto">
-            {gallery.map((image, index) => (
-              <button
-                aria-label={`Show product image ${index + 1}`}
-                aria-pressed={index === activeImageIndex}
-                className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-[#f0f0e8] ${index === activeImageIndex ? "border-[#708323]" : "border-transparent"}`}
-                key={image.url}
-                onClick={() => setActiveImageIndex(index)}
-                type="button"
-              >
-                <ProductCutoutImage alt={image.altText || product.name} src={image.url} variant="thumbnail" />
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="min-w-0 self-start">

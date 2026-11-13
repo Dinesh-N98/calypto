@@ -95,6 +95,8 @@ describe("ProductDetailExperience", () => {
     expect(whiteSwatch).toHaveAttribute("aria-pressed", "true");
     expect(greenSwatch).toHaveAttribute("aria-pressed", "false");
     expect(mainImage()).toHaveAttribute("data-src", "/river-shad-white.webp");
+    expect(screen.queryByRole("button", { name: /Show product image/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next product image" })).toBeInTheDocument();
 
     await user.click(greenSwatch);
 
