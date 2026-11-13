@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpRight, Check, Star } from "lucide-react";
+import { ArrowUpRight, Star } from "lucide-react";
 import { QuickViewModal, type QuickViewProduct } from "@/components/shop/QuickViewModal";
 import { WishlistButton } from "@/components/WishlistButton";
 import { formatPrice } from "@/lib/currency";
@@ -16,24 +16,6 @@ type ProductCardProduct = QuickViewProduct & {
   reviews?: { rating: number }[];
 };
 
-function swatchColor(value: string): string {
-  const colors: Record<string, string> = {
-    black: "#171717",
-    blue: "#2563eb",
-    green: "#4d7c0f",
-    gold: "#d4a72c",
-    orange: "#ea580c",
-    purple: "#7e22ce",
-    red: "#dc2626",
-    silver: "#cbd5e1",
-    white: "#ffffff",
-    yellow: "#eab308",
-  };
-  const normalized = value.trim().toLowerCase();
-  if (/^#[\da-f]{3}(?:[\da-f]{3})?$/i.test(normalized)) return normalized;
-  return colors[normalized] ?? "#a3bd32";
-}
-
 export function ProductCard({
   product,
   itemListName,
@@ -42,12 +24,10 @@ export function ProductCard({
   itemListName: "Shop" | "Wishlist";
 }) {
   const variants = product.variants ?? [];
-  const [selectedVariantId, setSelectedVariantId] = useState(
-    variants.find((variant) => product.trackInventory === false || variant.stock > 0)?.id ?? "",
+  const selectedVariant = variants.find(
+    (variant) => product.trackInventory === false || variant.stock > 0,
   );
   const [quickViewOpen, setQuickViewOpen] = useState(false);
-  const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
-  const colors = [...new Set(variants.flatMap((variant) => (variant.color ? [variant.color] : [])))];
   const saleEndsAt = product.saleEndsAt ? new Date(product.saleEndsAt) : null;
   const price = selectedVariant
     ? calculateUnitPriceCents({
@@ -81,21 +61,6 @@ export function ProductCard({
       ? product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length
       : 0);
   const reviewCount = product.reviewCount ?? product.reviews?.length ?? 0;
-
-  function chooseColor(color: string) {
-    const candidate =
-      variants.find(
-        (variant) =>
-          variant.color === color &&
-          variant.size === selectedVariant?.size &&
-          (product.trackInventory === false || variant.stock > 0),
-      ) ??
-      variants.find(
-        (variant) =>
-          variant.color === color && (product.trackInventory === false || variant.stock > 0),
-      );
-    if (candidate) setSelectedVariantId(candidate.id);
-  }
 
   return (
     <>
@@ -162,33 +127,7 @@ export function ProductCard({
             </p>
           )}
 
-          <div
-            className={`mt-3 flex min-h-8 items-center gap-2 ${colors.length > 0 ? "justify-between" : "justify-end"}`}
-          >
-            {colors.length > 0 && (
-              <div aria-label="Available colors" className="flex flex-wrap gap-1.5">
-                {colors.slice(0, 5).map((color) => (
-                  <button
-                    aria-label={`Choose ${color}`}
-                    aria-pressed={selectedVariant?.color === color}
-                    className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${selectedVariant?.color === color ? "border-lime ring-1 ring-lime/30" : "border-white/25"}`}
-                    key={color}
-                    onClick={() => chooseColor(color)}
-                    onMouseEnter={() => chooseColor(color)}
-                    style={{ backgroundColor: swatchColor(color) }}
-                    title={color}
-                    type="button"
-                  >
-                    {selectedVariant?.color === color && (
-                      <Check aria-hidden="true" className="mx-auto h-3 w-3 text-white drop-shadow" />
-                    )}
-                  </button>
-                ))}
-                {colors.length > 5 && (
-                  <span className="self-center text-[.62rem] font-bold text-muted">+{colors.length - 5}</span>
-                )}
-              </div>
-            )}
+          <div className="mt-3 flex justify-end">
             <button
               className="inline-flex min-h-8 shrink-0 items-center gap-1 text-[.58rem] font-extrabold uppercase tracking-wide text-muted transition hover:text-lime"
               onClick={() => setQuickViewOpen(true)}

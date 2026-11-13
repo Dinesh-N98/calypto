@@ -83,6 +83,29 @@ describe("ProductCard actions", () => {
     expect(mocks.addItem).not.toHaveBeenCalled();
   });
 
+  it("does not display color swatches on product cards", () => {
+    render(
+      <ProductCard
+        itemListName="Shop"
+        product={{
+          ...product,
+          variants: [
+            product.variants[0]!,
+            { ...product.variants[0]!, id: "variant-2", sku: "SHAD-02", color: "White" },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("group", { name: "Available colors" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose Green" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose White" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Quick view/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "View product details for River Shad" }),
+    ).toBeInTheDocument();
+  });
+
   it("links to product details when the variant is out of stock", () => {
     render(
       <ProductCard
