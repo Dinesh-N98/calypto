@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowUpRight, ShieldCheck, Truck, Waves } from "lucide-react";
-import type { Prisma } from "@prisma/client";
 import { IconFeature } from "@/components/IconFeature";
 import { ProductCard } from "@/components/ProductCard";
 import { RevealStagger } from "@/components/RevealStagger";
@@ -11,7 +10,6 @@ import { prisma } from "@/lib/prisma";
 type SearchParam = string | string[] | undefined;
 type ShopSearchParams = {
   category?: SearchParam;
-  q?: SearchParam;
 };
 
 function firstParam(value: SearchParam): string | undefined {
@@ -37,24 +35,13 @@ function ProductGridSkeleton() {
 
 async function ProductGrid({
   categoryId,
-  query,
 }: {
   categoryId?: string;
-  query?: string;
 }) {
-  const where: Prisma.ProductWhereInput = {
+  const where = {
     isActive: true,
     ...(categoryId ? { categoryId } : {}),
   };
-  if (query) {
-    where.AND = [{
-      OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { tags: { has: query } },
-        { variants: { some: { color: { contains: query, mode: "insensitive" } } } },
-      ],
-    }];
-  }
 
   const products = await prisma.product.findMany({
     where,
@@ -99,7 +86,7 @@ async function ProductGrid({
         <p className="text-lg font-black uppercase tracking-tight md:text-xl">
           No products match these filters
         </p>
-        <p className="mt-2 text-sm text-muted">Try another search or clear a filter to keep exploring.</p>
+        <p className="mt-2 text-sm text-muted">Choose another category to keep exploring.</p>
         <Link
           className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-lime px-4 text-xs font-black uppercase tracking-wide text-ink transition hover:bg-[#b6cf45]"
           href="/shop"
@@ -140,7 +127,6 @@ export default async function ShopPage({
 }) {
   const params = await searchParams;
   const categorySlug = firstParam(params.category);
-  const query = firstParam(params.q)?.trim().slice(0, 100) || undefined;
   const categories = await prisma.category.findMany({
     orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
     select: {
@@ -164,7 +150,6 @@ export default async function ShopPage({
 
         <Suspense fallback={<div className="my-8 h-32 animate-pulse rounded-xl bg-[#141712]" />}>
           <ShopHeaderToolbar
-            key={firstParam(params.q) ?? ""}
             categories={categories.map((category) => ({
               name: category.name,
               slug: category.slug,
@@ -173,10 +158,7 @@ export default async function ShopPage({
         </Suspense>
 
         <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid
-            categoryId={selectedCategory?.id}
-            query={query}
-          />
+          <ProductGrid categoryId={selectedCategory?.id} />
         </Suspense>
 
         <RevealStagger className="mt-16 grid gap-5 border-t border-white/10 pt-7 sm:grid-cols-3">
