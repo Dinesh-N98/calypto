@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Category = { name: string; slug: string };
@@ -12,6 +13,7 @@ export function ShopHeaderToolbar({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   function updateParam(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
@@ -24,28 +26,69 @@ export function ShopHeaderToolbar({
   const activeCategory = searchParams.get("category");
 
   return (
-    <section className="mt-4 mb-6 border-b border-white/10 py-4 md:mb-8">
-      <nav
-        aria-label="Product categories"
-        className="flex flex-nowrap gap-2 overflow-x-auto whitespace-nowrap pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:overflow-visible"
-      >
-        <CategoryPill
-          active={!activeCategory}
-          label="All gear"
-          onClick={() => updateParam("category", null)}
+    <>
+      {isExpanded && (
+        <button
+          aria-label="Close category selector"
+          className="fixed inset-0 z-20 bg-black/50 backdrop-blur-sm transition-opacity duration-200"
+          onClick={() => setIsExpanded(false)}
+          type="button"
         />
-        {categories.map((category) => (
+      )}
+      <div className={`relative min-h-9 ${isExpanded ? "z-30" : ""}`}>
+        <button
+          aria-controls="shop-category-options"
+          aria-expanded={isExpanded}
+          aria-hidden={isExpanded}
+          className={`inline-flex h-8 items-center justify-center gap-2 rounded-full bg-lime px-3.5 text-[11px] font-black uppercase tracking-wider text-ink transition-all duration-200 ease-out hover:bg-[#b6cf45] md:h-9 md:px-4 md:text-xs md:origin-right md:transition-transform md:duration-200 md:ease-out md:hover:scale-105 ${isExpanded ? "pointer-events-none opacity-0" : "opacity-100"}`}
+          onClick={() => setIsExpanded(true)}
+          tabIndex={isExpanded ? -1 : 0}
+          type="button"
+        >
+          Categories
+          <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+            <defs>
+              <mask id="caret-cutout">
+                <rect width="24" height="24" fill="white" />
+                <path
+                  d="M8.5 10.25h7c.45 0 .7.52.42.88l-3.5 4.25a.55.55 0 0 1-.84 0l-3.5-4.25a.54.54 0 0 1 .42-.88Z"
+                  fill="black"
+                />
+              </mask>
+            </defs>
+            <circle cx="12" cy="12" r="10" fill="currentColor" mask="url(#caret-cutout)" />
+          </svg>
+        </button>
+        <nav
+          aria-hidden={!isExpanded}
+          aria-label="Product categories"
+          className={`absolute top-0 right-0 z-30 flex w-44 flex-col items-end gap-2.5 overflow-visible transition-all duration-200 ease-out ${isExpanded ? "max-h-60 opacity-100" : "pointer-events-none max-h-0 opacity-0"}`}
+          id="shop-category-options"
+        >
           <CategoryPill
-            active={activeCategory === category.slug}
-            key={category.slug}
-            label={category.name}
-            onClick={() =>
-              updateParam("category", activeCategory === category.slug ? null : category.slug)
-            }
+            active={!activeCategory}
+            label="All gear"
+            onClick={() => {
+              updateParam("category", null);
+              setIsExpanded(false);
+            }}
+            tabIndex={isExpanded ? 0 : -1}
           />
-        ))}
-      </nav>
-    </section>
+          {categories.map((category) => (
+            <CategoryPill
+              active={activeCategory === category.slug}
+              key={category.slug}
+              label={category.name}
+              onClick={() => {
+                updateParam("category", activeCategory === category.slug ? null : category.slug);
+                setIsExpanded(false);
+              }}
+              tabIndex={isExpanded ? 0 : -1}
+            />
+          ))}
+        </nav>
+      </div>
+    </>
   );
 }
 
@@ -53,16 +96,19 @@ function CategoryPill({
   active,
   label,
   onClick,
+  tabIndex,
 }: {
   active: boolean;
   label: string;
   onClick: () => void;
+  tabIndex: number;
 }) {
   return (
     <button
       aria-pressed={active}
-      className={`inline-flex min-h-10 shrink-0 items-center justify-center rounded-full px-3.5 py-2 text-xs font-black uppercase tracking-[.08em] transition md:px-5 md:py-2.5 ${active ? "bg-lime text-ink shadow-md shadow-lime/20" : "border border-white/10 bg-white/5 text-muted hover:border-white/25 hover:text-paper"}`}
+      className={`relative inline-flex h-9 w-44 shrink-0 items-center justify-center rounded-full px-5 text-xs font-black uppercase tracking-[.08em] transition-all duration-200 ease-out md:origin-center md:transition-transform md:duration-200 md:ease-out md:hover:z-10 md:hover:scale-105 ${active ? "bg-lime text-ink" : "bg-zinc-900 text-muted hover:text-paper"}`}
       onClick={onClick}
+      tabIndex={tabIndex}
       type="button"
     >
       {label}

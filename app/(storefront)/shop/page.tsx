@@ -140,22 +140,31 @@ export default async function ShopPage({
   return (
     <main className="min-h-screen bg-ink px-[5vw] pt-6 pb-7 text-paper sm:px-[7vw] md:pt-8 md:pb-10">
       <div className="site-container">
-        <header>
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[.62rem] font-bold uppercase tracking-[.14em] text-muted">
-            <Link className="transition hover:text-paper" href="/">Home</Link>
-            <span aria-hidden="true">/</span>
-            <span className="text-lime">Shop</span>
+        <header className="mb-6 flex w-full items-center justify-between py-4">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-2 truncate pr-3 text-[.62rem] font-bold uppercase tracking-[.14em] text-muted">
+            <Link className="shrink-0 transition hover:text-paper" href="/">Home</Link>
+            <span aria-hidden="true" className="shrink-0">/</span>
+            {selectedCategory ? (
+              <>
+                <Link className="shrink-0 transition hover:text-paper" href="/shop">Shop</Link>
+                <span aria-hidden="true" className="shrink-0">/</span>
+                <span className="min-w-0 truncate text-lime">{selectedCategory.name}</span>
+              </>
+            ) : (
+              <span className="truncate text-lime">Shop</span>
+            )}
           </nav>
+          <div className="shrink-0">
+            <Suspense fallback={<div aria-hidden="true" className="h-8 w-32 md:h-9 md:w-36" />}>
+              <ShopHeaderToolbar
+                categories={categories.map((category) => ({
+                  name: category.name,
+                  slug: category.slug,
+                }))}
+              />
+            </Suspense>
+          </div>
         </header>
-
-        <Suspense fallback={<div className="my-8 h-32 animate-pulse rounded-xl bg-[#141712]" />}>
-          <ShopHeaderToolbar
-            categories={categories.map((category) => ({
-              name: category.name,
-              slug: category.slug,
-            }))}
-          />
-        </Suspense>
 
         <Suspense fallback={<ProductGridSkeleton />}>
           <ProductGrid categoryId={selectedCategory?.id} />
