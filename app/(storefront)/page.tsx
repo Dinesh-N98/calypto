@@ -160,21 +160,6 @@ export default async function Home() {
       </Reveal>
       <Reveal
         as="section"
-        className="site-container px-[7vw] py-16 text-center md:px-[10vw] md:py-28"
-      >
-        <p className="text-[.6rem] font-bold uppercase tracking-[.15em] text-lime">
-          From the water
-        </p>
-        <blockquote className="mx-auto my-6 max-w-[950px] text-[1.65rem] font-extrabold leading-[1.08] tracking-[-.04em] md:my-8 md:text-[clamp(1.8rem,3.5vw,3.5rem)]">
-          “The action is subtle enough for clear water, but it still gets noticed. Calypto has
-          earned a permanent spot in my box.”
-        </blockquote>
-        <cite className="text-[.7rem] uppercase tracking-[.1em] text-muted not-italic">
-          — Marcus R. / Tournament angler
-        </cite>
-      </Reveal>
-      <Reveal
-        as="section"
         className="bg-[#20261a] px-[7vw] py-16 text-center md:px-[10vw] md:py-24"
       >
         <div className="site-container">
