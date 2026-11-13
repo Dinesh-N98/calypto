@@ -11,19 +11,11 @@ import { prisma } from "@/lib/prisma";
 type SearchParam = string | string[] | undefined;
 type ShopSearchParams = {
   category?: SearchParam;
-  sort?: SearchParam;
   q?: SearchParam;
-  inStock?: SearchParam;
-  onSale?: SearchParam;
 };
-type SortOption = "newest" | "price-asc" | "price-desc";
 
 function firstParam(value: SearchParam): string | undefined {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function getSortOption(value: string | undefined): SortOption {
-  return value === "price-asc" || value === "price-desc" ? value : "newest";
 }
 
 function ProductGridSkeleton() {
@@ -45,56 +37,28 @@ function ProductGridSkeleton() {
 
 async function ProductGrid({
   categoryId,
-  inStockOnly,
-  onSaleOnly,
   query,
-  sort,
 }: {
   categoryId?: string;
-  inStockOnly: boolean;
-  onSaleOnly: boolean;
   query?: string;
-  sort: SortOption;
 }) {
   const where: Prisma.ProductWhereInput = {
     isActive: true,
     ...(categoryId ? { categoryId } : {}),
   };
-  const conditions: Prisma.ProductWhereInput[] = [];
-
   if (query) {
-    conditions.push({
+    where.AND = [{
       OR: [
         { name: { contains: query, mode: "insensitive" } },
         { tags: { has: query } },
         { variants: { some: { color: { contains: query, mode: "insensitive" } } } },
       ],
-    });
+    }];
   }
-  if (inStockOnly) {
-    conditions.push({
-      OR: [{ trackInventory: false }, { variants: { some: { stock: { gt: 0 } } } }],
-    });
-  }
-  if (onSaleOnly) {
-    conditions.push({
-      OR: [
-        { salePriceCents: { not: null } },
-        { variants: { some: { discountPriceCents: { not: null } } } },
-      ],
-    });
-  }
-  if (conditions.length > 0) where.AND = conditions;
 
   const products = await prisma.product.findMany({
     where,
-    ...(sort === "price-asc"
-      ? { orderBy: { priceCents: "asc" as const } }
-      : sort === "price-desc"
-        ? { orderBy: { priceCents: "desc" as const } }
-        : sort === "newest"
-          ? { orderBy: { createdAt: "desc" as const } }
-          : {}),
+    orderBy: { createdAt: "desc" },
     select: {
       id: true,
       slug: true,
@@ -176,40 +140,26 @@ export default async function ShopPage({
 }) {
   const params = await searchParams;
   const categorySlug = firstParam(params.category);
-  const sort = getSortOption(firstParam(params.sort));
   const query = firstParam(params.q)?.trim().slice(0, 100) || undefined;
-  const inStockOnly = firstParam(params.inStock) === "1";
-  const onSaleOnly = firstParam(params.onSale) === "1";
-  const [categories, totalCount] = await Promise.all([
-    prisma.category.findMany({
-      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        _count: { select: { products: { where: { isActive: true } } } },
-      },
-    }),
-    prisma.product.count({ where: { isActive: true } }),
-  ]);
+  const categories = await prisma.category.findMany({
+    orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  });
   const selectedCategory = categories.find((category) => category.slug === categorySlug);
 
   return (
-    <main className="min-h-screen bg-ink px-[5vw] py-7 text-paper sm:px-[7vw] md:py-10">
+    <main className="min-h-screen bg-ink px-[5vw] pt-6 pb-7 text-paper sm:px-[7vw] md:pt-8 md:pb-10">
       <div className="site-container">
-        <header className="flex min-h-[160px] flex-col justify-center border-b border-white/10 py-6">
-          <nav aria-label="Breadcrumb" className="mb-3 flex items-center gap-2 text-[.62rem] font-bold uppercase tracking-[.14em] text-muted">
+        <header>
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[.62rem] font-bold uppercase tracking-[.14em] text-muted">
             <Link className="transition hover:text-paper" href="/">Home</Link>
             <span aria-hidden="true">/</span>
             <span className="text-lime">Shop</span>
           </nav>
-          <p className="text-[.62rem] font-black uppercase tracking-[.18em] text-lime">Built for the next strike</p>
-          <h1 className="mt-1 text-[clamp(2rem,7vw,3.8rem)] font-black uppercase leading-[.95] tracking-[-.06em]">
-            The Calypto <span className="text-lime">Arsenal</span>
-          </h1>
-          <p className="mt-2 max-w-xl text-xs leading-relaxed text-muted sm:text-sm">
-            Purpose-built soft plastics and terminal tackle for the casts that matter.
-          </p>
         </header>
 
         <Suspense fallback={<div className="my-8 h-32 animate-pulse rounded-xl bg-[#141712]" />}>
@@ -218,19 +168,14 @@ export default async function ShopPage({
             categories={categories.map((category) => ({
               name: category.name,
               slug: category.slug,
-              count: category._count.products,
             }))}
-            totalCount={totalCount}
           />
         </Suspense>
 
         <Suspense fallback={<ProductGridSkeleton />}>
           <ProductGrid
             categoryId={selectedCategory?.id}
-            inStockOnly={inStockOnly}
-            onSaleOnly={onSaleOnly}
             query={query}
-            sort={sort}
           />
         </Suspense>
 
