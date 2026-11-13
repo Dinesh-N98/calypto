@@ -105,7 +105,6 @@ async function ProductGrid({
           : undefined;
         return (
           <ProductCard
-            itemListName="Shop"
             key={product.slug}
             product={{
               ...product,

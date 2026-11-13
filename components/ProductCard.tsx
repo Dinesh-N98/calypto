@@ -2,15 +2,32 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 import { ArrowUpRight, Star } from "lucide-react";
-import { QuickViewModal, type QuickViewProduct } from "@/components/shop/QuickViewModal";
 import { WishlistButton } from "@/components/WishlistButton";
 import { formatPrice } from "@/lib/currency";
 import { calculateUnitPriceCents } from "@/lib/product-pricing";
 
-type ProductCardProduct = QuickViewProduct & {
+type ProductCardProduct = {
   id?: string;
+  slug: string;
+  name: string;
+  priceCents: number;
+  salePriceCents?: number | null;
+  saleEndsAt?: Date | string | null;
+  imageUrl: string;
+  trackInventory?: boolean;
+  categoryName?: string;
+  images?: { url: string; altText: string | null; order?: number }[];
+  variants?: {
+    id: string;
+    sku: string;
+    priceCents: number;
+    discountPriceCents?: number | null;
+    stock: number;
+    size: string | null;
+    color: string | null;
+    imageUrl: string | null;
+  }[];
   averageRating?: number;
   reviewCount?: number;
   reviews?: { rating: number }[];
@@ -18,16 +35,13 @@ type ProductCardProduct = QuickViewProduct & {
 
 export function ProductCard({
   product,
-  itemListName,
 }: {
   product: ProductCardProduct;
-  itemListName: "Shop" | "Wishlist";
 }) {
   const variants = product.variants ?? [];
   const selectedVariant = variants.find(
     (variant) => product.trackInventory === false || variant.stock > 0,
   );
-  const [quickViewOpen, setQuickViewOpen] = useState(false);
   const saleEndsAt = product.saleEndsAt ? new Date(product.saleEndsAt) : null;
   const price = selectedVariant
     ? calculateUnitPriceCents({
@@ -127,16 +141,6 @@ export function ProductCard({
             </p>
           )}
 
-          <div className="mt-3 flex justify-end">
-            <button
-              className="inline-flex min-h-8 shrink-0 items-center gap-1 text-[.58rem] font-extrabold uppercase tracking-wide text-muted transition hover:text-lime"
-              onClick={() => setQuickViewOpen(true)}
-              type="button"
-            >
-              Quick view <ArrowUpRight aria-hidden="true" className="h-3 w-3" />
-            </button>
-          </div>
-
           <Link
             aria-label={`View product details for ${product.name}`}
             className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-olive bg-olive px-3 py-2 text-xs font-black uppercase tracking-[.12em] text-paper transition-[background-color,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-lime/60 hover:bg-olive-bright active:translate-y-0 active:scale-[.98] motion-reduce:transform-none"
@@ -151,13 +155,6 @@ export function ProductCard({
           </Link>
         </div>
       </article>
-      {quickViewOpen && (
-        <QuickViewModal
-          itemListName={itemListName}
-          onClose={() => setQuickViewOpen(false)}
-          product={product}
-        />
-      )}
     </>
   );
 }

@@ -54,7 +54,7 @@ export default async function AccountWishlistPage() {
       {items.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3">
           {items.map(({ product }) => (
-            <ProductCard itemListName="Wishlist" key={product.id} product={product} />
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
       ) : (
