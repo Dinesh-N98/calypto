@@ -17,11 +17,18 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { deleteProduct, updateProduct } from "@/app/admin/catalog-actions";
 import { useToast } from "@/components/ToastProvider";
 import {
+  CurrencyInput,
+  FieldError,
+  FieldLabel,
+  FormCard,
+} from "@/components/admin/ProductFormPrimitives";
+import {
   ProductDiscountTierBuilder,
   ProductTagInput,
   ProductVariantBuilder,
   type VariantValue,
 } from "@/components/admin/ProductVisualFields";
+import { usePricingState } from "@/components/admin/hooks/usePricingState";
 import { formatPrice } from "@/lib/currency";
 import {
   productCreateFormSchema,
@@ -74,15 +81,6 @@ type ActionResult = { ok: true; message: string } | { ok: false; error: string }
 const PAGE_SIZES = [10, 20] as const;
 const MAX_PRODUCT_IMAGE_SIZE = 10 * 1024 * 1024;
 
-function ProductFieldError({ children }: { children?: string }) {
-  if (!children) return null;
-  return (
-    <span className="mt-1 block text-xs font-medium text-red-700" role="alert">
-      {children}
-    </span>
-  );
-}
-
 function slugifyProductName(value: string): string {
   return value
     .normalize("NFKD")
@@ -112,16 +110,24 @@ function ProductFormFields({
   const [name, setName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
   const [selectedCategoryId, setSelectedCategoryId] = useState(product?.categoryId ?? "");
-  const [priceInput, setPriceInput] = useState(
-    product ? (product.priceCents / 100).toFixed(2) : "",
-  );
-  const [salePriceInput, setSalePriceInput] = useState(
-    product?.salePriceCents ? (product.salePriceCents / 100).toFixed(2) : "",
-  );
-  const [originalPriceInput, setOriginalPriceInput] = useState(
-    product?.originalPriceCents ? (product.originalPriceCents / 100).toFixed(2) : "",
-  );
-  const [discountAmountInput, setDiscountAmountInput] = useState("");
+  const {
+    priceInput,
+    setPriceInput,
+    salePriceInput,
+    setSalePriceInput,
+    originalPriceInput,
+    setOriginalPriceInput,
+    discountAmountInput,
+    setDiscountAmountInput,
+    finalSalePrice: discountSalePrice,
+    savingsPercent: discountPercent,
+  } = usePricingState({
+    priceInput: (product.priceCents / 100).toFixed(2),
+    salePriceInput: product.salePriceCents ? (product.salePriceCents / 100).toFixed(2) : "",
+    originalPriceInput: product.originalPriceCents
+      ? (product.originalPriceCents / 100).toFixed(2)
+      : "",
+  });
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState(product?.imageUrl ?? "");
@@ -130,14 +136,6 @@ function ProductFormFields({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
-  const discountBase = Number(originalPriceInput || priceInput);
-  const discountSalePrice = discountAmountInput
-    ? discountBase - Number(discountAmountInput)
-    : Number(salePriceInput);
-  const discountPercent =
-    discountBase > 0 && discountSalePrice > 0 && discountSalePrice < discountBase
-      ? Math.round(((discountBase - discountSalePrice) / discountBase) * 100)
-      : null;
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
 
   useEffect(
@@ -178,22 +176,25 @@ function ProductFormFields({
       <input name="imageUrls" type="hidden" value={JSON.stringify(galleryUrls)} />
       <input name="defaultStock" type="hidden" value="0" />
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(18rem,1fr)]">
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-1">
-          <div className="mb-5">
-            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
-              General information
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-[#73786b]">
-              Product name, storefront URL, and product description.
-            </p>
-          </div>
+        <FormCard
+          className="lg:col-start-1 lg:row-start-1"
+          description="Product name, storefront URL, and product description."
+          headingLevel="h3"
+          title="General information"
+        >
           <div className="grid gap-4">
-            <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-              Product name
+            <div className="md:col-span-2">
+              <FieldLabel
+                className="text-xs font-bold text-[#55594f] md:col-span-2"
+                htmlFor="product-edit-name"
+              >
+                Product name
+              </FieldLabel>
               <input
                 aria-invalid={Boolean(errors.name)}
                 autoFocus
                 className="admin-catalog-input"
+                id="product-edit-name"
                 onChange={(event) => {
                   const value = event.target.value;
                   setName(value);
@@ -204,13 +205,19 @@ function ProductFormFields({
                 required
                 value={name}
               />
-              <ProductFieldError>{errors.name}</ProductFieldError>
-            </label>
-            <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-              URL slug
+              <FieldError>{errors.name}</FieldError>
+            </div>
+            <div className="md:col-span-2">
+              <FieldLabel
+                className="text-xs font-bold text-[#55594f] md:col-span-2"
+                htmlFor="product-edit-slug"
+              >
+                URL slug
+              </FieldLabel>
               <input
                 aria-invalid={Boolean(errors.slug)}
                 className="admin-catalog-input"
+                id="product-edit-slug"
                 onChange={(event) => {
                   setSlugManuallyEdited(true);
                   setSlug(event.target.value);
@@ -221,35 +228,38 @@ function ProductFormFields({
                 required
                 value={slug}
               />
-              <ProductFieldError>{errors.slug}</ProductFieldError>
-            </label>
-            <label className="text-xs font-bold text-[#55594f] md:col-span-2">
-              Description
+              <FieldError>{errors.slug}</FieldError>
+            </div>
+            <div className="md:col-span-2">
+              <FieldLabel
+                className="text-xs font-bold text-[#55594f] md:col-span-2"
+                htmlFor="product-edit-description"
+              >
+                Description
+              </FieldLabel>
               <textarea
                 aria-invalid={Boolean(errors.description)}
                 className="admin-catalog-input min-h-28 py-3"
                 defaultValue={product?.description}
+                id="product-edit-description"
                 maxLength={5000}
                 name="description"
                 required
                 rows={5}
               />
-              <ProductFieldError>{errors.description}</ProductFieldError>
+              <FieldError>{errors.description}</FieldError>
               <span className="mt-1 block text-[11px] font-normal">
                 Markdown headings, emphasis, links, and lists are supported.
               </span>
-            </label>
+            </div>
           </div>
-        </section>
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-2 lg:row-start-3">
-          <div className="mb-5">
-            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
-              Physical &amp; shipping specifications
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-[#73786b]">
-              Pack dimensions and quantities used for shipping.
-            </p>
-          </div>
+        </FormCard>
+        <FormCard
+          className="lg:col-start-2 lg:row-start-3"
+          description="Pack dimensions and quantities used for shipping."
+          headingLevel="h3"
+          title="Physical & shipping specifications"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-xs font-bold text-[#55594f]">
               Piece length (in)
@@ -263,7 +273,7 @@ function ProductFormFields({
                 step="any"
                 type="number"
               />
-              <ProductFieldError>{errors.pieceLengthInches}</ProductFieldError>
+              <FieldError>{errors.pieceLengthInches}</FieldError>
             </label>
             <label className="text-xs font-bold text-[#55594f]">
               Pieces per pack
@@ -277,7 +287,7 @@ function ProductFormFields({
                 step="1"
                 type="number"
               />
-              <ProductFieldError>{errors.piecesPerPack}</ProductFieldError>
+              <FieldError>{errors.piecesPerPack}</FieldError>
             </label>
             <label className="text-xs font-bold text-[#55594f]">
               Pack weight (g)
@@ -291,108 +301,59 @@ function ProductFormFields({
                 step="any"
                 type="number"
               />
-              <ProductFieldError>{errors.packWeightGrams}</ProductFieldError>
+              <FieldError>{errors.packWeightGrams}</FieldError>
             </label>
           </div>
-        </section>
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-3">
-          <div className="mb-5">
-            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
-              Pricing &amp; discounts
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-[#73786b]">
-              Pricing, promotions, and inventory controls.
-            </p>
-          </div>
+        </FormCard>
+        <FormCard
+          className="lg:col-start-1 lg:row-start-3"
+          description="Pricing, promotions, and inventory controls."
+          headingLevel="h3"
+          title="Pricing & discounts"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-xs font-bold text-[#55594f]">
-              Price (USD)
-              <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                <span aria-hidden="true" className="pl-3 text-sm font-semibold text-[#73786b]">
-                  $
-                </span>
-                <input
-                  aria-invalid={Boolean(errors.price)}
-                  className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
-                  inputMode="decimal"
-                  min="0.01"
-                  name="price"
-                  onChange={(event) => setPriceInput(event.target.value)}
-                  placeholder="9.99"
-                  required
-                  step="0.01"
-                  type="number"
-                  value={priceInput}
-                />
-              </div>
-              <ProductFieldError>{errors.price}</ProductFieldError>
-            </label>
-            <label className="text-xs font-bold text-[#55594f]">
-              Sale price (USD)
-              <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                <span aria-hidden="true" className="pl-3 text-sm font-semibold text-[#73786b]">
-                  $
-                </span>
-                <input
-                  aria-invalid={Boolean(errors.salePrice)}
-                  className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
-                  onChange={(event) => {
-                    setSalePriceInput(event.target.value);
-                    if (event.target.value) setDiscountAmountInput("");
-                  }}
-                  min="0.01"
-                  name="salePrice"
-                  placeholder="Optional"
-                  step="0.01"
-                  type="number"
-                  value={salePriceInput}
-                />
-              </div>
-              <ProductFieldError>{errors.salePrice}</ProductFieldError>
-            </label>
-            <label className="text-xs font-bold text-[#55594f]">
-              Discount amount (USD)
-              <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                <span aria-hidden="true" className="pl-3 text-sm font-semibold text-[#73786b]">
-                  $
-                </span>
-                <input
-                  aria-invalid={Boolean(errors.discountAmount)}
-                  className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
-                  min="0.01"
-                  name="discountAmount"
-                  onChange={(event) => {
-                    setDiscountAmountInput(event.target.value);
-                    if (event.target.value) setSalePriceInput("");
-                  }}
-                  placeholder="Optional"
-                  step="0.01"
-                  type="number"
-                  value={discountAmountInput}
-                />
-              </div>
-              <ProductFieldError>{errors.discountAmount}</ProductFieldError>
-            </label>
-            <label className="text-xs font-bold text-[#55594f]">
-              Original price (USD)
-              <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                <span aria-hidden="true" className="pl-3 text-sm font-semibold text-[#73786b]">
-                  $
-                </span>
-                <input
-                  aria-invalid={Boolean(errors.originalPrice)}
-                  className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
-                  onChange={(event) => setOriginalPriceInput(event.target.value)}
-                  min="0.01"
-                  name="originalPrice"
-                  placeholder="Optional"
-                  step="0.01"
-                  type="number"
-                  value={originalPriceInput}
-                />
-              </div>
-              <ProductFieldError>{errors.originalPrice}</ProductFieldError>
-            </label>
+            <CurrencyInput
+              error={errors.price}
+              id="product-edit-price"
+              inputMode="decimal"
+              label="Price (USD)"
+              labelClassName="text-xs font-bold text-[#55594f]"
+              name="price"
+              onChange={setPriceInput}
+              placeholder="9.99"
+              required
+              value={priceInput}
+            />
+            <CurrencyInput
+              error={errors.salePrice}
+              id="product-edit-sale-price"
+              label="Sale price (USD)"
+              labelClassName="text-xs font-bold text-[#55594f]"
+              name="salePrice"
+              onChange={setSalePriceInput}
+              placeholder="Optional"
+              value={salePriceInput}
+            />
+            <CurrencyInput
+              error={errors.discountAmount}
+              id="product-edit-discount"
+              label="Discount amount (USD)"
+              labelClassName="text-xs font-bold text-[#55594f]"
+              name="discountAmount"
+              onChange={setDiscountAmountInput}
+              placeholder="Optional"
+              value={discountAmountInput}
+            />
+            <CurrencyInput
+              error={errors.originalPrice}
+              id="product-edit-original-price"
+              label="Original price (USD)"
+              labelClassName="text-xs font-bold text-[#55594f]"
+              name="originalPrice"
+              onChange={setOriginalPriceInput}
+              placeholder="Optional"
+              value={originalPriceInput}
+            />
             <p className="text-xs font-normal text-[#73786b] sm:col-span-2">
               Enter either a sale price or discount amount.{" "}
               {discountPercent === null
@@ -417,22 +378,19 @@ function ProductFormFields({
                 name="saleEndsAt"
                 type="datetime-local"
               />
-              <ProductFieldError>{errors.saleEndsAt}</ProductFieldError>
+              <FieldError>{errors.saleEndsAt}</FieldError>
               <span className="mt-1 block text-[11px] font-normal">
                 Promotional pricing applies until this date and time. Required for a sale.
               </span>
             </label>
           </div>
-        </section>
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-2 lg:row-start-1">
-          <div className="mb-5">
-            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
-              Product organization
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-[#73786b]">
-              Category, brand, and collection tags.
-            </p>
-          </div>
+        </FormCard>
+        <FormCard
+          className="lg:col-start-2 lg:row-start-1"
+          description="Category, brand, and collection tags."
+          headingLevel="h3"
+          title="Product organization"
+        >
           <div className="grid gap-4">
             <label className="text-xs font-bold text-[#55594f]">
               Category
@@ -453,7 +411,7 @@ function ProductFormFields({
                   </option>
                 ))}
               </select>
-              <ProductFieldError>{errors.categoryId}</ProductFieldError>
+              <FieldError>{errors.categoryId}</FieldError>
             </label>
             <label className="text-xs font-bold text-[#55594f]">
               Brand / vendor
@@ -465,24 +423,21 @@ function ProductFormFields({
                 name="brand"
                 placeholder="Brand name"
               />
-              <ProductFieldError>{errors.brand}</ProductFieldError>
+              <FieldError>{errors.brand}</FieldError>
             </label>
             <div className="text-xs font-bold text-[#55594f] md:col-span-2">
               Collections &amp; tags
               <ProductTagInput initialTags={product.tags} />
-              <ProductFieldError>{errors.tags}</ProductFieldError>
+              <FieldError>{errors.tags}</FieldError>
             </div>
           </div>
-        </section>
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-2 lg:row-start-2">
-          <div className="mb-5">
-            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
-              Inventory &amp; settings
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-[#73786b]">
-              Configure storefront availability and quantity tracking.
-            </p>
-          </div>
+        </FormCard>
+        <FormCard
+          className="lg:col-start-2 lg:row-start-2"
+          description="Configure storefront availability and quantity tracking."
+          headingLevel="h3"
+          title="Inventory & settings"
+        >
           <div className="grid gap-4">
             <label className="text-xs font-bold text-[#55594f]">
               Status
@@ -527,16 +482,13 @@ function ProductFormFields({
               </span>
             </label>
           </div>
-        </section>
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-2">
-          <div className="mb-5">
-            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
-              Media &amp; assets
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-[#73786b]">
-              Update the primary image and product gallery.
-            </p>
-          </div>
+        </FormCard>
+        <FormCard
+          className="lg:col-start-1 lg:row-start-2"
+          description="Update the primary image and product gallery."
+          headingLevel="h3"
+          title="Media & assets"
+        >
           <div className="grid gap-4">
             <div className="text-xs font-bold text-[#55594f] md:col-span-2">
               <span>Product image</span>
@@ -682,14 +634,13 @@ function ProductFormFields({
               )}
             </div>
           </div>
-        </section>
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-4">
-          <div className="mb-5">
-            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">Variants</h3>
-            <p className="mt-1 text-xs leading-5 text-[#73786b]">
-              Configure option combinations, individual pricing, and stock.
-            </p>
-          </div>
+        </FormCard>
+        <FormCard
+          className="lg:col-start-1 lg:row-start-4"
+          description="Configure option combinations, individual pricing, and stock."
+          headingLevel="h3"
+          title="Variants"
+        >
           <div className="grid gap-4">
             <ProductVariantBuilder
               basePrice={priceInput}
@@ -714,23 +665,20 @@ function ProductFormFields({
               }))}
             />
           </div>
-        </section>
-        <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-start-5">
-          <div className="mb-5">
-            <h3 className="text-base font-extrabold tracking-tight text-[#20231b]">
-              Volume discounts
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-[#73786b]">
-              Reward customers who purchase larger quantities.
-            </p>
-          </div>
+        </FormCard>
+        <FormCard
+          className="lg:col-start-1 lg:row-start-5"
+          description="Reward customers who purchase larger quantities."
+          headingLevel="h3"
+          title="Volume discounts"
+        >
           <ProductDiscountTierBuilder
             initialTiers={product.tieredDiscounts.map((tier) => ({
               minQuantity: String(tier.minQuantity),
               discountPercentage: String(tier.discountPercentage),
             }))}
           />
-        </section>
+        </FormCard>
       </div>
     </>
   );

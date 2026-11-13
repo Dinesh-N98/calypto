@@ -1,7 +1,16 @@
 "use client";
 
-import { Copy, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Reorder, useDragControls, type DragControls } from "framer-motion";
+import { Copy, GripVertical, Plus, Trash2 } from "lucide-react";
+import {
+  useRef,
+  useState,
+  type Dispatch,
+  type DragEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 
 export type VariantValue = {
   title: string;
@@ -22,6 +31,259 @@ export type DiscountTierValue = {
   minQuantity: string;
   discountPercentage: string;
 };
+
+const MAX_VARIANT_IMAGE_SIZE = 10 * 1024 * 1024;
+const ACCEPTED_VARIANT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+async function uploadVariantImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.set("file", file);
+  const response = await fetch("/api/admin/product-images", {
+    method: "POST",
+    body: formData,
+  });
+  const result: unknown = await response.json();
+  if (
+    response.ok &&
+    typeof result === "object" &&
+    result !== null &&
+    "imageUrl" in result &&
+    typeof result.imageUrl === "string"
+  ) {
+    return result.imageUrl;
+  }
+  const message =
+    typeof result === "object" &&
+    result !== null &&
+    "error" in result &&
+    typeof result.error === "string"
+      ? result.error
+      : "The image could not be uploaded. Please try again.";
+  throw new Error(message);
+}
+
+function VariantImagePathInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (imageUrl: string) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function uploadFile(file: File | undefined) {
+    if (!file) return;
+    if (
+      file.size === 0 ||
+      file.size > MAX_VARIANT_IMAGE_SIZE ||
+      (file.type && !ACCEPTED_VARIANT_IMAGE_TYPES.includes(file.type))
+    ) {
+      setUploadError("Choose a JPG, PNG, WEBP, or GIF image up to 10 MB.");
+      return;
+    }
+
+    setUploadError("");
+    setIsUploading(true);
+    try {
+      onChange(await uploadVariantImage(file));
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "The image could not be uploaded.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function handleDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+    void uploadFile(event.dataTransfer.files[0]);
+  }
+
+  return (
+    <div
+      onDragEnter={(event) => {
+        event.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={(event) => {
+        const relatedTarget = event.relatedTarget;
+        if (!(relatedTarget instanceof Node) || !event.currentTarget.contains(relatedTarget)) {
+          setIsDragOver(false);
+        }
+      }}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={handleDrop}
+    >
+      <label className="text-xs font-semibold text-[#55594f]">
+        Image path <span className="font-normal text-[#73786b]">(optional)</span>
+        <input
+          aria-describedby={uploadError ? "variant-image-upload-error" : undefined}
+          aria-invalid={Boolean(uploadError)}
+          className={`admin-catalog-input ${isDragOver ? "ring-2 ring-[#718126]" : ""}`}
+          maxLength={500}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="/products/item/variant.webp"
+          value={value}
+        />
+      </label>
+      <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] font-normal text-[#73786b]">
+        <span>{isUploading ? "Uploading image…" : "Drop an image here or"}</span>
+        <button
+          className="font-semibold underline disabled:opacity-50"
+          disabled={isUploading}
+          onClick={() => fileInputRef.current?.click()}
+          type="button"
+        >
+          browse files
+        </button>
+        <input
+          accept={ACCEPTED_VARIANT_IMAGE_TYPES.join(",")}
+          className="sr-only"
+          onChange={(event) => void uploadFile(event.target.files?.[0])}
+          ref={fileInputRef}
+          tabIndex={-1}
+          type="file"
+        />
+      </div>
+      {uploadError && (
+        <p aria-live="polite" className="mt-1 text-xs font-medium text-red-700" role="alert">
+          {uploadError}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
+  if (toIndex < 0 || toIndex >= items.length || fromIndex === toIndex) return items;
+  const nextItems = [...items];
+  const [movedItem] = nextItems.splice(fromIndex, 1);
+  nextItems.splice(toIndex, 0, movedItem);
+  return nextItems;
+}
+
+function ReorderHandle({
+  controls,
+  label,
+  onMove,
+}: {
+  controls: DragControls;
+  label: string;
+  onMove: (direction: -1 | 1) => void;
+}) {
+  function handleKeyDown(event: KeyboardEvent<HTMLSpanElement>) {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      onMove(-1);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      onMove(1);
+    }
+  }
+
+  return (
+    <span
+      aria-label={label}
+      className="inline-flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded text-[#73786b] hover:bg-[#eef2df] active:cursor-grabbing"
+      onKeyDown={handleKeyDown}
+      onPointerDown={(event) => controls.start(event)}
+      role="button"
+      tabIndex={0}
+    >
+      <GripVertical aria-hidden="true" className="h-4 w-4" />
+    </span>
+  );
+}
+
+function VariantReorderItem({
+  variant,
+  index,
+  setVariants,
+  children,
+}: {
+  variant: VariantValue;
+  index: number;
+  setVariants: Dispatch<SetStateAction<VariantValue[]>>;
+  children: ReactNode;
+}) {
+  const controls = useDragControls();
+  const [isDragging, setIsDragging] = useState(false);
+
+  function move(direction: -1 | 1) {
+    setVariants((current) => moveItem(current, index, index + direction));
+  }
+
+  return (
+    <Reorder.Item
+      as="fieldset"
+      className={`rounded-lg border border-black/10 bg-[#fafbf8] p-4 ${
+        isDragging ? "bg-white shadow-lg" : ""
+      }`}
+      drag="y"
+      dragControls={controls}
+      dragListener={false}
+      layout
+      onDragEnd={() => setIsDragging(false)}
+      onDragStart={() => setIsDragging(true)}
+      value={variant}
+    >
+      <legend className="px-1 text-xs font-bold text-[#42463b]">Variant {index + 1}</legend>
+      <div className="flex items-center gap-2">
+        <ReorderHandle
+          controls={controls}
+          label={`Drag to reorder variant ${index + 1}`}
+          onMove={move}
+        />
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+    </Reorder.Item>
+  );
+}
+
+function TierReorderItem({
+  tier,
+  index,
+  setTiers,
+  children,
+}: {
+  tier: DiscountTierValue;
+  index: number;
+  setTiers: Dispatch<SetStateAction<DiscountTierValue[]>>;
+  children: ReactNode;
+}) {
+  const controls = useDragControls();
+  const [isDragging, setIsDragging] = useState(false);
+
+  function move(direction: -1 | 1) {
+    setTiers((current) => moveItem(current, index, index + direction));
+  }
+
+  return (
+    <Reorder.Item
+      as="div"
+      className={`flex items-end gap-2 ${isDragging ? "rounded-lg bg-white p-2 shadow-lg" : ""}`}
+      drag="y"
+      dragControls={controls}
+      dragListener={false}
+      layout
+      onDragEnd={() => setIsDragging(false)}
+      onDragStart={() => setIsDragging(true)}
+      value={tier}
+    >
+      <ReorderHandle
+        controls={controls}
+        label={`Drag to reorder tier ${index + 1}`}
+        onMove={move}
+      />
+      <div className="min-w-0 flex-1">{children}</div>
+    </Reorder.Item>
+  );
+}
 
 function createVariant(basePrice: string): VariantValue {
   return {
@@ -101,10 +363,20 @@ export function ProductVariantBuilder({
           No variants added. The product will use its base price and default stock.
         </p>
       ) : (
-        <div className="space-y-4">
+        <Reorder.Group
+          as="div"
+          axis="y"
+          className="space-y-4"
+          onReorder={setVariants}
+          values={variants}
+        >
           {variants.map((variant, index) => (
-            <fieldset className="rounded-lg border border-black/10 bg-[#fafbf8] p-4" key={index}>
-              <legend className="px-1 text-xs font-bold text-[#42463b]">Variant {index + 1}</legend>
+            <VariantReorderItem
+              index={index}
+              key={index}
+              setVariants={setVariants}
+              variant={variant}
+            >
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <label className="text-xs font-semibold text-[#55594f]">
                   Variant title
@@ -184,16 +456,12 @@ export function ProductVariantBuilder({
                     value={variant.discountPrice}
                   />
                 </label>
-                <label className="text-xs font-semibold text-[#55594f] sm:col-span-2 xl:col-span-3">
-                  Image path <span className="font-normal text-[#73786b]">(optional)</span>
-                  <input
-                    className="admin-catalog-input"
-                    maxLength={500}
-                    onChange={(event) => updateVariant(index, { imageUrl: event.target.value })}
-                    placeholder="/products/item/variant.webp"
+                <div className="sm:col-span-2 xl:col-span-3">
+                  <VariantImagePathInput
+                    onChange={(imageUrl) => updateVariant(index, { imageUrl })}
                     value={variant.imageUrl}
                   />
-                </label>
+                </div>
                 <div className="sm:col-span-2 xl:col-span-3">
                   <p className="mb-2 text-[.65rem] font-bold uppercase tracking-wide text-[#73786b]">
                     Shipping dimensions <span className="font-normal normal-case">(optional)</span>
@@ -244,9 +512,9 @@ export function ProductVariantBuilder({
                   Remove
                 </button>
               </div>
-            </fieldset>
+            </VariantReorderItem>
           ))}
-        </div>
+        </Reorder.Group>
       )}
       <button
         className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#718126]/30 bg-[#f7f9ef] px-4 text-xs font-bold text-[#53641d] transition hover:bg-[#eef2df] disabled:opacity-50"
@@ -294,55 +562,61 @@ export function ProductDiscountTierBuilder({
       {tiers.length === 0 ? (
         <p className="text-xs text-[#73786b]">No volume discounts configured.</p>
       ) : (
-        tiers.map((tier, index) => (
-          <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2" key={index}>
-            <label className="text-xs font-semibold text-[#55594f]">
-              Minimum quantity
-              <input
-                className="admin-catalog-input"
-                min="2"
-                onChange={(event) =>
-                  setTiers((current) =>
-                    current.map((value, i) =>
-                      i === index ? { ...value, minQuantity: event.target.value } : value,
-                    ),
-                  )
-                }
-                required
-                step="1"
-                type="number"
-                value={tier.minQuantity}
-              />
-            </label>
-            <label className="text-xs font-semibold text-[#55594f]">
-              Discount (%)
-              <input
-                className="admin-catalog-input"
-                max="99"
-                min="1"
-                onChange={(event) =>
-                  setTiers((current) =>
-                    current.map((value, i) =>
-                      i === index ? { ...value, discountPercentage: event.target.value } : value,
-                    ),
-                  )
-                }
-                required
-                step="1"
-                type="number"
-                value={tier.discountPercentage}
-              />
-            </label>
-            <button
-              aria-label={`Remove discount tier ${index + 1}`}
-              className="mb-0.5 grid h-10 w-10 place-items-center rounded-lg border border-red-800/15 text-red-800 transition hover:bg-red-50"
-              onClick={() => setTiers((current) => current.filter((_, i) => i !== index))}
-              type="button"
-            >
-              <Trash2 aria-hidden="true" className="h-4 w-4" />
-            </button>
-          </div>
-        ))
+        <Reorder.Group as="div" axis="y" className="space-y-3" onReorder={setTiers} values={tiers}>
+          {tiers.map((tier, index) => (
+            <TierReorderItem index={index} key={index} setTiers={setTiers} tier={tier}>
+              <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+                <label className="text-xs font-semibold text-[#55594f]">
+                  Minimum quantity
+                  <input
+                    className="admin-catalog-input"
+                    min="2"
+                    onChange={(event) =>
+                      setTiers((current) =>
+                        current.map((value, i) =>
+                          i === index ? { ...value, minQuantity: event.target.value } : value,
+                        ),
+                      )
+                    }
+                    required
+                    step="1"
+                    type="number"
+                    value={tier.minQuantity}
+                  />
+                </label>
+                <label className="text-xs font-semibold text-[#55594f]">
+                  Discount (%)
+                  <input
+                    className="admin-catalog-input"
+                    max="99"
+                    min="1"
+                    onChange={(event) =>
+                      setTiers((current) =>
+                        current.map((value, i) =>
+                          i === index
+                            ? { ...value, discountPercentage: event.target.value }
+                            : value,
+                        ),
+                      )
+                    }
+                    required
+                    step="1"
+                    type="number"
+                    value={tier.discountPercentage}
+                  />
+                </label>
+                <button
+                  aria-label={`Remove discount tier ${index + 1}`}
+                  className="mb-0.5 grid h-10 w-10 place-items-center rounded-lg border border-red-800/15 text-red-800 transition hover:bg-red-50"
+                  onClick={() => setTiers((current) => current.filter((_, i) => i !== index))}
+                  type="button"
+                >
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
+                </button>
+              </div>
+            </TierReorderItem>
+          ))}
+        </Reorder.Group>
       )}
       <button
         className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-bold text-[#42463b] transition hover:bg-[#f4f5f1]"

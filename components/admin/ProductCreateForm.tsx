@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ImagePlus, LoaderCircle, X } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { createProduct } from "@/app/admin/catalog-actions";
 import { MarkdownDescription } from "@/components/MarkdownDescription";
 import { useToast } from "@/components/ToastProvider";
@@ -13,6 +13,15 @@ import {
   ProductTagInput,
   ProductVariantBuilder,
 } from "@/components/admin/ProductVisualFields";
+import {
+  CurrencyInput,
+  FieldError,
+  FieldLabel,
+  FormCard,
+  UnitInput,
+} from "@/components/admin/ProductFormPrimitives";
+import { usePricingState } from "@/components/admin/hooks/usePricingState";
+import { useProductMedia } from "@/components/admin/hooks/useProductMedia";
 import {
   productCreateFormSchema,
   type ProductCreateFieldErrors,
@@ -24,7 +33,6 @@ type CategoryOption = {
   tieredDiscountsEnabled: boolean;
 };
 
-const MAX_PRODUCT_IMAGE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 function slugifyProductName(value: string): string {
@@ -36,172 +44,63 @@ function slugifyProductName(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function FormCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6">
-      <div className="mb-5">
-        <h2 className="text-base font-extrabold tracking-tight text-[#20231b]">{title}</h2>
-        {description && <p className="mt-1 text-xs leading-5 text-[#73786b]">{description}</p>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function FieldError({ children }: { children?: string }) {
-  if (!children) return null;
-  return (
-    <span className="mt-1 block text-xs font-medium text-red-700" role="alert">
-      {children}
-    </span>
-  );
-}
-
-function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
-  return (
-    <label className="block text-xs font-bold text-[#55594f]" htmlFor={htmlFor}>
-      {children}
-    </label>
-  );
-}
-
 function uploadProgressLabel(completed: number, total: number): string {
   return completed === total
     ? "All images uploaded"
     : `Uploading image ${completed + 1} of ${total}…`;
 }
 
-async function uploadProductImage(file: File): Promise<string> {
-  const uploadData = new FormData();
-  uploadData.set("file", file);
-  const response = await fetch("/api/admin/product-images", {
-    method: "POST",
-    body: uploadData,
-  });
-  const result: unknown = await response.json();
-  if (
-    response.ok &&
-    typeof result === "object" &&
-    result !== null &&
-    "imageUrl" in result &&
-    typeof result.imageUrl === "string"
-  ) {
-    return result.imageUrl;
-  }
-  const message =
-    typeof result === "object" &&
-    result !== null &&
-    "error" in result &&
-    typeof result.error === "string"
-      ? result.error
-      : "The image could not be uploaded. Please try again.";
-  throw new Error(message);
-}
-
 export function ProductCreateForm({ categories }: { categories: CategoryOption[] }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [pending, startTransition] = useTransition();
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
-  const [priceInput, setPriceInput] = useState("");
-  const [salePriceInput, setSalePriceInput] = useState("");
-  const [discountAmountInput, setDiscountAmountInput] = useState("");
-  const [originalPriceInput, setOriginalPriceInput] = useState("");
-  const [pieceLengthInches, setPieceLengthInches] = useState("5");
-  const [piecesPerPack, setPiecesPerPack] = useState("6");
-  const [packWeightGrams, setPackWeightGrams] = useState("55");
-  const [description, setDescription] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [tieredDiscountSetting, setTieredDiscountSetting] = useState("");
-  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
-  const [uploadedImageUrls, setUploadedImageUrls] = useState<Map<File, string>>(new Map());
-  const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
-  const [isActive, setIsActive] = useState("true");
-  const [trackInventory, setTrackInventory] = useState("true");
-  const [previewItems, setPreviewItems] = useState<{ file: File; url: string }[]>([]);
+  const [formState, setFormState] = useState({
+    name: "",
+    slug: "",
+    slugManuallyEdited: false,
+    description: "",
+    selectedCategoryId: "",
+    tieredDiscountSetting: "",
+    isActive: "true",
+    trackInventory: "true",
+    pieceLengthInches: "5",
+    piecesPerPack: "6",
+    packWeightGrams: "55",
+  });
+  const updateFormState = <K extends keyof typeof formState>(
+    field: K,
+    value: (typeof formState)[K],
+  ) => setFormState((current) => ({ ...current, [field]: value }));
+  const {
+    priceInput,
+    setPriceInput,
+    salePriceInput,
+    setSalePriceInput,
+    discountAmountInput,
+    setDiscountAmountInput,
+    originalPriceInput,
+    setOriginalPriceInput,
+    finalSalePrice,
+    savingsPercent,
+  } = usePricingState();
+  const {
+    files: mediaFiles,
+    previewItems,
+    primaryIndex: primaryImageIndex,
+    setPrimaryIndex: setPrimaryImageIndex,
+    imageError,
+    setImageError,
+    inputRef: mediaInputRef,
+    uploadProgress,
+    progressValue,
+    addFiles: addMediaFiles,
+    removeFile: removeMedia,
+    uploadAll,
+    clearUploadProgress,
+  } = useProductMedia();
   const [errors, setErrors] = useState<ProductCreateFieldErrors>({});
   const [formError, setFormError] = useState("");
-  const [imageError, setImageError] = useState("");
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const saveDraftRef = useRef(false);
-  const mediaInputRef = useRef<HTMLInputElement>(null);
-  const previewItemsRef = useRef(previewItems);
-  const basePrice = Number(originalPriceInput || priceInput);
-  const finalSalePrice = discountAmountInput
-    ? basePrice - Number(discountAmountInput)
-    : Number(salePriceInput);
-  const savingsPercent =
-    basePrice > 0 && finalSalePrice > 0 && finalSalePrice < basePrice
-      ? Math.round(((basePrice - finalSalePrice) / basePrice) * 100)
-      : null;
-
-  useEffect(() => {
-    previewItemsRef.current = previewItems;
-  }, [previewItems]);
-
-  useEffect(
-    () => () => {
-      for (const preview of previewItemsRef.current) URL.revokeObjectURL(preview.url);
-    },
-    [],
-  );
-
-  function syncMediaInput(files: File[]) {
-    if (!mediaInputRef.current) return;
-    const transfer = new DataTransfer();
-    files.forEach((file) => transfer.items.add(file));
-    mediaInputRef.current.files = transfer.files;
-  }
-
-  function setMediaFilesWithInput(files: File[]) {
-    for (const preview of previewItemsRef.current) URL.revokeObjectURL(preview.url);
-    const nextPreviews = files.map((file) => ({ file, url: URL.createObjectURL(file) }));
-    previewItemsRef.current = nextPreviews;
-    setPreviewItems(nextPreviews);
-    setMediaFiles(files);
-    setPrimaryImageIndex(0);
-    setUploadedImageUrls(
-      (current) => new Map([...current].filter(([file]) => files.includes(file))),
-    );
-    syncMediaInput(files);
-  }
-
-  function addMediaFiles(files: File[]) {
-    if (!files.length) return;
-    const allFiles = [...mediaFiles, ...files];
-    if (allFiles.length > 20) {
-      setImageError("Add no more than 20 product images.");
-      syncMediaInput(mediaFiles);
-      return;
-    }
-    const invalid = allFiles.find(
-      (file) =>
-        file.size > MAX_PRODUCT_IMAGE_SIZE ||
-        (file.type && !ACCEPTED_IMAGE_TYPES.includes(file.type)),
-    );
-    if (invalid) {
-      setImageError("Choose JPG, PNG, WEBP, or GIF images up to 10 MB each.");
-      syncMediaInput(mediaFiles);
-      return;
-    }
-    setImageError("");
-    setMediaFilesWithInput(allFiles);
-  }
-
-  function removeMedia(index: number) {
-    const nextFiles = mediaFiles.filter((_, fileIndex) => fileIndex !== index);
-    setMediaFilesWithInput(nextFiles);
-  }
 
   function getFormErrors(rawValues: Record<string, FormDataEntryValue>): ProductCreateFieldErrors {
     const parsed = productCreateFormSchema.safeParse(rawValues);
@@ -252,16 +151,7 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
 
     startTransition(async () => {
       try {
-        setUploadProgress(0);
-        for (const [index, file] of mediaFiles.entries()) {
-          const existingUrl = uploadedImageUrls.get(file);
-          const imageUrl = existingUrl ?? (await uploadProductImage(file));
-          uploadedUrls.push(imageUrl);
-          if (!existingUrl) {
-            setUploadedImageUrls((current) => new Map(current).set(file, imageUrl));
-          }
-          setUploadProgress(index + 1);
-        }
+        await uploadAll((imageUrl) => uploadedUrls.push(imageUrl));
         const primaryImageUrl = uploadedUrls[primaryImageIndex];
         formData.set("imageUrl", primaryImageUrl);
         formData.set(
@@ -290,13 +180,10 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
               : "The product could not be saved. Please try again.",
         );
       } finally {
-        setUploadProgress(null);
+        clearUploadProgress();
       }
     });
   }
-
-  const progressValue =
-    uploadProgress === null ? 0 : Math.round((uploadProgress / mediaFiles.length) * 100);
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <header className="z-30 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/10 bg-[#f4f5f1]/95 px-4 py-3 backdrop-blur sm:px-8">
@@ -377,11 +264,13 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                       maxLength={160}
                       name="name"
                       onChange={(event) => {
-                        setName(event.target.value);
-                        if (!slugManuallyEdited) setSlug(slugifyProductName(event.target.value));
+                        updateFormState("name", event.target.value);
+                        if (!formState.slugManuallyEdited) {
+                          updateFormState("slug", slugifyProductName(event.target.value));
+                        }
                       }}
                       required
-                      value={name}
+                      value={formState.name}
                     />
                     <span id="product-name-error">
                       <FieldError>{errors.name}</FieldError>
@@ -399,12 +288,12 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                         maxLength={120}
                         name="slug"
                         onChange={(event) => {
-                          setSlugManuallyEdited(true);
-                          setSlug(event.target.value);
+                          updateFormState("slugManuallyEdited", true);
+                          updateFormState("slug", event.target.value);
                         }}
                         pattern="[a-z0-9]+(-[a-z0-9]+)*"
                         required
-                        value={slug}
+                        value={formState.slug}
                       />
                     </div>
                     <span id="product-slug-error">
@@ -420,25 +309,25 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                       id="product-description"
                       maxLength={5000}
                       name="description"
-                      onChange={(event) => setDescription(event.target.value)}
+                      onChange={(event) => updateFormState("description", event.target.value)}
                       placeholder="Describe the product… Markdown is supported."
                       required
                       rows={6}
-                      value={description}
+                      value={formState.description}
                     />
                     <p className="mt-1 text-[11px] text-[#73786b]" id="product-description-help">
                       Markdown headings, emphasis, links, and lists are supported. Maximum 5,000
                       characters.
                     </p>
                     <FieldError>{errors.description}</FieldError>
-                    {description && (
+                    {formState.description && (
                       <details className="mt-3 rounded-lg border border-black/10 bg-[#fafbf8] p-3">
                         <summary className="cursor-pointer text-xs font-bold text-[#687b26]">
                           Preview description
                         </summary>
                         <MarkdownDescription
                           className="mt-3 text-sm leading-6 text-[#55594f]"
-                          description={description}
+                          description={formState.description}
                         />
                       </details>
                     )}
@@ -560,112 +449,44 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                 title="Pricing & discounts"
               >
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <FieldLabel htmlFor="product-price">Base price (USD)</FieldLabel>
-                    <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                      <span
-                        aria-hidden="true"
-                        className="pl-3 text-sm font-semibold text-[#73786b]"
-                      >
-                        $
-                      </span>
-                      <input
-                        aria-invalid={Boolean(errors.price)}
-                        className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
-                        id="product-price"
-                        inputMode="decimal"
-                        min="0.01"
-                        name="price"
-                        onChange={(event) => setPriceInput(event.target.value)}
-                        placeholder="9.99"
-                        required
-                        step="0.01"
-                        type="number"
-                        value={priceInput}
-                      />
-                    </div>
-                    <FieldError>{errors.price}</FieldError>
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor="product-sale-price">Sale price (USD)</FieldLabel>
-                    <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                      <span
-                        aria-hidden="true"
-                        className="pl-3 text-sm font-semibold text-[#73786b]"
-                      >
-                        $
-                      </span>
-                      <input
-                        aria-invalid={Boolean(errors.salePrice)}
-                        className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
-                        id="product-sale-price"
-                        min="0.01"
-                        name="salePrice"
-                        onChange={(event) => {
-                          setSalePriceInput(event.target.value);
-                          if (event.target.value) setDiscountAmountInput("");
-                        }}
-                        placeholder="Optional"
-                        step="0.01"
-                        type="number"
-                        value={salePriceInput}
-                      />
-                    </div>
-                    <FieldError>{errors.salePrice}</FieldError>
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor="product-discount">Discount amount (USD)</FieldLabel>
-                    <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                      <span
-                        aria-hidden="true"
-                        className="pl-3 text-sm font-semibold text-[#73786b]"
-                      >
-                        $
-                      </span>
-                      <input
-                        aria-invalid={Boolean(errors.discountAmount)}
-                        className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
-                        id="product-discount"
-                        min="0.01"
-                        name="discountAmount"
-                        onChange={(event) => {
-                          setDiscountAmountInput(event.target.value);
-                          if (event.target.value) setSalePriceInput("");
-                        }}
-                        placeholder="Optional"
-                        step="0.01"
-                        type="number"
-                        value={discountAmountInput}
-                      />
-                    </div>
-                    <FieldError>{errors.discountAmount}</FieldError>
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor="product-original-price">
-                      Original / compare-at price (USD)
-                    </FieldLabel>
-                    <div className="mt-1 flex items-center rounded-lg border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                      <span
-                        aria-hidden="true"
-                        className="pl-3 text-sm font-semibold text-[#73786b]"
-                      >
-                        $
-                      </span>
-                      <input
-                        aria-invalid={Boolean(errors.originalPrice)}
-                        className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none"
-                        id="product-original-price"
-                        min="0.01"
-                        name="originalPrice"
-                        onChange={(event) => setOriginalPriceInput(event.target.value)}
-                        placeholder="Optional"
-                        step="0.01"
-                        type="number"
-                        value={originalPriceInput}
-                      />
-                    </div>
-                    <FieldError>{errors.originalPrice}</FieldError>
-                  </div>
+                  <CurrencyInput
+                    error={errors.price}
+                    id="product-price"
+                    inputMode="decimal"
+                    label="Base price (USD)"
+                    name="price"
+                    onChange={setPriceInput}
+                    placeholder="9.99"
+                    required
+                    value={priceInput}
+                  />
+                  <CurrencyInput
+                    error={errors.salePrice}
+                    id="product-sale-price"
+                    label="Sale price (USD)"
+                    name="salePrice"
+                    onChange={setSalePriceInput}
+                    placeholder="Optional"
+                    value={salePriceInput}
+                  />
+                  <CurrencyInput
+                    error={errors.discountAmount}
+                    id="product-discount"
+                    label="Discount amount (USD)"
+                    name="discountAmount"
+                    onChange={setDiscountAmountInput}
+                    placeholder="Optional"
+                    value={discountAmountInput}
+                  />
+                  <CurrencyInput
+                    error={errors.originalPrice}
+                    id="product-original-price"
+                    label="Original / compare-at price (USD)"
+                    name="originalPrice"
+                    onChange={setOriginalPriceInput}
+                    placeholder="Optional"
+                    value={originalPriceInput}
+                  />
                   <div className="sm:col-span-2">
                     <FieldLabel htmlFor="product-sale-ends">Sale ends at</FieldLabel>
                     <input
@@ -713,9 +534,11 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                       className="admin-catalog-input"
                       id="product-category"
                       name="categoryId"
-                      onChange={(event) => setSelectedCategoryId(event.target.value)}
+                      onChange={(event) =>
+                        updateFormState("selectedCategoryId", event.target.value)
+                      }
                       required
-                      value={selectedCategoryId}
+                      value={formState.selectedCategoryId}
                     >
                       <option value="">Select a category</option>
                       {categories.map((category) => (
@@ -754,8 +577,8 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                       className="admin-catalog-input"
                       id="product-status"
                       name="isActive"
-                      onChange={(event) => setIsActive(event.target.value)}
-                      value={isActive}
+                      onChange={(event) => updateFormState("isActive", event.target.value)}
+                      value={formState.isActive}
                     >
                       <option value="false">Draft</option>
                       <option value="true">Active</option>
@@ -770,8 +593,8 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                       className="admin-catalog-input"
                       id="product-track-inventory"
                       name="trackInventory"
-                      onChange={(event) => setTrackInventory(event.target.value)}
-                      value={trackInventory}
+                      onChange={(event) => updateFormState("trackInventory", event.target.value)}
+                      value={formState.trackInventory}
                     >
                       <option value="true">Track quantity</option>
                       <option value="false">Do not track quantity</option>
@@ -804,8 +627,10 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                       className="admin-catalog-input"
                       id="product-tiered-discount-setting"
                       name="tieredDiscountsEnabled"
-                      onChange={(event) => setTieredDiscountSetting(event.target.value)}
-                      value={tieredDiscountSetting}
+                      onChange={(event) =>
+                        updateFormState("tieredDiscountSetting", event.target.value)
+                      }
+                      value={formState.tieredDiscountSetting}
                     >
                       <option value="">Inherit category default</option>
                       <option value="true">Enabled</option>
@@ -813,7 +638,7 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                     </select>
                     <p className="mt-1 text-[11px] text-[#73786b]">
                       Category setting:{" "}
-                      {categories.find((category) => category.id === selectedCategoryId)
+                      {categories.find((category) => category.id === formState.selectedCategoryId)
                         ?.tieredDiscountsEnabled
                         ? "enabled"
                         : "disabled"}
@@ -829,84 +654,43 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
                 title="Physical & shipping specifications"
               >
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <FieldLabel htmlFor="piece-length-inches">Piece length</FieldLabel>
-                    <div className="flex items-center rounded-md border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                      <input
-                        aria-describedby={
-                          errors.pieceLengthInches ? "piece-length-error" : undefined
-                        }
-                        aria-invalid={Boolean(errors.pieceLengthInches)}
-                        className="min-h-11 min-w-0 flex-1 rounded-l-md border-0 bg-transparent px-3 text-sm outline-none"
-                        id="piece-length-inches"
-                        min="0.01"
-                        name="pieceLengthInches"
-                        onChange={(event) => setPieceLengthInches(event.target.value)}
-                        required
-                        step="any"
-                        type="number"
-                        value={pieceLengthInches}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className="px-3 text-xs font-semibold text-[#73786b]"
-                      >
-                        in
-                      </span>
-                    </div>
-                    <FieldError>{errors.pieceLengthInches}</FieldError>
-                  </div>
-                  <div>
-                    <FieldLabel htmlFor="pieces-per-pack">Pieces per pack</FieldLabel>
-                    <div className="flex items-center rounded-md border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                      <input
-                        aria-describedby={
-                          errors.piecesPerPack ? "pieces-per-pack-error" : undefined
-                        }
-                        aria-invalid={Boolean(errors.piecesPerPack)}
-                        className="min-h-11 min-w-0 flex-1 rounded-l-md border-0 bg-transparent px-3 text-sm outline-none"
-                        id="pieces-per-pack"
-                        min="1"
-                        name="piecesPerPack"
-                        onChange={(event) => setPiecesPerPack(event.target.value)}
-                        required
-                        step="1"
-                        type="number"
-                        value={piecesPerPack}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className="px-3 text-xs font-semibold text-[#73786b]"
-                      >
-                        pcs
-                      </span>
-                    </div>
-                    <FieldError>{errors.piecesPerPack}</FieldError>
-                  </div>
+                  <UnitInput
+                    error={errors.pieceLengthInches}
+                    id="piece-length-inches"
+                    label="Piece length"
+                    min="0.01"
+                    name="pieceLengthInches"
+                    onChange={(value) => updateFormState("pieceLengthInches", value)}
+                    required
+                    step="any"
+                    unit="in"
+                    value={formState.pieceLengthInches}
+                  />
+                  <UnitInput
+                    error={errors.piecesPerPack}
+                    id="pieces-per-pack"
+                    label="Pieces per pack"
+                    min="1"
+                    name="piecesPerPack"
+                    onChange={(value) => updateFormState("piecesPerPack", value)}
+                    required
+                    step="1"
+                    unit="pcs"
+                    value={formState.piecesPerPack}
+                  />
                   <div className="sm:col-span-2">
-                    <FieldLabel htmlFor="pack-weight-grams">Pack weight</FieldLabel>
-                    <div className="flex items-center rounded-md border border-black/15 bg-white focus-within:ring-2 focus-within:ring-[#718126]/20">
-                      <input
-                        aria-describedby={errors.packWeightGrams ? "pack-weight-error" : undefined}
-                        aria-invalid={Boolean(errors.packWeightGrams)}
-                        className="min-h-11 min-w-0 flex-1 rounded-l-md border-0 bg-transparent px-3 text-sm outline-none"
-                        id="pack-weight-grams"
-                        min="0.01"
-                        name="packWeightGrams"
-                        onChange={(event) => setPackWeightGrams(event.target.value)}
-                        required
-                        step="any"
-                        type="number"
-                        value={packWeightGrams}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className="px-3 text-xs font-semibold text-[#73786b]"
-                      >
-                        g
-                      </span>
-                    </div>
-                    <FieldError>{errors.packWeightGrams}</FieldError>
+                    <UnitInput
+                      error={errors.packWeightGrams}
+                      id="pack-weight-grams"
+                      label="Pack weight"
+                      min="0.01"
+                      name="packWeightGrams"
+                      onChange={(value) => updateFormState("packWeightGrams", value)}
+                      required
+                      step="any"
+                      unit="g"
+                      value={formState.packWeightGrams}
+                    />
                   </div>
                 </div>
               </FormCard>
@@ -932,7 +716,7 @@ export function ProductCreateForm({ categories }: { categories: CategoryOption[]
             form="product-create-form"
             onClick={() => {
               saveDraftRef.current = true;
-              setIsActive("false");
+              updateFormState("isActive", "false");
             }}
             type="submit"
           >
