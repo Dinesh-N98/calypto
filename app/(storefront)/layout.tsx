@@ -1,14 +1,11 @@
 import { SiteShell } from "@/components/SiteShell";
-import { prisma } from "@/lib/prisma";
+import { getShopCategories } from "@/lib/shop-catalog";
 
 export const dynamic = "force-dynamic";
 
 export default async function StorefrontLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const categories = await prisma.category.findMany({
-    orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-    select: { name: true, slug: true },
-  });
+  const categories = await getShopCategories();
   return <SiteShell categories={categories}>{children}</SiteShell>;
 }

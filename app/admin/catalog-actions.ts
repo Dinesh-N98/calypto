@@ -2,9 +2,10 @@
 
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+import { SHOP_CATEGORIES_CACHE_TAG, SHOP_PRODUCTS_CACHE_TAG } from "@/lib/shop-catalog";
 import { productPackagingSchema } from "@/lib/product-form-validation";
 import type { CreateProductInput, ProductPackagingSpecifications } from "@/lib/product-types";
 
@@ -224,6 +225,8 @@ function isValidCategoryImage(value: string): boolean {
 }
 
 function revalidateCatalog(): void {
+  updateTag(SHOP_CATEGORIES_CACHE_TAG);
+  updateTag(SHOP_PRODUCTS_CACHE_TAG);
   revalidatePath("/admin");
   revalidatePath("/admin/products");
   revalidatePath("/admin/categories");

@@ -5,11 +5,17 @@ import { IconFeature } from "@/components/IconFeature";
 import { ProductCard } from "@/components/ProductCard";
 import { RevealStagger } from "@/components/RevealStagger";
 import { ShopHeaderToolbar } from "@/components/shop/ShopHeaderToolbar";
-import { prisma } from "@/lib/prisma";
+import {
+  getShopCategories,
+  getShopProductsPage,
+  parseShopPage,
+  SHOP_PAGE_SIZE,
+} from "@/lib/shop-catalog";
 
 type SearchParam = string | string[] | undefined;
 type ShopSearchParams = {
   category?: SearchParam;
+  page?: SearchParam;
 };
 
 function firstParam(value: SearchParam): string | undefined {
@@ -19,7 +25,7 @@ function firstParam(value: SearchParam): string | undefined {
 function ProductGridSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" aria-hidden="true">
-      {Array.from({ length: 8 }, (_, index) => (
+      {Array.from({ length: SHOP_PAGE_SIZE }, (_, index) => (
         <div className="animate-pulse overflow-hidden rounded-xl border border-white/10 bg-[#141712]" key={index}>
           <div className="aspect-square bg-[#1a1d17]" />
           <div className="grid gap-2 p-3">
@@ -34,88 +40,91 @@ function ProductGridSkeleton() {
 }
 
 async function ProductGrid({
-  categoryId,
+  categorySlug,
+  page,
 }: {
-  categoryId?: string;
+  categorySlug: string | null;
+  page: number;
 }) {
-  const where = {
-    isActive: true,
-    ...(categoryId ? { categoryId } : {}),
-  };
-
-  const products = await prisma.product.findMany({
-    where,
-    orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      slug: true,
-      name: true,
-      priceCents: true,
-      salePriceCents: true,
-      saleEndsAt: true,
-      imageUrl: true,
-      trackInventory: true,
-      pieceLengthInches: true,
-      packWeightGrams: true,
-      piecesPerPack: true,
-      category: { select: { name: true } },
-      images: {
-        orderBy: { order: "asc" },
-        select: { url: true, altText: true, order: true },
-      },
-      reviews: { select: { rating: true } },
-      variants: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          sku: true,
-          priceCents: true,
-          discountPriceCents: true,
-          stock: true,
-          size: true,
-          color: true,
-          imageUrl: true,
-        },
-      },
-    },
-  });
+  const { products, hasNextPage } = await getShopProductsPage(categorySlug, page);
 
   if (products.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-[#141712] px-5 py-14 text-center md:px-6 md:py-16">
-        <p className="text-lg font-black uppercase tracking-tight md:text-xl">
-          No products match these filters
-        </p>
-        <p className="mt-2 text-sm text-muted">Choose another category to keep exploring.</p>
-        <Link
-          className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-lime px-4 text-xs font-black uppercase tracking-wide text-ink transition hover:bg-[#b6cf45]"
-          href="/shop"
-        >
-          View all products <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
-        </Link>
-      </div>
+      <>
+        <div className="rounded-xl border border-white/10 bg-[#141712] px-5 py-14 text-center md:px-6 md:py-16">
+          <p className="text-lg font-black uppercase tracking-tight md:text-xl">
+            No products match these filters
+          </p>
+          <p className="mt-2 text-sm text-muted">Choose another category to keep exploring.</p>
+          <Link
+            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-lime px-4 text-xs font-black uppercase tracking-wide text-ink transition hover:bg-[#b6cf45]"
+            href="/shop"
+          >
+            View all products <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        </div>
+        {page > 1 && <ShopPagination categorySlug={categorySlug} page={page} hasNextPage={false} />}
+      </>
     );
   }
 
   return (
-    <RevealStagger className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-      {products.map((product) => {
-        const averageRating = product.reviews.length
-          ? product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length
-          : undefined;
-        return (
-          <ProductCard
-            key={product.slug}
-            product={{
-              ...product,
-              categoryName: product.category.name,
-              averageRating,
-              reviewCount: product.reviews.length,
-            }}
-          />
-        );
-      })}
-    </RevealStagger>
+    <>
+      <RevealStagger className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+        {products.map((product) => (
+          <ProductCard key={product.slug} product={product} />
+        ))}
+      </RevealStagger>
+      <ShopPagination categorySlug={categorySlug} page={page} hasNextPage={hasNextPage} />
+    </>
+  );
+}
+
+function ShopPagination({
+  categorySlug,
+  page,
+  hasNextPage,
+}: {
+  categorySlug: string | null;
+  page: number;
+  hasNextPage: boolean;
+}) {
+  function pageHref(targetPage: number) {
+    const params = new URLSearchParams();
+    if (categorySlug) params.set("category", categorySlug);
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const query = params.toString();
+    return query ? `/shop?${query}` : "/shop";
+  }
+
+  if (page === 1 && !hasNextPage) return null;
+
+  return (
+    <nav aria-label="Shop pages" className="mt-8 flex items-center justify-center gap-4">
+      {page > 1 ? (
+        <Link
+          className="inline-flex min-h-11 items-center rounded-md border border-white/20 px-4 text-xs font-black uppercase tracking-wide transition hover:border-lime hover:text-lime"
+          href={pageHref(page - 1)}
+        >
+          Previous
+        </Link>
+      ) : (
+        <span aria-hidden="true" className="min-h-11 px-4" />
+      )}
+      <span aria-current="page" className="text-sm text-muted">
+        Page {page}
+      </span>
+      {hasNextPage ? (
+        <Link
+          className="inline-flex min-h-11 items-center rounded-md border border-white/20 px-4 text-xs font-black uppercase tracking-wide transition hover:border-lime hover:text-lime"
+          href={pageHref(page + 1)}
+        >
+          Next
+        </Link>
+      ) : (
+        <span aria-hidden="true" className="min-h-11 px-4" />
+      )}
+    </nav>
   );
 }
 
@@ -126,14 +135,8 @@ export default async function ShopPage({
 }) {
   const params = await searchParams;
   const categorySlug = firstParam(params.category);
-  const categories = await prisma.category.findMany({
-    orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-    },
-  });
+  const page = parseShopPage(firstParam(params.page));
+  const categories = await getShopCategories();
   const selectedCategory = categories.find((category) => category.slug === categorySlug);
 
   return (
@@ -166,7 +169,7 @@ export default async function ShopPage({
         </header>
 
         <Suspense fallback={<ProductGridSkeleton />}>
-          <ProductGrid categoryId={selectedCategory?.id} />
+          <ProductGrid categorySlug={selectedCategory?.slug ?? null} page={page} />
         </Suspense>
 
         <RevealStagger className="mt-16 grid gap-5 border-t border-white/10 pt-7 sm:grid-cols-3">

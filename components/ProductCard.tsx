@@ -20,12 +20,9 @@ type ProductCardProduct = {
   images?: { url: string; altText: string | null; order?: number }[];
   variants?: {
     id: string;
-    sku: string;
     priceCents: number;
     discountPriceCents?: number | null;
     stock: number;
-    size: string | null;
-    color: string | null;
     imageUrl: string | null;
   }[];
   averageRating?: number;
@@ -90,7 +87,7 @@ export function ProductCard({
               alt={product.name}
               className="object-contain p-5 transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.04] sm:p-7"
               fill
-              sizes="(max-width: 639px) 46vw, (max-width: 1023px) 30vw, 23vw"
+              sizes="(max-width: 767px) 46vw, (max-width: 1023px) 30vw, 23vw"
               src={imageSrc}
             />
             {secondImage && secondImage !== imageSrc && (
@@ -98,7 +95,7 @@ export function ProductCard({
                 alt={product.images?.[0]?.altText || `${product.name}, alternate view`}
                 className="object-contain p-5 opacity-0 transition-[opacity,transform] duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:p-7"
                 fill
-                sizes="(max-width: 639px) 46vw, (max-width: 1023px) 30vw, 23vw"
+                sizes="(max-width: 767px) 46vw, (max-width: 1023px) 30vw, 23vw"
                 src={secondImage}
               />
             )}
