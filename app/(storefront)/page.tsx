@@ -95,7 +95,7 @@ export default async function Home() {
               ))}
             </div>
             <div
-              className="hero-cta-group animate-hero-rise mb-16 mt-5 flex w-full flex-col gap-3 motion-reduce:animate-none md:mb-0 md:mt-7 md:w-auto md:flex-row md:gap-4"
+              className="hero-cta-group animate-hero-rise mt-5 flex w-full flex-col gap-3 motion-reduce:animate-none md:mt-7 md:w-auto md:flex-row md:gap-4"
               style={{ animationDelay: "840ms" }}
             >
               <Link
@@ -124,10 +124,6 @@ export default async function Home() {
               </a>
             </div>
           </div>
-        </div>
-        <div className="site-container relative mt-10 flex justify-between text-[.6rem] uppercase tracking-[.14em] text-muted md:absolute md:bottom-20 md:left-[10vw] md:right-[10vw] md:mt-0">
-          <span>Scroll to explore</span>
-          <span>01 / 04</span>
         </div>
       </section>
       <PromotionSection promotions={promotions} />
